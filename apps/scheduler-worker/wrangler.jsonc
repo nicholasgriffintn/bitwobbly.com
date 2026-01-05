@@ -1,0 +1,31 @@
+{
+  "$schema": "https://developers.cloudflare.com/schemas/wrangler.json",
+  "name": "bitwobbly-scheduler",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+
+  "vars": {
+    "PUBLIC_TEAM_ID": "team_demo"
+  },
+
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bitwobbly_db",
+      "database_id": "REPLACE_ME"
+    }
+  ],
+
+  "queues": {
+    "producers": [
+      {
+        "binding": "CHECK_JOBS",
+        "queue": "bitwobbly_check_jobs"
+      }
+    ]
+  }
+}

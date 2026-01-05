@@ -1,0 +1,49 @@
+{
+  "$schema": "https://developers.cloudflare.com/schemas/wrangler.json",
+  "name": "bitwobbly-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-07-15",
+  "routes": [
+    {
+      "pattern": "bitwobbly.com",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "vars": {
+    "PUBLIC_TEAM_ID": "team_demo"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bitwobbly_db",
+      "database_id": "REPLACE_ME"
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "REPLACE_ME"
+    }
+  ],
+
+  "queues": {
+    "producers": [
+      {
+        "binding": "ALERT_JOBS",
+        "queue": "bitwobbly_alert_jobs"
+      }
+    ]
+  }
+}

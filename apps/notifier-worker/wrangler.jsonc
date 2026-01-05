@@ -1,0 +1,28 @@
+{
+  "$schema": "https://developers.cloudflare.com/schemas/wrangler.json",
+  "name": "bitwobbly-notifier",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+
+  "vars": {
+    "PUBLIC_TEAM_ID": "team_demo"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bitwobbly_db",
+      "database_id": "REPLACE_ME"
+    }
+  ],
+
+  "queues": {
+    "consumers": [
+      {
+        "queue": "bitwobbly_alert_jobs",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5
+      }
+    ]
+  }
+}

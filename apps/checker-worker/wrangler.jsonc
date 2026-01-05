@@ -1,0 +1,57 @@
+{
+  "$schema": "https://developers.cloudflare.com/schemas/wrangler.json",
+  "name": "bitwobbly-checker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+
+  "vars": {
+    "PUBLIC_TEAM_ID": "team_demo"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bitwobbly_db",
+      "database_id": "REPLACE_ME"
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "REPLACE_ME"
+    }
+  ],
+
+  "queues": {
+    "consumers": [
+      {
+        "queue": "bitwobbly_check_jobs",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5
+      }
+    ],
+    "producers": [
+      {
+        "binding": "ALERT_JOBS",
+        "queue": "bitwobbly_alert_jobs"
+      }
+    ]
+  },
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "INCIDENT_DO",
+        "class_name": "IncidentCoordinator"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["IncidentCoordinator"]
+    }
+  ]
+}
