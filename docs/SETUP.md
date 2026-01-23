@@ -45,14 +45,24 @@ This DO updates D1 incidents and rebuilds status snapshots into KV.
 
 ## 5) Admin token
 
-Set a secret for the App Worker:
+Set a secret for the App Worker (used to authorise API writes after login):
 
 ```bash
 cd apps/app-worker
 wrangler secret put ADMIN_API_TOKEN
 ```
 
-The dashboard uses localStorage `adminToken` to call write APIs.
+The dashboard stores the returned token in localStorage to call write APIs.
+
+## 6) Admin username + password
+
+Set fixed credentials for now:
+
+```bash
+cd apps/app-worker
+wrangler secret put ADMIN_USERNAME
+wrangler secret put ADMIN_PASSWORD
+```
 
 ## 6) Optional: Add a webhook notification channel/policy
 

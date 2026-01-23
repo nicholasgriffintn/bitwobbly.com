@@ -1,5 +1,3 @@
--- D1 schema for bitwobbly-oss MVP
-
 CREATE TABLE IF NOT EXISTS teams (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -114,5 +112,4 @@ CREATE TABLE IF NOT EXISTS notification_policies (
   FOREIGN KEY (channel_id) REFERENCES notification_channels(id)
 );
 
--- seed demo team
 INSERT OR IGNORE INTO teams (id, name, created_at) VALUES ('team_demo', 'Demo Team', datetime('now'));

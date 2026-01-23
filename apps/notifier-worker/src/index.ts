@@ -36,11 +36,24 @@ async function handleAlert(job: AlertJob, env: Env) {
     if (job.status === 'up' && Number(p.notify_on_recovery) !== 1) continue;
 
     if (p.type === 'webhook') {
-      const cfg = JSON.parse(p.config_json);
+      let cfg: any = null;
+      try {
+        cfg = JSON.parse(p.config_json);
+      } catch {
+        console.warn('invalid webhook config', p.id);
+        continue;
+      }
       const url = cfg.url;
       if (!url) continue;
+      try {
+        const parsed = new URL(url);
+        if (!['http:', 'https:'].includes(parsed.protocol)) continue;
+      } catch {
+        continue;
+      }
 
       const payload = {
+        alert_id: job.alert_id,
         team_id: job.team_id,
         monitor_id: job.monitor_id,
         status: job.status,
@@ -49,11 +62,17 @@ async function handleAlert(job: AlertJob, env: Env) {
         ts: new Date().toISOString(),
       };
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort('timeout'), 8000);
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'user-agent': 'bitwobbly-notifier/1.0',
+        },
         body: JSON.stringify(payload),
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
 
       if (!res.ok) throw new Error(`Webhook failed: HTTP ${res.status}`);
     }

@@ -1,9 +1,10 @@
+import { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { nowIso, randomId } from '@bitwobbly/shared';
 
 export async function ensureDemoTeam(db: D1Database, teamId: string) {
   await db
     .prepare(
-      'INSERT OR IGNORE INTO teams (id, name, created_at) VALUES (?, ?, ?)'
+      'INSERT OR IGNORE INTO teams (id, name, created_at) VALUES (?, ?, ?)',
     )
     .bind(teamId, 'Demo Team', nowIso())
     .run();
@@ -13,7 +14,7 @@ export async function listMonitors(db: D1Database, teamId: string) {
   const monitors = (
     await db
       .prepare(
-        'SELECT * FROM monitors WHERE team_id = ? ORDER BY created_at DESC'
+        'SELECT * FROM monitors WHERE team_id = ? ORDER BY created_at DESC',
       )
       .bind(teamId)
       .all()
@@ -48,17 +49,17 @@ export async function createMonitor(
     interval_seconds: number;
     timeout_ms: number;
     failure_threshold: number;
-  }
+  },
 ) {
   const id = randomId('mon');
   const created_at = nowIso();
-  const next_run_at = Math.floor(Date.now() / 1000); // due immediately
+  const next_run_at = Math.floor(Date.now() / 1000);
   await db
     .prepare(
       `
     INSERT INTO monitors (id, team_id, name, url, method, timeout_ms, interval_seconds, failure_threshold, enabled, next_run_at, created_at)
     VALUES (?, ?, ?, ?, 'GET', ?, ?, ?, 1, ?, ?)
-  `
+  `,
     )
     .bind(
       id,
@@ -69,7 +70,7 @@ export async function createMonitor(
       input.interval_seconds,
       input.failure_threshold,
       next_run_at,
-      created_at
+      created_at,
     )
     .run();
 
@@ -78,7 +79,7 @@ export async function createMonitor(
       `
     INSERT OR IGNORE INTO monitor_state (monitor_id, last_checked_at, last_status, last_latency_ms, consecutive_failures, last_error, incident_open, updated_at)
     VALUES (?, 0, 'unknown', NULL, 0, NULL, 0, ?)
-  `
+  `,
     )
     .bind(id, nowIso())
     .run();
@@ -89,7 +90,7 @@ export async function createMonitor(
 export async function deleteMonitor(
   db: D1Database,
   teamId: string,
-  monitorId: string
+  monitorId: string,
 ) {
   await db
     .prepare('DELETE FROM monitors WHERE team_id = ? AND id = ?')
@@ -105,7 +106,7 @@ export async function listStatusPages(db: D1Database, teamId: string) {
   return (
     await db
       .prepare(
-        'SELECT * FROM status_pages WHERE team_id = ? ORDER BY created_at DESC'
+        'SELECT * FROM status_pages WHERE team_id = ? ORDER BY created_at DESC',
       )
       .bind(teamId)
       .all()
@@ -115,7 +116,7 @@ export async function listStatusPages(db: D1Database, teamId: string) {
 export async function createStatusPage(
   db: D1Database,
   teamId: string,
-  input: { name: string; slug: string }
+  input: { name: string; slug: string },
 ) {
   const id = randomId('sp');
   await db
@@ -123,17 +124,29 @@ export async function createStatusPage(
       `
     INSERT INTO status_pages (id, team_id, slug, name, is_public, created_at)
     VALUES (?, ?, ?, ?, 1, ?)
-  `
+  `,
     )
     .bind(id, teamId, input.slug, input.name, nowIso())
     .run();
   return { id };
 }
 
+export async function getStatusPageById(
+  db: D1Database,
+  teamId: string,
+  id: string,
+) {
+  const row = (await db
+    .prepare('SELECT * FROM status_pages WHERE team_id = ? AND id = ?')
+    .bind(teamId, id)
+    .first()) as any;
+  return row || null;
+}
+
 export async function getStatusPageBySlug(
   db: D1Database,
   teamId: string,
-  slug: string
+  slug: string,
 ) {
   const row = (await db
     .prepare('SELECT * FROM status_pages WHERE team_id = ? AND slug = ?')
@@ -142,11 +155,25 @@ export async function getStatusPageBySlug(
   return row || null;
 }
 
+export async function deleteStatusPage(
+  db: D1Database,
+  teamId: string,
+  statusPageId: string,
+) {
+  await db
+    .prepare('DELETE FROM status_page_components WHERE status_page_id = ?')
+    .bind(statusPageId)
+    .run();
+  await db
+    .prepare('DELETE FROM status_pages WHERE team_id = ? AND id = ?')
+    .bind(teamId, statusPageId)
+    .run();
+}
+
 export async function listComponentsForStatusPage(
   db: D1Database,
-  statusPageId: string
+  statusPageId: string,
 ) {
-  // For MVP: components table exists, but we don't expose editor yet; return empty until configured.
   const rows = (
     await db
       .prepare(
@@ -156,7 +183,7 @@ export async function listComponentsForStatusPage(
     JOIN components c ON c.id = spc.component_id
     WHERE spc.status_page_id = ?
     ORDER BY spc.sort_order ASC
-  `
+  `,
       )
       .bind(statusPageId)
       .all()
@@ -167,7 +194,7 @@ export async function listComponentsForStatusPage(
 export async function listOpenIncidents(
   db: D1Database,
   teamId: string,
-  statusPageId: string | null
+  statusPageId: string | null,
 ) {
   const query = statusPageId
     ? "SELECT * FROM incidents WHERE team_id = ? AND status_page_id = ? AND status != 'resolved' ORDER BY started_at DESC"
@@ -203,15 +230,14 @@ export async function rebuildStatusSnapshot(
   db: D1Database,
   kv: KVNamespace,
   teamId: string,
-  slug: string
+  slug: string,
 ) {
   const page = await getStatusPageBySlug(db, teamId, slug);
   if (!page) return null;
 
   const components = await listComponentsForStatusPage(db, page.id);
-  // Determine component status: if any mapped monitor is down -> down. MVP: if no mappings, unknown.
-  // For now, compute a simple overall based on monitor_state for monitors referenced by component_monitors.
   const compsWithStatus = [];
+
   for (const c of components) {
     const monitorRows = (
       await db
@@ -221,7 +247,7 @@ export async function rebuildStatusSnapshot(
       FROM component_monitors cm
       JOIN monitor_state ms ON ms.monitor_id = cm.monitor_id
       WHERE cm.component_id = ?
-    `
+    `,
         )
         .bind(c.id)
         .all()
@@ -261,4 +287,117 @@ export async function rebuildStatusSnapshot(
     expirationTtl: 60,
   });
   return snapshot;
+}
+
+export async function listNotificationChannels(db: D1Database, teamId: string) {
+  return (
+    await db
+      .prepare(
+        'SELECT * FROM notification_channels WHERE team_id = ? ORDER BY created_at DESC',
+      )
+      .bind(teamId)
+      .all()
+  ).results;
+}
+
+export async function createWebhookChannel(
+  db: D1Database,
+  teamId: string,
+  input: { url: string; label?: string; enabled?: number },
+) {
+  const id = randomId('chan');
+  const created_at = nowIso();
+  const config_json = JSON.stringify({
+    url: input.url,
+    label: input.label || '',
+  });
+  const enabled = input.enabled === 0 ? 0 : 1;
+  await db
+    .prepare(
+      `
+    INSERT INTO notification_channels (id, team_id, type, config_json, enabled, created_at)
+    VALUES (?, ?, 'webhook', ?, ?, ?)
+  `,
+    )
+    .bind(id, teamId, config_json, enabled, created_at)
+    .run();
+  return { id };
+}
+
+export async function deleteNotificationChannel(
+  db: D1Database,
+  teamId: string,
+  channelId: string,
+) {
+  await db
+    .prepare(
+      'DELETE FROM notification_policies WHERE team_id = ? AND channel_id = ?',
+    )
+    .bind(teamId, channelId)
+    .run();
+  await db
+    .prepare('DELETE FROM notification_channels WHERE team_id = ? AND id = ?')
+    .bind(teamId, channelId)
+    .run();
+}
+
+export async function listNotificationPolicies(db: D1Database, teamId: string) {
+  return (
+    await db
+      .prepare(
+        `
+    SELECT np.*, nc.type as channel_type, nc.config_json as channel_config, m.name as monitor_name
+    FROM notification_policies np
+    JOIN notification_channels nc ON nc.id = np.channel_id
+    JOIN monitors m ON m.id = np.monitor_id
+    WHERE np.team_id = ?
+    ORDER BY np.created_at DESC
+  `,
+      )
+      .bind(teamId)
+      .all()
+  ).results;
+}
+
+export async function createNotificationPolicy(
+  db: D1Database,
+  teamId: string,
+  input: {
+    monitor_id: string;
+    channel_id: string;
+    threshold_failures: number;
+    notify_on_recovery: number;
+  },
+) {
+  const id = randomId('pol');
+  const created_at = nowIso();
+  await db
+    .prepare(
+      `
+    INSERT INTO notification_policies (id, team_id, monitor_id, channel_id, threshold_failures, notify_on_recovery, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `,
+    )
+    .bind(
+      id,
+      teamId,
+      input.monitor_id,
+      input.channel_id,
+      input.threshold_failures,
+      input.notify_on_recovery,
+      created_at,
+    )
+    .run();
+  return { id };
+}
+
+export async function deleteNotificationPolicy(
+  db: D1Database,
+  teamId: string,
+  policyId: string,
+) {
+  await db
+    .prepare('DELETE FROM notification_policies WHERE team_id = ? AND id = ?')
+    .bind(teamId, policyId)
+    .run();
 }
