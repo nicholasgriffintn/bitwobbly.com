@@ -61,6 +61,8 @@ export default {
   ): Promise<Response> {
     const url = getUrl(req);
 
+    console.log(`${req.method} ${url.pathname}`);
+
     if (!url.pathname.startsWith('/api/')) {
       return notFound();
     }
