@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/auth';
 
 export default function TopBar() {
   const { user, signOut } = useAuth();

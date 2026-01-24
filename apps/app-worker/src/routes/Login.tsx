@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { createFileRoute, useNavigate, isRedirect } from '@tanstack/react-router';
 
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/auth';
 import Brand from '@/components/Brand';
 
 export const Route = createFileRoute('/login')({ component: Login });

@@ -12,7 +12,7 @@ import {
   hashPassword,
   verifyPassword,
   generateSessionToken,
-} from "../lib/auth";
+} from '@/context/auth';
 
 export async function createUser(
   db: DrizzleD1Database,

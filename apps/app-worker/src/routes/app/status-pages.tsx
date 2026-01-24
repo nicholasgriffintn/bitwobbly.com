@@ -44,7 +44,7 @@ export default function StatusPages() {
       const res = await listStatusPages();
       setPages(res.status_pages);
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
@@ -68,7 +68,7 @@ export default function StatusPages() {
       setBrandColor('#007bff');
       setCustomCss('');
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
@@ -78,7 +78,7 @@ export default function StatusPages() {
       await deleteStatusPage({ data: { id } });
       setPages((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 

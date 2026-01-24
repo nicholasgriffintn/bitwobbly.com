@@ -4,7 +4,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools';
 
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
-import { AuthProvider } from '@/lib/auth';
+import { AuthProvider } from '@/context/auth';
 
 import appCss from '../styles.css?url';
 
