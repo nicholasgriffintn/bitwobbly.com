@@ -14,7 +14,4 @@ export interface Env {
   PUBLIC_TEAM_ID: string;
   CLOUDFLARE_ACCOUNT_ID: string;
   CLOUDFLARE_API_TOKEN: string;
-  ADMIN_API_TOKEN?: string;
-  ADMIN_USERNAME?: string;
-  ADMIN_PASSWORD?: string;
 }

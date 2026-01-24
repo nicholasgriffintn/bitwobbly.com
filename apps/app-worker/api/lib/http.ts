@@ -12,17 +12,6 @@ export function err(status: number, message: string): Response {
   return json({ error: message }, { status });
 }
 
-export function requireAdmin(
-  req: Request,
-  adminToken?: string,
-): Response | null {
-  if (!adminToken) return err(500, "ADMIN_API_TOKEN not configured.");
-  const auth = req.headers.get("authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!token || token !== adminToken) return err(401, "Unauthorized.");
-  return null;
-}
-
 export async function requireAuth(
   req: Request,
   db: DrizzleD1Database,

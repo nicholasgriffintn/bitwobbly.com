@@ -43,28 +43,7 @@ Ensure:
 The incident coordinator is implemented and hosted by the **Checker Worker** as a Durable Object class `IncidentCoordinator`.
 This DO updates D1 incidents and rebuilds status snapshots into KV.
 
-## 5) Admin token
-
-Set a secret for the App Worker (used to authorise API writes after login):
-
-```bash
-cd apps/app-worker
-wrangler secret put ADMIN_API_TOKEN
-```
-
-The dashboard stores the returned token in localStorage to call write APIs.
-
-## 6) Admin username + password
-
-Set fixed credentials for now:
-
-```bash
-cd apps/app-worker
-wrangler secret put ADMIN_USERNAME
-wrangler secret put ADMIN_PASSWORD
-```
-
-## 6) Optional: Add a webhook notification channel/policy
+## 5) Optional: Add a webhook notification channel/policy
 
 Because this starter kit does not yet have UI for notifications, add rows directly in D1.
 

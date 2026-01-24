@@ -1,21 +1,19 @@
 {
-  "$schema": "https://developers.cloudflare.com/schemas/wrangler.json",
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bitwobbly-notifier",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
-
   "vars": {
     "PUBLIC_TEAM_ID": "team_demo"
   },
-
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "bitwobbly_db",
-      "database_id": "REPLACE_ME"
+      "database_id": "REPLACE_ME",
+      "migrations_dir": "../../packages/shared/drizzle"
     }
   ],
-
   "queues": {
     "consumers": [
       {
