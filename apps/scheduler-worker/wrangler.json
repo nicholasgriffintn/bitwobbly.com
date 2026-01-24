@@ -3,13 +3,15 @@
   "name": "bitwobbly-scheduler",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
+  "dev": {
+    "port": 8788,
+    "inspector_port": 9230
+  },
   "vars": {
     "PUBLIC_TEAM_ID": "team_demo"
   },
   "triggers": {
-    "crons": [
-      "* * * * *"
-    ]
+    "crons": ["* * * * *"]
   },
   "d1_databases": [
     {

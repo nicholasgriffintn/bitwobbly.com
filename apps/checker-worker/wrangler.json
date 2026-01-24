@@ -3,6 +3,10 @@
   "name": "bitwobbly-checker",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
+  "dev": {
+    "port": 8787,
+    "inspector_port": 9231
+  },
   "vars": {
     "PUBLIC_TEAM_ID": "team_demo"
   },
@@ -46,9 +50,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": [
-        "IncidentCoordinator"
-      ]
+      "new_classes": ["IncidentCoordinator"]
     }
   ]
 }

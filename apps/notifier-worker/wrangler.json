@@ -3,6 +3,10 @@
   "name": "bitwobbly-notifier",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
+  "dev": {
+    "port": 8789,
+    "inspector_port": 9232
+  },
   "vars": {
     "PUBLIC_TEAM_ID": "team_demo"
   },
