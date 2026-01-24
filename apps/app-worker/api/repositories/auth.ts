@@ -33,15 +33,24 @@ export async function createUser(
   }
 
   const passwordHash = await hashPassword(input.password);
-  const user = {
-    id: randomId("usr"),
+  const userId = randomId("usr");
+  const createdAt = nowIso();
+
+  await db.insert(schema.users).values({
+    id: userId,
     email: input.email,
     passwordHash,
     teamId: input.team_id,
-    createdAt: nowIso(),
-  };
+    createdAt,
+  });
 
-  await db.insert(schema.users).values(user);
+  const user = {
+    id: userId,
+    email: input.email,
+    passwordHash,
+    teamId: input.team_id,
+    createdAt,
+  };
 
   return { user };
 }

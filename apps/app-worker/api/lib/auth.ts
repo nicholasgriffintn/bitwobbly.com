@@ -1,31 +1,24 @@
-import { randomId } from '@bitwobbly/shared';
+import { randomId } from "@bitwobbly/shared";
 
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     data,
-    { name: 'PBKDF2' },
+    { name: "PBKDF2" },
     false,
-    ['deriveBits'],
-  );
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: 'HKDF' },
-    false,
-    ['deriveBits'],
+    ["deriveBits"],
   );
   const derivedBits = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', info: new Uint8Array() },
-    key,
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
     256,
   );
   const hash = new Uint8Array(derivedBits);
@@ -43,7 +36,7 @@ export async function verifyPassword(
   const data = encoder.encode(password);
   const combined = new Uint8Array(
     atob(storedHash)
-      .split('')
+      .split("")
       .map((char) => char.charCodeAt(0)),
   );
   const salt = combined.slice(0, 16);
@@ -51,37 +44,38 @@ export async function verifyPassword(
 
   try {
     const keyMaterial = await crypto.subtle.importKey(
-      'raw',
+      "raw",
       data,
-      { name: 'PBKDF2' },
+      { name: "PBKDF2" },
       false,
-      ['deriveBits'],
-    );
-    const key = await crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt,
-        iterations: 100000,
-        hash: 'SHA-256',
-      },
-      keyMaterial,
-      { name: 'HKDF' },
-      false,
-      ['deriveBits'],
+      ["deriveBits"],
     );
     const derivedBits = await crypto.subtle.deriveBits(
-      { name: 'HKDF', hash: 'SHA-256', info: new Uint8Array() },
-      key,
+      {
+        name: "PBKDF2",
+        salt,
+        iterations: 100000,
+        hash: "SHA-256",
+      },
+      keyMaterial,
       256,
     );
     const derivedKey = new Uint8Array(derivedBits);
 
-    return crypto.subtle.timingSafeEqual(derivedKey, storedKey);
+    if (derivedKey.length !== storedKey.length) {
+      return false;
+    }
+
+    let result = 0;
+    for (let i = 0; i < derivedKey.length; i++) {
+      result |= derivedKey[i] ^ storedKey[i];
+    }
+    return result === 0;
   } catch {
     return false;
   }
 }
 
 export function generateSessionToken(): string {
-  return randomId('sess');
+  return randomId("sess");
 }

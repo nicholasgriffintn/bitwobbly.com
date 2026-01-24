@@ -107,6 +107,8 @@ export default {
       return notFound();
     }
 
+    await ensureDemoTeam(db, env.PUBLIC_TEAM_ID);
+
     if (req.method === "POST" && url.pathname === "/api/auth/sign-up") {
       let body: SignUpBody | null = null;
       try {
@@ -142,6 +144,7 @@ export default {
         if (e instanceof Error && e.message.includes("already exists")) {
           return err(409, "User with this email already exists");
         }
+        console.error("Sign-up error:", e);
         return err(500, "Failed to create user");
       }
     }
@@ -204,8 +207,6 @@ export default {
       );
       return response;
     }
-
-    ctx.waitUntil(ensureDemoTeam(db, env.PUBLIC_TEAM_ID));
 
     if (
       req.method === "GET" &&
