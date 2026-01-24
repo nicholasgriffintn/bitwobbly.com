@@ -9,7 +9,12 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 const config = defineConfig({
   plugins: [
     devtools(),
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    cloudflare({
+      viteEnvironment: { name: 'ssr' },
+      persistState: {
+        path: '../../.data',
+      },
+    }),
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),

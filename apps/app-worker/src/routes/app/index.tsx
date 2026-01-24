@@ -21,8 +21,6 @@ export const Route = createFileRoute('/app/')({
 function Overview() {
   const { monitors, status_pages: pages } = Route.useLoaderData();
 
-  // Note: loading state is handled by Route loader implicitly (suspense), or we can add pendingComponent
-  const loading = false; // Loaded by loader
   const [error] = useState<string | null>(null);
 
   const upCount = monitors.filter((m) => m.state?.last_status === 'up').length;
@@ -51,19 +49,19 @@ function Overview() {
       <div className="grid metrics">
         <div className="card">
           <div className="metric-label">Monitors up</div>
-          <div className="metric-value">{loading ? '—' : upCount}</div>
+          <div className="metric-value">{upCount}</div>
         </div>
         <div className="card">
           <div className="metric-label">Monitors down</div>
-          <div className="metric-value">{loading ? '—' : downCount}</div>
+          <div className="metric-value">{downCount}</div>
         </div>
         <div className="card">
           <div className="metric-label">Unknown</div>
-          <div className="metric-value">{loading ? '—' : unknownCount}</div>
+          <div className="metric-value">{unknownCount}</div>
         </div>
         <div className="card">
           <div className="metric-label">Status pages</div>
-          <div className="metric-value">{loading ? '—' : pages.length}</div>
+          <div className="metric-value">{pages.length}</div>
         </div>
       </div>
 
@@ -71,9 +69,7 @@ function Overview() {
         <div className="card">
           <div className="card-title">Recent monitors</div>
           <div className="list">
-            {loading ? (
-              <div className="muted">Loading monitors...</div>
-            ) : monitors.length ? (
+            {monitors.length ? (
               monitors.slice(0, 5).map((monitor) => (
                 <div key={monitor.id} className="list-row">
                   <div>
@@ -96,9 +92,7 @@ function Overview() {
         <div className="card">
           <div className="card-title">Public status</div>
           <div className="list">
-            {loading ? (
-              <div className="muted">Loading status pages...</div>
-            ) : pages.length ? (
+            {pages.length ? (
               pages.slice(0, 5).map((page) => (
                 <div key={page.id} className="list-row">
                   <div>
