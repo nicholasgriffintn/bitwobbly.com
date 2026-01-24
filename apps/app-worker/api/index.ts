@@ -36,6 +36,7 @@ import {
   getUserById,
   createSession,
   deleteSession,
+  validateSession,
 } from "./repositories/auth";
 import { getMonitorMetrics } from "./repositories/metrics";
 import { clampInt } from "./lib/utils";
@@ -175,13 +176,30 @@ export default {
     }
 
     if (req.method === "GET" && url.pathname === "/api/auth/me") {
-      const auth = await requireAuth(req, db);
-      if (auth instanceof Response) return auth;
+      const cookieHeader = req.headers.get("cookie") || "";
+      const cookies: Record<string, string> = {};
 
-      const user = await getUserById(db, auth.userId);
+      for (const cookie of cookieHeader.split(";")) {
+        const [name, value] = cookie.trim().split("=");
+        if (name && value) {
+          cookies[name] = decodeURIComponent(value);
+        }
+      }
+
+      const sessionToken = cookies.session_token;
+      if (!sessionToken) {
+        return err(401, "Authentication required.");
+      }
+
+      const session = await validateSession(db, sessionToken);
+      if (!session) {
+        return err(401, "Invalid or expired session.");
+      }
+
+      const user = await getUserById(db, session.userId);
       if (!user) return err(404, "User not found");
 
-      return json({ user, sessionToken: "" });
+      return json({ user, sessionToken });
     }
 
     if (req.method === "POST" && url.pathname === "/api/auth/sign-out") {

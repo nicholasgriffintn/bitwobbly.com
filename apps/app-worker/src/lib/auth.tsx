@@ -6,7 +6,7 @@ import {
   useMemo,
   useEffect,
   type ReactNode,
-} from 'react';
+} from "react";
 
 export type User = {
   id: string;
@@ -35,7 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkSession = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/auth/me');
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
@@ -53,17 +55,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/sign-in', {
-        method: 'POST',
+      const response = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Sign in failed');
+        throw new Error(error.error || "Sign in failed");
       }
 
       const data = await response.json();
@@ -77,17 +80,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/sign-up', {
-        method: 'POST',
+      const response = await fetch("/api/auth/sign-up", {
+        method: "POST",
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Sign up failed');
+        throw new Error(error.error || "Sign up failed");
       }
 
       const data = await response.json();
@@ -100,8 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      await fetch('/api/auth/sign-out', {
-        method: 'POST',
+      await fetch("/api/auth/sign-out", {
+        method: "POST",
+        credentials: "include",
       });
     } catch {
     } finally {
@@ -120,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('AuthProvider missing');
+  if (!ctx) throw new Error("AuthProvider missing");
   return ctx;
 }
 
