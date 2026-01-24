@@ -1,8 +1,12 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+import { useServerFn } from '@tanstack/react-start';
 
-import { apiFetch } from '@/lib/api';
-import { useAuthToken } from '@/lib/auth';
+import {
+  listStatusPagesFn,
+  createStatusPageFn,
+  deleteStatusPageFn
+} from '@/server/functions/status-pages';
 
 type StatusPage = {
   id: string;
@@ -15,12 +19,15 @@ type StatusPage = {
 
 export const Route = createFileRoute('/app/status-pages')({
   component: StatusPages,
+  loader: async () => {
+    const result = await listStatusPagesFn();
+    return { status_pages: result.status_pages };
+  }
 });
 
 export default function StatusPages() {
-  const token = useAuthToken();
-  const [pages, setPages] = useState<StatusPage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { status_pages: initialPages } = Route.useLoaderData();
+  const [pages, setPages] = useState<StatusPage[]>(initialPages);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -28,71 +35,50 @@ export default function StatusPages() {
   const [brandColor, setBrandColor] = useState('#007bff');
   const [customCss, setCustomCss] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const res = await apiFetch<{ status_pages: StatusPage[] }>(
-          '/api/status-pages',
-          { token },
-        );
-        if (cancelled) return;
-        setPages(res.status_pages || []);
-      } catch (err) {
-        if (cancelled) return;
-        setError((err as Error).message);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+  const createStatusPage = useServerFn(createStatusPageFn);
+  const deleteStatusPage = useServerFn(deleteStatusPageFn);
+  const listStatusPages = useServerFn(listStatusPagesFn);
+
+  const refreshPages = async () => {
+    try {
+      const res = await listStatusPages();
+      setPages(res.status_pages);
+    } catch (err) {
+      setError((err).message);
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  };
 
   const onCreate = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
     try {
-      await apiFetch('/api/status-pages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
+      await createStatusPage({
+        data: {
           name,
           slug,
-          logo_url: logoUrl.trim() || null,
+          logo_url: logoUrl.trim() || undefined,
           brand_color: brandColor.trim() || '#007bff',
-          custom_css: customCss.trim() || null,
-        }),
-        token,
+          custom_css: customCss.trim() || undefined,
+        }
       });
-      const res = await apiFetch<{ status_pages: StatusPage[] }>(
-        '/api/status-pages',
-        {
-          token,
-        },
-      );
-      setPages(res.status_pages || []);
+      await refreshPages();
       setName('');
       setSlug('');
       setLogoUrl('');
       setBrandColor('#007bff');
       setCustomCss('');
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
   const onDelete = async (id: string) => {
     setError(null);
     try {
-      await apiFetch(`/api/status-pages/${id}`, { method: 'DELETE', token });
+      await deleteStatusPage({ data: { id } });
       setPages((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
@@ -177,9 +163,7 @@ export default function StatusPages() {
       </div>
 
       <div className="grid two">
-        {loading ? (
-          <div className="card">Loading status pages...</div>
-        ) : pages.length ? (
+        {pages.length ? (
           pages.map((page) => (
             <div key={page.id} className="card">
               <div className="card-title">{page.name}</div>

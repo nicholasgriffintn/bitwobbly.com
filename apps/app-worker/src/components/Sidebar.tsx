@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 
 import Brand from './Brand';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '@/lib/auth';
 
 export default function Sidebar() {
   const { signOut } = useAuth();

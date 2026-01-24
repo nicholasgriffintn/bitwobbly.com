@@ -160,8 +160,7 @@ export async function rebuildStatusSnapshot(
       status: i.status,
       started_at: i.startedAt,
       resolved_at: i.resolvedAt,
-      updates: (i.updates || []).map((u: unknown) => {
-        const update = u as Record<string, unknown>;
+      updates: (i.updates || []).map((update) => {
         return {
           id: update.id,
           message: update.message,

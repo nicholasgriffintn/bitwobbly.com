@@ -1,8 +1,18 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+import { useServerFn } from '@tanstack/react-start';
 
-import { apiFetch } from '@/lib/api';
-import { useAuthToken } from '@/lib/auth';
+import { listMonitorsFn } from '@/server/functions/monitors';
+import {
+  listChannelsFn,
+  createChannelFn,
+  deleteChannelFn
+} from '@/server/functions/notification-channels';
+import {
+  listPoliciesFn,
+  createPolicyFn,
+  deletePolicyFn
+} from '@/server/functions/notification-policies';
 
 type Monitor = {
   id: string;
@@ -36,67 +46,56 @@ type ChannelConfig = {
 
 export const Route = createFileRoute('/app/notifications')({
   component: Notifications,
+  loader: async () => {
+    const [channelsRes, policiesRes, monitorsRes] = await Promise.all([
+      listChannelsFn(),
+      listPoliciesFn(),
+      listMonitorsFn()
+    ]);
+    return {
+      channels: channelsRes.channels,
+      policies: policiesRes.policies,
+      monitors: monitorsRes.monitors
+    };
+  }
 });
 
 export default function Notifications() {
-  const token = useAuthToken();
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const { channels: initialChannels, policies: initialPolicies, monitors: initialMonitors } = Route.useLoaderData();
+  const [channels, setChannels] = useState<Channel[]>(initialChannels);
+  const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
+  const [monitors, setMonitors] = useState<Monitor[]>(initialMonitors);
   const [error, setError] = useState<string | null>(null);
 
   const [url, setUrl] = useState('');
   const [label, setLabel] = useState('');
-  const [monitorId, setMonitorId] = useState('');
-  const [channelId, setChannelId] = useState('');
+  const [monitorId, setMonitorId] = useState(initialMonitors?.[0]?.id || '');
+  const [channelId, setChannelId] = useState(initialChannels?.[0]?.id || '');
   const [threshold, setThreshold] = useState('3');
   const [notifyOnRecovery, setNotifyOnRecovery] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [channelsRes, policiesRes, monitorsRes] = await Promise.all([
-          apiFetch<{ channels: Channel[] }>('/api/notification-channels', {
-            token,
-          }),
-          apiFetch<{ policies: Policy[] }>('/api/notification-policies', {
-            token,
-          }),
-          apiFetch<{ monitors: Monitor[] }>('/api/monitors', { token }),
-        ]);
-        if (cancelled) return;
-        setChannels(channelsRes.channels || []);
-        setPolicies(policiesRes.policies || []);
-        setMonitors(monitorsRes.monitors || []);
-        setMonitorId(monitorsRes.monitors?.[0]?.id || '');
-        setChannelId(channelsRes.channels?.[0]?.id || '');
-      } catch (err) {
-        if (cancelled) return;
-        setError((err as Error).message);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  const createChannel = useServerFn(createChannelFn);
+  const deleteChannel = useServerFn(deleteChannelFn);
+  const listChannels = useServerFn(listChannelsFn);
+
+  const createPolicy = useServerFn(createPolicyFn);
+  const deletePolicy = useServerFn(deletePolicyFn);
+  const listPolicies = useServerFn(listPoliciesFn);
 
   const onCreateChannel = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
     try {
-      await apiFetch('/api/notification-channels', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url, label }),
-        token,
+      await createChannel({
+        data: {
+          type: 'webhook',
+          url,
+          label,
+          enabled: 1
+        }
       });
-      const res = await apiFetch<{ channels: Channel[] }>(
-        '/api/notification-channels',
-        { token },
-      );
-      const nextChannels = res.channels || [];
+      const res = await listChannels();
+      const nextChannels = res.channels;
       setChannels(nextChannels);
       if (!channelId && nextChannels.length) {
         setChannelId(nextChannels[0].id);
@@ -104,7 +103,7 @@ export default function Notifications() {
       setUrl('');
       setLabel('');
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
@@ -112,51 +111,39 @@ export default function Notifications() {
     event.preventDefault();
     setError(null);
     try {
-      await apiFetch('/api/notification-policies', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
+      await createPolicy({
+        data: {
           monitor_id: monitorId,
           channel_id: channelId,
           threshold_failures: Number(threshold),
           notify_on_recovery: notifyOnRecovery ? 1 : 0,
-        }),
-        token,
+        }
       });
-      const res = await apiFetch<{ policies: Policy[] }>(
-        '/api/notification-policies',
-        { token },
-      );
-      setPolicies(res.policies || []);
+      const res = await listPolicies();
+      setPolicies(res.policies);
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
   const onDeleteChannel = async (id: string) => {
     setError(null);
     try {
-      await apiFetch(`/api/notification-channels/${id}`, {
-        method: 'DELETE',
-        token,
-      });
+      await deleteChannel({ data: { id } });
       setChannels((prev) => prev.filter((c) => c.id !== id));
       setPolicies((prev) => prev.filter((p) => p.channel_id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
   const onDeletePolicy = async (id: string) => {
     setError(null);
     try {
-      await apiFetch(`/api/notification-policies/${id}`, {
-        method: 'DELETE',
-        token,
-      });
+      await deletePolicy({ data: { id } });
       setPolicies((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
@@ -218,7 +205,7 @@ export default function Notifications() {
             >
               <option value="">Select channel</option>
               {channels.map((channel) => {
-                const config = JSON.parse(channel.config_json) as ChannelConfig;
+                const config = JSON.parse(channel.config_json);
                 return (
                   <option key={channel.id} value={channel.id}>
                     {config.label || config.url}
@@ -251,7 +238,7 @@ export default function Notifications() {
           <div className="list">
             {channels.length ? (
               channels.map((channel) => {
-                const config = JSON.parse(channel.config_json) as ChannelConfig;
+                const config = JSON.parse(channel.config_json);
                 return (
                   <div key={channel.id} className="list-row">
                     <div>
@@ -283,7 +270,7 @@ export default function Notifications() {
               policies.map((policy) => {
                 const config = JSON.parse(
                   policy.channel_config,
-                ) as ChannelConfig;
+                );
                 return (
                   <div key={policy.id} className="list-row">
                     <div>

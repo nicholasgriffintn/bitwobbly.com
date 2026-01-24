@@ -17,5 +17,5 @@ export async function apiFetch<T>(
     const err = (json as ApiError | null)?.error || res.statusText;
     throw new Error(err);
   }
-  return json as T;
+  return json;
 }

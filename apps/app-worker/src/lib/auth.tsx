@@ -7,17 +7,22 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
+import {
+  getCurrentUserFn,
+  signInFn,
+  signUpFn,
+  signOutFn
+} from "../server/functions/auth";
 
 export type User = {
   id: string;
   email: string;
-  team_id: string;
-  created_at: string;
+  teamId: string;
+  createdAt: string;
 };
 
 export type AuthContextValue = {
   user: User | null;
-  sessionToken: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -28,22 +33,18 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkSession = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-          setSessionToken(data.sessionToken);
+        const currentUser = await getCurrentUserFn();
+        if (currentUser) {
+          setUser(currentUser);
         }
-      } catch {
+      } catch (err) {
+        console.error("Session check failed", err);
       } finally {
         setLoading(false);
       }
@@ -55,23 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
-      const response = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Sign in failed");
+      await signInFn({ data: { email, password } });
+      const currentUser = await getCurrentUserFn();
+      if (currentUser) {
+        setUser(currentUser);
       }
-
-      const data = await response.json();
-      setUser(data.user);
-      setSessionToken(data.sessionToken);
+    } catch (err: any) {
+      if (err?.isRedirect) {
+        throw err;
+      }
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -80,23 +74,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
-      const response = await fetch("/api/auth/sign-up", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Sign up failed");
+      await signUpFn({ data: { email, password } });
+      const currentUser = await getCurrentUserFn();
+      if (currentUser) {
+        setUser(currentUser);
       }
-
-      const data = await response.json();
-      setUser(data.user);
-      setSessionToken(data.sessionToken);
+    } catch (err: any) {
+      if (err?.isRedirect) {
+        throw err;
+      }
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -104,20 +91,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      await fetch("/api/auth/sign-out", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch {
-    } finally {
+      await signOutFn();
       setUser(null);
-      setSessionToken(null);
+    } catch (err: any) {
+      if (err?.isRedirect) {
+        throw err;
+      }
     }
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, sessionToken, signIn, signUp, signOut, loading }),
-    [user, sessionToken, signIn, signUp, signOut, loading],
+    () => ({ user, signIn, signUp, signOut, loading }),
+    [user, signIn, signUp, signOut, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -127,8 +112,4 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("AuthProvider missing");
   return ctx;
-}
-
-export function useAuthToken() {
-  return useAuth().sessionToken;
 }

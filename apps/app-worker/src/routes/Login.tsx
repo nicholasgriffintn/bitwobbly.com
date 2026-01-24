@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, isRedirect } from '@tanstack/react-router';
 
 import { useAuth } from '@/lib/auth';
 import Brand from '@/components/Brand';
@@ -33,11 +33,14 @@ export default function Login() {
       } else {
         await signIn(email.trim(), password);
       }
-      navigate({
+      await navigate({
         to: '/app',
       });
     } catch (err) {
-      setError((err as Error).message);
+      if (isRedirect(err)) {
+        return;
+      }
+      setError((err).message);
     } finally {
       setSubmitting(false);
     }
@@ -49,7 +52,7 @@ export default function Login() {
         <Brand />
         <h1>{isSignUp ? 'Create account' : 'Sign in to BitWobbly'}</h1>
         <p>
-          {isSignUp 
+          {isSignUp
             ? 'Start monitoring your services with real-time alerts and beautiful status pages.'
             : 'Welcome back! Sign in to access your monitoring dashboard.'
           }
@@ -77,22 +80,22 @@ export default function Login() {
           />
           {error ? <div className="form-error">{error}</div> : null}
           <button type="submit" disabled={loading || submitting}>
-            {submitting 
+            {submitting
               ? (isSignUp ? 'Creating account...' : 'Signing in...')
               : (isSignUp ? 'Create account' : 'Sign in')
             }
           </button>
         </form>
         <div className="auth-toggle">
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="link-button"
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError(null);
             }}
           >
-            {isSignUp 
+            {isSignUp
               ? 'Already have an account? Sign in'
               : 'Need an account? Sign up'
             }

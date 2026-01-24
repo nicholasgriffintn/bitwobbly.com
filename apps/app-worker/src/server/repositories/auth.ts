@@ -135,7 +135,7 @@ export async function validateSession(
     return null;
   }
 
-  return { userId: session[0].userId as UUID };
+  return { userId: session[0].userId };
 }
 
 export async function deleteSession(

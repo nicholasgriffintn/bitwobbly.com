@@ -1,9 +1,13 @@
-import React, { useState, useEffect, type FormEvent } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+import { useServerFn } from '@tanstack/react-start';
 
-import { apiFetch } from '@/lib/api';
-import { useAuthToken } from '@/lib/auth';
 import { MetricsChart } from '@/components/MetricsChart';
+import {
+  listMonitorsFn,
+  createMonitorFn,
+  deleteMonitorFn
+} from '@/server/functions/monitors';
 
 type Monitor = {
   id: string;
@@ -15,12 +19,18 @@ type Monitor = {
   state?: { last_status?: string; last_latency_ms?: number | null } | null;
 };
 
-export const Route = createFileRoute('/app/monitors')({ component: Monitors });
+export const Route = createFileRoute('/app/monitors')({
+  component: Monitors,
+  loader: async () => {
+    const monitors = await listMonitorsFn();
+    return { monitors: monitors.monitors };
+  }
+});
 
 function Monitors() {
-  const token = useAuthToken();
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { monitors: initialMonitors } = Route.useLoaderData();
+
+  const [monitors, setMonitors] = useState<Monitor[]>(initialMonitors);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -31,64 +41,47 @@ function Monitors() {
     null,
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const res = await apiFetch<{ monitors: Monitor[] }>('/api/monitors', {
-          token,
-        });
-        if (cancelled) return;
-        setMonitors(res.monitors || []);
-      } catch (err) {
-        if (cancelled) return;
-        setError((err as Error).message);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+  const createMonitor = useServerFn(createMonitorFn);
+  const deleteMonitor = useServerFn(deleteMonitorFn);
+  const listMonitors = useServerFn(listMonitorsFn);
+
+  const refreshMonitors = async () => {
+    try {
+      const res = await listMonitors();
+      setMonitors(res.monitors);
+    } catch (err) {
+      setError((err).message);
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  };
 
   const onCreate = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
     try {
-      await apiFetch('/api/monitors', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
+      await createMonitor({
+        data: {
           name,
           url,
           interval_seconds: Number(interval),
           timeout_ms: Number(timeout),
           failure_threshold: Number(threshold),
-        }),
-        token,
+        }
       });
-      const res = await apiFetch<{ monitors: Monitor[] }>('/api/monitors', {
-        token,
-      });
-      setMonitors(res.monitors || []);
+      await refreshMonitors();
       setName('');
       setUrl('');
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
   const onDelete = async (id: string) => {
     setError(null);
     try {
-      await apiFetch(`/api/monitors/${id}`, { method: 'DELETE', token });
+      await deleteMonitor({ data: { id } });
       setMonitors((prev) => prev.filter((m) => m.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError((err).message);
     }
   };
 
@@ -162,11 +155,7 @@ function Monitors() {
             <div>Threshold</div>
             <div>Actions</div>
           </div>
-          {loading ? (
-            <div className="table-row">
-              <div className="muted">Loading monitors...</div>
-            </div>
-          ) : monitors.length ? (
+          {monitors.length ? (
             monitors.map((monitor) => (
               <React.Fragment key={monitor.id}>
                 <div className="table-row">
@@ -210,7 +199,7 @@ function Monitors() {
                 {expandedMonitorId === monitor.id && (
                   <div className="table-row">
                     <div style={{ gridColumn: '1 / -1', padding: 0 }}>
-                      <MetricsChart monitorId={monitor.id} token={token} />
+                      <MetricsChart monitorId={monitor.id} />
                     </div>
                   </div>
                 )}

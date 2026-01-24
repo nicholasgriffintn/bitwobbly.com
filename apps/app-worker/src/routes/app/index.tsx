@@ -1,57 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { apiFetch } from '@/lib/api';
-import { useAuthToken } from '@/lib/auth';
+import { listMonitorsFn } from '@/server/functions/monitors';
+import { listStatusPagesFn } from '@/server/functions/status-pages';
 
-type Monitor = {
-  id: string;
-  name: string;
-  url: string;
-  state?: { last_status?: string; last_latency_ms?: number | null } | null;
-};
-
-type StatusPage = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
-export const Route = createFileRoute('/app/')({ component: Overview });
+export const Route = createFileRoute('/app/')({
+  component: Overview,
+  loader: async () => {
+    const [monitorsRes, pagesRes] = await Promise.all([
+      listMonitorsFn(),
+      listStatusPagesFn()
+    ]);
+    return {
+      monitors: monitorsRes.monitors,
+      status_pages: pagesRes.status_pages
+    };
+  }
+});
 
 function Overview() {
-  const token = useAuthToken();
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
-  const [pages, setPages] = useState<StatusPage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { monitors, status_pages: pages } = Route.useLoaderData();
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [monitorsRes, pagesRes] = await Promise.all([
-          apiFetch<{ monitors: Monitor[] }>('/api/monitors', { token }),
-          apiFetch<{ status_pages: StatusPage[] }>('/api/status-pages', {
-            token,
-          }),
-        ]);
-        if (cancelled) return;
-        setMonitors(monitorsRes.monitors || []);
-        setPages(pagesRes.status_pages || []);
-      } catch (err) {
-        if (cancelled) return;
-        setError((err as Error).message);
-      } finally {
-        if (cancelled) return;
-        setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  // Note: loading state is handled by Route loader implicitly (suspense), or we can add pendingComponent
+  const loading = false; // Loaded by loader
+  const [error] = useState<string | null>(null);
 
   const upCount = monitors.filter((m) => m.state?.last_status === 'up').length;
   const downCount = monitors.filter(
