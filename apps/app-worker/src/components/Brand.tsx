@@ -1,6 +1,11 @@
-export default function Brand() {
+interface BrandProps {
+  subtitle?: string;
+  variant?: 'light' | 'dark';
+}
+
+export default function Brand({ subtitle, variant = 'light' }: BrandProps) {
   return (
-    <div className="brand">
+    <div className={`brand brand--${variant}`}>
       <div className="brand-mark">
         <span className="brand-mark__dot" />
         <span className="brand-mark__dot" />
@@ -8,7 +13,7 @@ export default function Brand() {
       </div>
       <div>
         <div className="brand-title">Bit Wobbly</div>
-        <div className="brand-subtitle">Monitoring control room</div>
+        {subtitle && <div className="brand-subtitle">{subtitle}</div>}
       </div>
     </div>
   );

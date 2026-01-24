@@ -79,8 +79,10 @@ select {
 
 .brand {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 14px;
+  text-align: left;
 }
 
 .brand-title {
@@ -98,6 +100,7 @@ select {
   display: grid;
   grid-auto-flow: column;
   gap: 6px;
+  justify-self: center;
 }
 
 .brand-mark__dot {
