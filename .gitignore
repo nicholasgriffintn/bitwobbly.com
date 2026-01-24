@@ -5,3 +5,4 @@ dist
 .DS_Store
 .dev.vars
 .data
+.claude

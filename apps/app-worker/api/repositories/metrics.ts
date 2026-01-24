@@ -1,5 +1,3 @@
-import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
-
 export type MetricsRow = {
   monitor_id: string;
   latency_ms: number;
@@ -28,7 +26,8 @@ export type MetricsResult = {
 };
 
 export async function getMonitorMetrics(
-  analyticsEngine: AnalyticsEngineDataset,
+  accountId: string,
+  apiToken: string,
   monitorId: string,
   hours: number,
 ): Promise<MetricsResult> {
@@ -43,25 +42,31 @@ export async function getMonitorMetrics(
       SUM(CASE WHEN blob2 = 'up' THEN 1 ELSE 0 END) as up_count,
       SUM(CASE WHEN blob2 = 'down' THEN 1 ELSE 0 END) as down_count
     FROM analytics_dataset
-    WHERE blob1 = ?
-      AND double2 >= ?
-      AND double2 <= ?
+    WHERE blob1 = '${monitorId}'
+      AND double2 >= ${startTime.getTime() / 1000}
+      AND double2 <= ${endTime.getTime() / 1000}
     GROUP BY
       FLOOR(double2 / (${hours * 60})) * (${hours * 60})
     ORDER BY double2 DESC
     LIMIT ${hours}
   `;
 
-  const results = await analyticsEngine.query({
-    query,
-    parameters: [
-      monitorId,
-      startTime.getTime() / 1000,
-      endTime.getTime() / 1000,
-    ],
+  const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
+  const response = await fetch(API, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+    },
+    body: query,
   });
 
-  const metrics = results.data || [];
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Analytics Engine query failed: ${errorText}`);
+  }
+
+  const responseJSON = await response.json();
+  const metrics = responseJSON.data || [];
 
   const totalChecks = metrics.reduce(
     (sum: number, row: Record<string, unknown>) => {
