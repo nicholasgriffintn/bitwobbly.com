@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 
-import { useAuth } from '../lib/auth';
-import Brand from '../components/Brand';
+import { useAuth } from '@/lib/auth';
+import Brand from '@/components/Brand';
+
+export const Route = createFileRoute('/login')({ component: Login });
 
 export default function Login() {
   const { signIn, signUp, loading } = useAuth();
@@ -31,7 +33,9 @@ export default function Login() {
       } else {
         await signIn(email.trim(), password);
       }
-      navigate('/app');
+      navigate({
+        to: '/app',
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {

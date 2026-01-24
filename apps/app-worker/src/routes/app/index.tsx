@@ -1,7 +1,8 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 
-import { apiFetch } from '../lib/api';
-import { useAuthToken } from '../lib/auth';
+import { apiFetch } from '@/lib/api';
+import { useAuthToken } from '@/lib/auth';
 
 type Monitor = {
   id: string;
@@ -16,7 +17,9 @@ type StatusPage = {
   slug: string;
 };
 
-export default function Overview() {
+export const Route = createFileRoute('/app/')({ component: Overview });
+
+function Overview() {
   const token = useAuthToken();
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [pages, setPages] = useState<StatusPage[]>([]);

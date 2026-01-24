@@ -1,8 +1,9 @@
 import React, { useState, useEffect, type FormEvent } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 
-import { apiFetch } from '../lib/api';
-import { useAuthToken } from '../lib/auth';
-import { MetricsChart } from '../components/MetricsChart';
+import { apiFetch } from '@/lib/api';
+import { useAuthToken } from '@/lib/auth';
+import { MetricsChart } from '@/components/MetricsChart';
 
 type Monitor = {
   id: string;
@@ -14,7 +15,9 @@ type Monitor = {
   state?: { last_status?: string; last_latency_ms?: number | null } | null;
 };
 
-export default function Monitors() {
+export const Route = createFileRoute('/app/monitors')({ component: Monitors });
+
+function Monitors() {
   const token = useAuthToken();
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +27,9 @@ export default function Monitors() {
   const [interval, setInterval] = useState('60');
   const [timeout, setTimeout] = useState('8000');
   const [threshold, setThreshold] = useState('3');
-  const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(null);
+  const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -183,9 +188,14 @@ export default function Monitors() {
                     <button
                       type="button"
                       className="outline"
-                      onClick={() => setExpandedMonitorId(expandedMonitorId === monitor.id ? null : monitor.id)}
+                      onClick={() =>
+                        setExpandedMonitorId(
+                          expandedMonitorId === monitor.id ? null : monitor.id,
+                        )
+                      }
                     >
-                      {expandedMonitorId === monitor.id ? 'Hide' : 'Show'} Metrics
+                      {expandedMonitorId === monitor.id ? 'Hide' : 'Show'}{' '}
+                      Metrics
                     </button>
                     <button
                       type="button"

@@ -1,7 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 
-import { apiFetch } from '../lib/api';
-import { useAuthToken } from '../lib/auth';
+import { apiFetch } from '@/lib/api';
+import { useAuthToken } from '@/lib/auth';
 
 type Monitor = {
   id: string;
@@ -32,6 +33,10 @@ type ChannelConfig = {
   url: string;
   label?: string;
 };
+
+export const Route = createFileRoute('/app/notifications')({
+  component: Notifications,
+});
 
 export default function Notifications() {
   const token = useAuthToken();

@@ -6,3 +6,4 @@ dist
 .dev.vars
 .data
 .claude
+.tanstack

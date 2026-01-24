@@ -1,7 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 
-import { apiFetch } from '../lib/api';
-import { useAuthToken } from '../lib/auth';
+import { apiFetch } from '@/lib/api';
+import { useAuthToken } from '@/lib/auth';
 
 type StatusPage = {
   id: string;
@@ -11,6 +12,10 @@ type StatusPage = {
   brand_color?: string;
   custom_css?: string;
 };
+
+export const Route = createFileRoute('/app/status-pages')({
+  component: StatusPages,
+});
 
 export default function StatusPages() {
   const token = useAuthToken();
@@ -64,9 +69,12 @@ export default function StatusPages() {
         }),
         token,
       });
-      const res = await apiFetch<{ status_pages: StatusPage[] }>('/api/status-pages', {
-        token,
-      });
+      const res = await apiFetch<{ status_pages: StatusPage[] }>(
+        '/api/status-pages',
+        {
+          token,
+        },
+      );
       setPages(res.status_pages || []);
       setName('');
       setSlug('');
@@ -118,9 +126,9 @@ export default function StatusPages() {
             placeholder="status"
             required
           />
-          
+
           <div className="card-subtitle">Customization (optional)</div>
-          
+
           <label htmlFor="logo-url">Logo URL</label>
           <input
             id="logo-url"
@@ -129,7 +137,7 @@ export default function StatusPages() {
             onChange={(event) => setLogoUrl(event.target.value)}
             placeholder="https://example.com/logo.png"
           />
-          
+
           <label htmlFor="brand-color">Brand Color</label>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <input
@@ -137,7 +145,13 @@ export default function StatusPages() {
               type="color"
               value={brandColor}
               onChange={(event) => setBrandColor(event.target.value)}
-              style={{ height: '2rem', width: '4rem', padding: '0', border: 'none', borderRadius: '4px' }}
+              style={{
+                height: '2rem',
+                width: '4rem',
+                padding: '0',
+                border: 'none',
+                borderRadius: '4px',
+              }}
             />
             <input
               type="text"
@@ -147,7 +161,7 @@ export default function StatusPages() {
               style={{ flex: 1 }}
             />
           </div>
-          
+
           <label htmlFor="custom-css">Custom CSS</label>
           <textarea
             id="custom-css"
@@ -157,7 +171,7 @@ export default function StatusPages() {
             rows={4}
             style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
           />
-          
+
           <button type="submit">Save status page</button>
         </form>
       </div>

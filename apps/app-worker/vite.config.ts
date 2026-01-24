@@ -1,20 +1,22 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { devtools } from '@tanstack/devtools-vite';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import viteReact from '@vitejs/plugin-react';
+import viteTsConfigPaths from 'vite-tsconfig-paths';
+import tailwindcss from '@tailwindcss/vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
-import path from 'node:path';
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
+const config = defineConfig({
   plugins: [
-    react(),
-    cloudflare({
-      persistState: {
-        path: '../../.data',
-      },
+    devtools(),
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    viteTsConfigPaths({
+      projects: ['./tsconfig.json'],
     }),
+    tailwindcss(),
+    tanstackStart(),
+    viteReact(),
   ],
 });
+
+export default config;

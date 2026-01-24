@@ -4,30 +4,40 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "deploy": "wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply bitwobbly_db --local --persist-to ../../.data",
     "db:migrate:remote": "wrangler d1 migrations apply bitwobbly_db"
   },
   "dependencies": {
     "@bitwobbly/shared": "workspace:*",
+    "@cloudflare/vite-plugin": "^1.13.8",
+    "@tailwindcss/vite": "^4.0.6",
+    "@tanstack/react-devtools": "^0.7.0",
+    "@tanstack/react-router": "^1.132.0",
+    "@tanstack/react-router-devtools": "^1.132.0",
+    "@tanstack/react-router-ssr-query": "^1.131.7",
+    "@tanstack/react-start": "^1.132.0",
+    "@tanstack/router-plugin": "^1.132.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "react-router-dom": "^7.13.0"
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.21.2",
     "@cloudflare/workers-types": "^4.20260123.0",
+    "@tanstack/devtools-vite": "^0.3.12",
     "@types/node": "^25.0.10",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "drizzle-orm": "^0.36.4",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
+    "vite-tsconfig-paths": "^5.1.4",
     "wrangler": "^4.60.0"
   }
 }
