@@ -4,37 +4,115 @@ import {
   useCallback,
   createContext,
   useMemo,
+  useEffect,
   type ReactNode,
 } from 'react';
 
-const TOKEN_KEY = 'adminToken';
+export type User = {
+  id: string;
+  email: string;
+  team_id: string;
+  created_at: string;
+};
 
 export type AuthContextValue = {
-  token: string | null;
-  login: (token: string) => void;
-  logout: () => void;
+  user: User | null;
+  sessionToken: string | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  loading: boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem(TOKEN_KEY);
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((next: string) => {
-    localStorage.setItem(TOKEN_KEY, next);
-    setToken(next);
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+          setSessionToken(data.sessionToken);
+        }
+      } catch {
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
+  const signIn = useCallback(async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/sign-in', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Sign in failed');
+      }
+
+      const data = await response.json();
+      setUser(data.user);
+      setSessionToken(data.sessionToken);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const signUp = useCallback(async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/sign-up', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Sign up failed');
+      }
+
+      const data = await response.json();
+      setUser(data.user);
+      setSessionToken(data.sessionToken);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await fetch('/api/auth/sign-out', {
+        method: 'POST',
+      });
+    } catch {
+    } finally {
+      setUser(null);
+      setSessionToken(null);
+    }
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ token, login, logout }),
-    [token, login, logout],
+    () => ({ user, sessionToken, signIn, signUp, signOut, loading }),
+    [user, sessionToken, signIn, signUp, signOut, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -47,5 +125,5 @@ export function useAuth() {
 }
 
 export function useAuthToken() {
-  return useAuth().token;
+  return useAuth().sessionToken;
 }

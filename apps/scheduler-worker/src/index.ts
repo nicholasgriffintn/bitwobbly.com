@@ -1,12 +1,13 @@
-import type { Env } from './env';
 import type { CheckJob } from '@bitwobbly/shared';
 import { randomId } from '@bitwobbly/shared';
+
+import type { Env } from './types/env';
 
 export default {
   async scheduled(
     _event: ScheduledEvent,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<void> {
     const nowSec = Math.floor(Date.now() / 1000);
     const lockTtlSec = 90;
@@ -20,7 +21,7 @@ export default {
         FROM monitors
         WHERE team_id = ? AND enabled = 1 AND next_run_at <= ? AND locked_until <= ?
         LIMIT 200
-      `
+      `,
         )
           .bind(env.PUBLIC_TEAM_ID, nowSec, nowSec)
           .all()
@@ -35,7 +36,7 @@ export default {
           UPDATE monitors
           SET locked_until = ?
           WHERE id = ? AND enabled = 1 AND next_run_at <= ? AND locked_until <= ?
-        `
+        `,
         )
           .bind(lockUntil, m.id, nowSec, nowSec)
           .run();
@@ -62,10 +63,10 @@ export default {
               UPDATE monitors
               SET next_run_at = ?, locked_until = 0
               WHERE id = ? AND locked_until = ?
-            `
+            `,
             )
               .bind(next, m.id, lockUntil)
-              .run()
+              .run(),
           );
         } catch (err) {
           console.error('scheduler enqueue failed', err);
@@ -75,10 +76,10 @@ export default {
               UPDATE monitors
               SET locked_until = 0
               WHERE id = ? AND locked_until = ?
-            `
+            `,
             )
               .bind(m.id, lockUntil)
-              .run()
+              .run(),
           );
         }
       }

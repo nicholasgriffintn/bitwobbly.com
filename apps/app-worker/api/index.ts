@@ -1,26 +1,40 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
-import type { Env } from './env';
-import { json, err, getUrl, readJson, requireAdmin, notFound } from './http';
+import type { Env } from './types/env';
+import { json, err, getUrl, readJson, requireAuth, notFound } from './lib/http';
+import { ensureDemoTeam } from './repositories/teams';
 import {
-  ensureDemoTeam,
+  listNotificationChannels,
+  createWebhookChannel,
+  createEmailChannel,
+  deleteNotificationChannel,
+} from './repositories/notification-channels';
+import {
   listMonitors,
   createMonitor,
   deleteMonitor,
+} from './repositories/monitors';
+import {
   listStatusPages,
   createStatusPage,
   getStatusPageById,
   deleteStatusPage,
   getStatusPageBySlug,
   rebuildStatusSnapshot,
-  listNotificationChannels,
-  createWebhookChannel,
-  deleteNotificationChannel,
+} from './repositories/status-pages';
+import {
   listNotificationPolicies,
   createNotificationPolicy,
   deleteNotificationPolicy,
-} from './db';
-import { clampInt } from './utils';
+} from './repositories/notification-policies';
+import {
+  createUser,
+  authenticateUser,
+  getUserById,
+  createSession,
+  deleteSession,
+} from './repositories/auth';
+import { clampInt } from './lib/utils';
 
 type CreateMonitorBody = {
   name: string;
@@ -33,10 +47,21 @@ type CreateMonitorBody = {
 type CreateStatusPageBody = {
   name: string;
   slug: string;
+  logo_url?: string;
+  brand_color?: string;
+  custom_css?: string;
 };
 
 type CreateWebhookChannelBody = {
   url: string;
+  label?: string;
+  enabled?: number;
+};
+
+type CreateEmailChannelBody = {
+  to: string;
+  from?: string;
+  subject?: string;
   label?: string;
   enabled?: number;
 };
@@ -46,6 +71,16 @@ type CreateNotificationPolicyBody = {
   channel_id: string;
   threshold_failures?: number;
   notify_on_recovery?: number;
+};
+
+type SignUpBody = {
+  email: string;
+  password: string;
+};
+
+type SignInBody = {
+  email: string;
+  password: string;
 };
 
 type LoginBody = {
@@ -67,23 +102,106 @@ export default {
       return notFound();
     }
 
-    if (req.method === 'POST' && url.pathname === '/api/auth/login') {
-      let body: LoginBody | null = null;
+    if (req.method === 'POST' && url.pathname === '/api/auth/sign-up') {
+      let body: SignUpBody | null = null;
       try {
-        body = await readJson<LoginBody>(req);
+        body = await readJson<SignUpBody>(req);
       } catch {
         return err(400, 'Invalid JSON body.');
       }
-      if (!body?.username || !body?.password)
-        return err(400, 'username and password are required.');
-      if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD || !env.ADMIN_API_TOKEN)
-        return err(500, 'Admin auth not configured.');
-      if (
-        body.username !== env.ADMIN_USERNAME ||
-        body.password !== env.ADMIN_PASSWORD
-      )
-        return err(401, 'Unauthorized.');
-      return json({ token: env.ADMIN_API_TOKEN });
+      if (!body?.email || !body?.password)
+        return err(400, 'email and password are required.');
+
+      if (!body.email.includes('@') || body.password.length < 8)
+        return err(400, 'Valid email and password (min 8 chars) required.');
+
+      try {
+        const { user } = await createUser(env.DB, {
+          email: body.email,
+          password: body.password,
+          team_id: env.PUBLIC_TEAM_ID,
+        });
+        const { password_hash: _, ...userWithoutPassword } = user;
+        const { sessionToken } = await createSession(env.DB, user.id);
+
+        const response = json(
+          { user: userWithoutPassword, sessionToken },
+          { status: 201 },
+        );
+        response.headers.set(
+          'Set-Cookie',
+          `session_token=${sessionToken}; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=2592000`,
+        );
+        return response;
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('already exists')) {
+          return err(409, 'User with this email already exists');
+        }
+        return err(500, 'Failed to create user');
+      }
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/auth/sign-in') {
+      let body: SignInBody | null = null;
+      try {
+        body = await readJson<SignInBody>(req);
+      } catch {
+        return err(400, 'Invalid JSON body.');
+      }
+      if (!body?.email || !body?.password)
+        return err(400, 'email and password are required.');
+
+      try {
+        const { user } = await authenticateUser(
+          env.DB,
+          body.email,
+          body.password,
+        );
+        const { sessionToken } = await createSession(env.DB, user.id);
+
+        const response = json({ user, sessionToken });
+        response.headers.set(
+          'Set-Cookie',
+          `session_token=${sessionToken}; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=2592000`,
+        );
+        return response;
+      } catch (e) {
+        return err(401, 'Invalid email or password');
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/auth/me') {
+      const auth = await requireAuth(req, env.DB);
+      if (auth instanceof Response) return auth;
+
+      const user = await getUserById(env.DB, auth.userId);
+      if (!user) return err(404, 'User not found');
+
+      return json({ user, sessionToken: '' });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/auth/sign-out') {
+      const cookieHeader = req.headers.get('cookie') || '';
+      const cookies: Record<string, string> = {};
+
+      for (const cookie of cookieHeader.split(';')) {
+        const [name, value] = cookie.trim().split('=');
+        if (name && value) {
+          cookies[name] = decodeURIComponent(value);
+        }
+      }
+
+      const sessionToken = cookies.session_token;
+      if (sessionToken) {
+        await deleteSession(env.DB, sessionToken);
+      }
+
+      const response = json({ ok: true });
+      response.headers.set(
+        'Set-Cookie',
+        'session_token=; HttpOnly; Secure; Path=/; SameSite=Strict; Max-Age=0',
+      );
+      return response;
     }
 
     ctx.waitUntil(ensureDemoTeam(env.DB, env.PUBLIC_TEAM_ID));
@@ -114,13 +232,99 @@ export default {
 
     const isWrite = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method);
     if (isWrite) {
-      const authErr = requireAdmin(req, env.ADMIN_API_TOKEN);
-      if (authErr) return authErr;
+      const auth = await requireAuth(req, env.DB);
+      if (auth instanceof Response) return auth;
     }
 
     if (req.method === 'GET' && url.pathname === '/api/monitors') {
       const monitors = await listMonitors(env.DB, env.PUBLIC_TEAM_ID);
       return json({ monitors });
+    }
+
+    if (
+      req.method === 'GET' &&
+      url.pathname.startsWith('/api/monitors/') &&
+      url.pathname.endsWith('/metrics')
+    ) {
+      const parts = url.pathname.split('/');
+      const monitorId = parts[3];
+      if (!monitorId) return err(400, 'Missing monitor ID');
+
+      const searchParams = url.searchParams;
+      const hours = Math.min(
+        Math.max(Number.parseInt(searchParams.get('hours') || '24', 10), 1),
+        168,
+      );
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - hours * 60 * 60 * 1000);
+
+      try {
+        const query = `
+          SELECT 
+            blob1 as monitor_id,
+            double1 as latency_ms,
+            double2 as timestamp,
+            SUM(CASE WHEN blob2 = 'up' THEN 1 ELSE 0 END) as up_count,
+            SUM(CASE WHEN blob2 = 'down' THEN 1 ELSE 0 END) as down_count
+          FROM analytics_dataset 
+          WHERE blob1 = ? 
+            AND double2 >= ?
+            AND double2 <= ?
+          GROUP BY 
+            FLOOR(double2 / (${hours * 60})) * (${hours * 60}) -- Group by hour
+          ORDER BY double2 DESC
+          LIMIT ${hours}
+        `;
+
+        const results = await env.CF_ANALYTICS_ENGINE.query({
+          query,
+          parameters: [
+            monitorId,
+            startTime.getTime() / 1000,
+            endTime.getTime() / 1000,
+          ],
+        });
+
+        const metrics = results.data || [];
+
+        const totalChecks = metrics.reduce(
+          (sum: number, row: Record<string, unknown>) => {
+            return sum + Number(row.up_count) + Number(row.down_count);
+          },
+          0,
+        );
+        const totalUp = metrics.reduce(
+          (sum: number, row: Record<string, unknown>) => {
+            return sum + Number(row.up_count);
+          },
+          0,
+        );
+        const uptimePercentage =
+          totalChecks > 0 ? (totalUp / totalChecks) * 100 : 100;
+
+        return json({
+          metrics: metrics.map((row: Record<string, unknown>) => ({
+            timestamp: new Date(Number(row.timestamp) * 1000).toISOString(),
+            latency_ms: Number(row.latency_ms),
+            up_count: Number(row.up_count),
+            down_count: Number(row.down_count),
+            uptime_percentage:
+              (Number(row.up_count) /
+                (Number(row.up_count) + Number(row.down_count))) *
+              100,
+          })),
+          summary: {
+            uptime_percentage: uptimePercentage,
+            total_checks: totalChecks,
+            period_hours: hours,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+          },
+        });
+      } catch (error) {
+        console.error('Failed to query analytics engine:', error);
+        return err(500, 'Failed to fetch metrics');
+      }
     }
 
     if (req.method === 'POST' && url.pathname === '/api/monitors') {
@@ -148,7 +352,9 @@ export default {
     }
 
     if (req.method === 'DELETE' && url.pathname.startsWith('/api/monitors/')) {
-      const id = url.pathname.split('/').pop()!;
+      const parts = url.pathname.split('/');
+      const id = parts[parts.length - 1];
+      if (!id) return err(400, 'Missing monitor ID');
       await deleteMonitor(env.DB, env.PUBLIC_TEAM_ID, id);
       return json({ ok: true });
     }
@@ -168,7 +374,12 @@ export default {
           'slug must be 2-60 chars: lowercase letters, numbers, hyphen.',
         );
 
-      const created = await createStatusPage(env.DB, env.PUBLIC_TEAM_ID, body);
+      const created = await createStatusPage(env.DB, env.PUBLIC_TEAM_ID, {
+        ...body,
+        logo_url: body.logo_url?.trim() || null,
+        brand_color: body.brand_color?.trim() || '#007bff',
+        custom_css: body.custom_css?.trim() || null,
+      });
 
       ctx.waitUntil(
         rebuildStatusSnapshot(
@@ -185,7 +396,9 @@ export default {
       req.method === 'DELETE' &&
       url.pathname.startsWith('/api/status-pages/')
     ) {
-      const id = url.pathname.split('/').pop()!;
+      const parts = url.pathname.split('/');
+      const id = parts[parts.length - 1];
+      if (!id) return err(400, 'Missing status page ID');
       const page = await getStatusPageById(env.DB, env.PUBLIC_TEAM_ID, id);
       if (!page) return err(404, 'Status page not found.');
       await deleteStatusPage(env.DB, env.PUBLIC_TEAM_ID, id);
@@ -205,20 +418,37 @@ export default {
       req.method === 'POST' &&
       url.pathname === '/api/notification-channels'
     ) {
-      const body = await readJson<CreateWebhookChannelBody>(req);
-      if (!body?.url) return err(400, 'url is required.');
-      try {
-        const url = new URL(body.url);
-        if (!['http:', 'https:'].includes(url.protocol))
-          return err(400, 'url must be http or https.');
-      } catch {
-        return err(400, 'url must be a valid URL.');
+      const body = await readJson(req);
+      if (!body?.type || !['webhook', 'email'].includes(body.type))
+        return err(400, 'type must be "webhook" or "email".');
+
+      let created: { id: string };
+      if (body.type === 'webhook') {
+        if (!body?.url)
+          return err(400, 'url is required for webhook channels.');
+        try {
+          const url = new URL(body.url);
+          if (!['http:', 'https:'].includes(url.protocol))
+            return err(400, 'url must be http or https.');
+        } catch {
+          return err(400, 'url must be a valid URL.');
+        }
+        created = await createWebhookChannel(env.DB, env.PUBLIC_TEAM_ID, {
+          url: body.url,
+          label: body.label,
+          enabled: body.enabled,
+        });
+      } else if (body.type === 'email') {
+        if (!body?.to) return err(400, 'to is required for email channels.');
+        created = await createEmailChannel(env.DB, env.PUBLIC_TEAM_ID, {
+          to: body.to,
+          from: body.from,
+          subject: body.subject,
+          label: body.label,
+          enabled: body.enabled,
+        });
       }
-      const created = await createWebhookChannel(env.DB, env.PUBLIC_TEAM_ID, {
-        url: body.url,
-        label: body.label,
-        enabled: body.enabled,
-      });
+
       return json({ ok: true, ...created }, { status: 201 });
     }
 
@@ -226,7 +456,9 @@ export default {
       req.method === 'DELETE' &&
       url.pathname.startsWith('/api/notification-channels/')
     ) {
-      const id = url.pathname.split('/').pop()!;
+      const parts = url.pathname.split('/');
+      const id = parts[parts.length - 1];
+      if (!id) return err(400, 'Missing channel ID');
       await deleteNotificationChannel(env.DB, env.PUBLIC_TEAM_ID, id);
       return json({ ok: true });
     }
@@ -277,7 +509,9 @@ export default {
       req.method === 'DELETE' &&
       url.pathname.startsWith('/api/notification-policies/')
     ) {
-      const id = url.pathname.split('/').pop()!;
+      const parts = url.pathname.split('/');
+      const id = parts[parts.length - 1];
+      if (!id) return err(400, 'Missing policy ID');
       await deleteNotificationPolicy(env.DB, env.PUBLIC_TEAM_ID, id);
       return json({ ok: true });
     }

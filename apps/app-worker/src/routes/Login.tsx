@@ -2,37 +2,40 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../lib/auth';
-import { apiFetch } from '../lib/api';
 import Brand from '../components/Brand';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { signIn, signUp, loading } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!username.trim() || !password) {
-      setError('Enter your username and password to continue.');
+    if (!email.trim() || !password) {
+      setError('Enter email and password to continue.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
     setError(null);
-    setLoading(true);
+    setSubmitting(true);
     try {
-      const res = await apiFetch<{ token: string }>('/api/auth/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
-      });
-      login(res.token);
+      if (isSignUp) {
+        await signUp(email.trim(), password);
+      } else {
+        await signIn(email.trim(), password);
+      }
       navigate('/app');
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -40,20 +43,23 @@ export default function Login() {
     <div className="auth">
       <div className="auth-card">
         <Brand />
-        <h1>Sign in to the control room</h1>
+        <h1>{isSignUp ? 'Create account' : 'Sign in to BitWobbly'}</h1>
         <p>
-          Sign in with the fixed admin account for now. We will replace this
-          with full authentication once the user system lands.
+          {isSignUp 
+            ? 'Start monitoring your services with real-time alerts and beautiful status pages.'
+            : 'Welcome back! Sign in to access your monitoring dashboard.'
+          }
         </p>
         <form onSubmit={onSubmit} className="auth-form">
-          <label htmlFor="username">Username</label>
+          <label htmlFor="email">Email</label>
           <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder="admin"
-            autoComplete="username"
+            id="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+            autoComplete={isSignUp ? 'email' : 'username'}
+            required
           />
           <label htmlFor="password">Password</label>
           <input
@@ -61,17 +67,32 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Enter your password"
-            autoComplete="current-password"
+            placeholder={isSignUp ? 'Create a strong password' : 'Enter your password'}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            required
           />
           {error ? <div className="form-error">{error}</div> : null}
-          <button type="submit" disabled={loading}>
-            {loading ? 'Signing in...' : 'Enter dashboard'}
+          <button type="submit" disabled={loading || submitting}>
+            {submitting 
+              ? (isSignUp ? 'Creating account...' : 'Signing in...')
+              : (isSignUp ? 'Create account' : 'Sign in')
+            }
           </button>
         </form>
-        <div className="auth-hint">
-          Need credentials? Run <code>wrangler secret put ADMIN_USERNAME</code>{' '}
-          and <code>wrangler secret put ADMIN_PASSWORD</code>
+        <div className="auth-toggle">
+          <button 
+            type="button" 
+            className="link-button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError(null);
+            }}
+          >
+            {isSignUp 
+              ? 'Already have an account? Sign in'
+              : 'Need an account? Sign up'
+            }
+          </button>
         </div>
       </div>
     </div>

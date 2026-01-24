@@ -32,8 +32,18 @@ function AppShell() {
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { token } = useAuth();
-  if (!token) return <Navigate to="/login" replace />;
+  const { sessionToken, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="auth">
+        <div className="auth-card">
+          <h1>Loading...</h1>
+          <p>Please wait while we authenticate your session.</p>
+        </div>
+      </div>
+    );
+  }
+  if (!sessionToken) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -51,7 +61,6 @@ export default function App() {
           }
         />
         <Route path="/" element={<Navigate to="/app" replace />} />
-        <Route path="*" element={<Navigate to="/app" replace />} />
       </Routes>
     </AuthProvider>
   );

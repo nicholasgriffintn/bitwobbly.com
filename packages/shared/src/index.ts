@@ -40,6 +40,25 @@ export type AlertJob = {
   incident_id?: UUID;
 };
 
+export type User = {
+  id: UUID;
+  email: string;
+  password_hash: string;
+  team_id: UUID;
+  created_at: string;
+};
+
+export type NotificationChannelType = "webhook" | "email";
+
+export type NotificationChannel = {
+  id: UUID;
+  team_id: UUID;
+  type: NotificationChannelType;
+  config_json: string;
+  enabled: 0 | 1;
+  created_at: string;
+};
+
 export function nowIso(): string {
   return new Date().toISOString();
 }

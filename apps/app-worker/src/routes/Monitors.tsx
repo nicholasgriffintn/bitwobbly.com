@@ -1,7 +1,8 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 
 import { apiFetch } from '../lib/api';
 import { useAuthToken } from '../lib/auth';
+import { MetricsChart } from '../components/MetricsChart';
 
 type Monitor = {
   id: string;
@@ -23,6 +24,7 @@ export default function Monitors() {
   const [interval, setInterval] = useState('60');
   const [timeout, setTimeout] = useState('8000');
   const [threshold, setThreshold] = useState('3');
+  const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,8 +39,9 @@ export default function Monitors() {
         if (cancelled) return;
         setError((err as Error).message);
       } finally {
-        if (cancelled) return;
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
     load();
@@ -152,7 +155,7 @@ export default function Monitors() {
             <div>Interval</div>
             <div>Timeout</div>
             <div>Threshold</div>
-            <div></div>
+            <div>Actions</div>
           </div>
           {loading ? (
             <div className="table-row">
@@ -160,31 +163,48 @@ export default function Monitors() {
             </div>
           ) : monitors.length ? (
             monitors.map((monitor) => (
-              <div key={monitor.id} className="table-row">
-                <div>
-                  <div className="list-title">{monitor.name}</div>
-                  <div className="muted">{monitor.url}</div>
+              <React.Fragment key={monitor.id}>
+                <div className="table-row">
+                  <div>
+                    <div className="list-title">{monitor.name}</div>
+                    <div className="muted">{monitor.url}</div>
+                  </div>
+                  <div>
+                    <span
+                      className={`status ${monitor.state?.last_status || 'unknown'}`}
+                    >
+                      {monitor.state?.last_status || 'unknown'}
+                    </span>
+                  </div>
+                  <div>{monitor.interval_seconds}s</div>
+                  <div>{monitor.timeout_ms}ms</div>
+                  <div>{monitor.failure_threshold}</div>
+                  <div>
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={() => setExpandedMonitorId(expandedMonitorId === monitor.id ? null : monitor.id)}
+                    >
+                      {expandedMonitorId === monitor.id ? 'Hide' : 'Show'} Metrics
+                    </button>
+                    <button
+                      type="button"
+                      className="outline"
+                      style={{ marginLeft: '0.5rem' }}
+                      onClick={() => onDelete(monitor.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <span
-                    className={`status ${monitor.state?.last_status || 'unknown'}`}
-                  >
-                    {monitor.state?.last_status || 'unknown'}
-                  </span>
-                </div>
-                <div>{monitor.interval_seconds}s</div>
-                <div>{monitor.timeout_ms}ms</div>
-                <div>{monitor.failure_threshold}</div>
-                <div>
-                  <button
-                    type="button"
-                    className="outline"
-                    onClick={() => onDelete(monitor.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+                {expandedMonitorId === monitor.id && (
+                  <div className="table-row">
+                    <div style={{ gridColumn: '1 / -1', padding: 0 }}>
+                      <MetricsChart monitorId={monitor.id} token={token} />
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             ))
           ) : (
             <div className="table-row">

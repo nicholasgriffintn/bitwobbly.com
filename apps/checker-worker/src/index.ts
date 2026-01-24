@@ -1,7 +1,12 @@
-import type { Env } from './env';
 import type { CheckJob, AlertJob } from '@bitwobbly/shared';
 import { nowIso, randomId } from '@bitwobbly/shared';
-import { rebuildAllSnapshots, openIncident, resolveIncident } from './snapshot';
+
+import {
+  rebuildAllSnapshots,
+  openIncident,
+  resolveIncident,
+} from './repositories/snapshot';
+import type { Env } from './types/env';
 
 type TransitionRequest = {
   team_id: string;
@@ -43,7 +48,7 @@ export class IncidentCoordinator implements DurableObject {
         { DB: this.env.DB },
         input.team_id,
         input.monitor_id,
-        input.reason
+        input.reason,
       );
       await this.state.storage.put<DOState>('s', {
         open_incident_id: incidentId,
@@ -58,7 +63,6 @@ export class IncidentCoordinator implements DurableObject {
       return json({ ok: true, incident_id: incidentId, action: 'opened' });
     }
 
-    // up
     if (!current.open_incident_id)
       return json({ ok: true, action: 'noop_no_open_incident' });
 
@@ -80,7 +84,7 @@ export default {
   async queue(
     batch: MessageBatch<CheckJob>,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<void> {
     for (const msg of batch.messages) {
       try {
@@ -88,7 +92,6 @@ export default {
         msg.ack();
       } catch (e: any) {
         console.error('check failed', e?.message || e);
-        // retry: do not ack
       }
     }
   },
@@ -125,7 +128,7 @@ async function handleCheck(job: CheckJob, env: Env, ctx: ExecutionContext) {
 
   const nowSec = Math.floor(Date.now() / 1000);
   const prev = (await env.DB.prepare(
-    'SELECT * FROM monitor_state WHERE monitor_id = ?'
+    'SELECT * FROM monitor_state WHERE monitor_id = ?',
   )
     .bind(job.monitor_id)
     .first()) as any;
@@ -145,7 +148,7 @@ async function handleCheck(job: CheckJob, env: Env, ctx: ExecutionContext) {
       consecutive_failures=excluded.consecutive_failures,
       last_error=excluded.last_error,
       updated_at=excluded.updated_at
-  `
+  `,
   )
     .bind(
       job.monitor_id,
@@ -155,7 +158,7 @@ async function handleCheck(job: CheckJob, env: Env, ctx: ExecutionContext) {
       nextFailures,
       reason || null,
       job.monitor_id,
-      nowIso()
+      nowIso(),
     )
     .run();
 
@@ -193,7 +196,7 @@ async function writeCheckEvent(
   job: CheckJob,
   status: 'up' | 'down',
   latency_ms: number | null,
-  reason?: string
+  reason?: string,
 ) {
   if (!env.AE) return;
   env.AE.writeDataPoint({
@@ -211,7 +214,7 @@ async function transitionViaDO(
   env: Env,
   job: CheckJob,
   status: 'up' | 'down',
-  reason?: string
+  reason?: string,
 ): Promise<string | null> {
   try {
     const id = env.INCIDENT_DO.idFromName(`${job.team_id}:${job.monitor_id}`);

@@ -10,6 +10,7 @@ export interface Env {
   KV: KVNamespace;
   ALERT_JOBS: Queue;
   AE?: AnalyticsEngineDataset;
+  CF_ANALYTICS_ENGINE: AnalyticsEngineDataset;
 
   PUBLIC_TEAM_ID: string;
   ADMIN_API_TOKEN?: string;
