@@ -1,0 +1,52 @@
+import { schema, nowIso } from "@bitwobbly/shared";
+import { eq } from "drizzle-orm";
+import type { DrizzleD1Database } from "drizzle-orm/d1";
+
+export async function getMonitorState(
+  db: DrizzleD1Database,
+  monitorId: string,
+) {
+  const states = await db
+    .select()
+    .from(schema.monitorState)
+    .where(eq(schema.monitorState.monitorId, monitorId))
+    .limit(1);
+
+  return states[0];
+}
+
+export async function upsertMonitorState(
+  db: DrizzleD1Database,
+  monitorId: string,
+  data: {
+    lastCheckedAt: number;
+    lastStatus: "up" | "down" | "unknown";
+    lastLatencyMs: number | null;
+    consecutiveFailures: number;
+    lastError: string | null;
+  },
+) {
+  await db
+    .insert(schema.monitorState)
+    .values({
+      monitorId,
+      lastCheckedAt: data.lastCheckedAt,
+      lastStatus: data.lastStatus,
+      lastLatencyMs: data.lastLatencyMs,
+      consecutiveFailures: data.consecutiveFailures,
+      lastError: data.lastError,
+      incidentOpen: 0,
+      updatedAt: nowIso(),
+    })
+    .onConflictDoUpdate({
+      target: schema.monitorState.monitorId,
+      set: {
+        lastCheckedAt: data.lastCheckedAt,
+        lastStatus: data.lastStatus,
+        lastLatencyMs: data.lastLatencyMs,
+        consecutiveFailures: data.consecutiveFailures,
+        lastError: data.lastError,
+        updatedAt: nowIso(),
+      },
+    });
+}

@@ -1,17 +1,19 @@
-import { nowIso } from '@bitwobbly/shared';
+import { nowIso, createDb, schema } from '@bitwobbly/shared';
+import { eq, and, ne, inArray } from 'drizzle-orm';
 
 export async function rebuildAllSnapshots(env: {
   DB: D1Database;
   KV: KVNamespace;
   PUBLIC_TEAM_ID: string;
 }) {
-  const pages = (
-    await env.DB.prepare(
-      'SELECT id, slug, name FROM status_pages WHERE team_id = ?'
-    )
-      .bind(env.PUBLIC_TEAM_ID)
-      .all()
-  ).results as any[];
+  const db = createDb(env.DB);
+  const pages = await db.select({
+    id: schema.statusPages.id,
+    slug: schema.statusPages.slug,
+    name: schema.statusPages.name,
+  })
+    .from(schema.statusPages)
+    .where(eq(schema.statusPages.teamId, env.PUBLIC_TEAM_ID));
 
   for (const p of pages) {
     await rebuildStatusSnapshot(env, p.id, p.slug, p.name);
@@ -24,74 +26,60 @@ async function rebuildStatusSnapshot(
   slug: string,
   name: string
 ) {
-  const components = (
-    await env.DB.prepare(
-      `
-    SELECT c.id, c.name, c.description
-    FROM status_page_components spc
-    JOIN components c ON c.id = spc.component_id
-    WHERE spc.status_page_id = ?
-    ORDER BY spc.sort_order ASC
-  `
-    )
-      .bind(statusPageId)
-      .all()
-  ).results as any[];
+  const db = createDb(env.DB);
+  
+  const components = await db.select({
+    id: schema.components.id,
+    name: schema.components.name,
+    description: schema.components.description,
+  })
+    .from(schema.statusPageComponents)
+    .innerJoin(schema.components, eq(schema.components.id, schema.statusPageComponents.componentId))
+    .where(eq(schema.statusPageComponents.statusPageId, statusPageId))
+    .orderBy(schema.statusPageComponents.sortOrder);
 
   const compsWithStatus = [];
   for (const c of components) {
-    const monitorRows = (
-      await env.DB.prepare(
-        `
-      SELECT ms.last_status
-      FROM component_monitors cm
-      JOIN monitor_state ms ON ms.monitor_id = cm.monitor_id
-      WHERE cm.component_id = ?
-    `
-      )
-        .bind(c.id)
-        .all()
-    ).results as any[];
+    const monitorRows = await db.select({
+      lastStatus: schema.monitorState.lastStatus,
+    })
+      .from(schema.componentMonitors)
+      .innerJoin(schema.monitorState, eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId))
+      .where(eq(schema.componentMonitors.componentId, c.id));
 
     let status: 'up' | 'down' | 'unknown' = 'unknown';
     if (monitorRows.length)
-      status = monitorRows.some((r) => r.last_status === 'down')
+      status = monitorRows.some((r) => r.lastStatus === 'down')
         ? 'down'
         : 'up';
 
     compsWithStatus.push({ ...c, status });
   }
 
-  const incidents = (
-    await env.DB.prepare(
-      `
-    SELECT * FROM incidents
-    WHERE team_id = ? AND status_page_id = ? AND status != 'resolved'
-    ORDER BY started_at DESC
-  `
+  const incidents = await db.select()
+    .from(schema.incidents)
+    .where(
+      and(
+        eq(schema.incidents.teamId, env.PUBLIC_TEAM_ID),
+        eq(schema.incidents.statusPageId, statusPageId),
+        ne(schema.incidents.status, 'resolved')
+      )
     )
-      .bind(env.PUBLIC_TEAM_ID, statusPageId)
-      .all()
-  ).results as any[];
+    .orderBy(schema.incidents.startedAt);
 
   const incIds = incidents.map((i) => i.id);
   const updates = incIds.length
-    ? ((
-        await env.DB.prepare(
-          `SELECT * FROM incident_updates WHERE incident_id IN (${incIds
-            .map(() => '?')
-            .join(',')}) ORDER BY created_at ASC`
-        )
-          .bind(...incIds)
-          .all()
-      ).results as any[])
+    ? await db.select()
+        .from(schema.incidentUpdates)
+        .where(inArray(schema.incidentUpdates.incidentId, incIds))
+        .orderBy(schema.incidentUpdates.createdAt)
     : [];
 
-  const byId = new Map<string, any[]>();
+  const byId = new Map<string, typeof updates>();
   for (const u of updates) {
-    const arr = byId.get(u.incident_id) || [];
+    const arr = byId.get(u.incidentId) || [];
     arr.push(u);
-    byId.set(u.incident_id, arr);
+    byId.set(u.incidentId, arr);
   }
 
   const snapshot = {
@@ -124,37 +112,36 @@ export async function openIncident(
   monitorId: string,
   reason?: string
 ) {
+  const db = createDb(env.DB);
   const incidentId = `inc_${crypto.randomUUID()}`;
-  const started_at = Math.floor(Date.now() / 1000);
+  const startedAt = Math.floor(Date.now() / 1000);
 
-  await env.DB.prepare(
-    `
-    INSERT INTO incidents (id, team_id, status_page_id, monitor_id, title, status, started_at, resolved_at, created_at)
-    VALUES (?, ?, NULL, ?, ?, 'investigating', ?, NULL, ?)
-  `
-  )
-    .bind(incidentId, teamId, monitorId, `Monitor down`, started_at, nowIso())
-    .run();
+  await db.insert(schema.incidents).values({
+    id: incidentId,
+    teamId,
+    statusPageId: null,
+    monitorId,
+    title: 'Monitor down',
+    status: 'investigating',
+    startedAt,
+    resolvedAt: null,
+    createdAt: nowIso(),
+  });
 
-  await env.DB.prepare(
-    `
-    INSERT INTO incident_updates (id, incident_id, message, status, created_at)
-    VALUES (?, ?, ?, 'investigating', ?)
-  `
-  )
-    .bind(
-      `up_${crypto.randomUUID()}`,
-      incidentId,
-      reason || 'Automated monitoring detected an outage.',
-      nowIso()
-    )
-    .run();
+  await db.insert(schema.incidentUpdates).values({
+    id: `up_${crypto.randomUUID()}`,
+    incidentId,
+    message: reason || 'Automated monitoring detected an outage.',
+    status: 'investigating',
+    createdAt: nowIso(),
+  });
 
-  await env.DB.prepare(
-    `UPDATE monitor_state SET incident_open = 1, updated_at = ? WHERE monitor_id = ?`
-  )
-    .bind(nowIso(), monitorId)
-    .run();
+  await db.update(schema.monitorState)
+    .set({ 
+      incidentOpen: 1, 
+      updatedAt: nowIso() 
+    })
+    .where(eq(schema.monitorState.monitorId, monitorId));
 
   return incidentId;
 }
@@ -164,25 +151,28 @@ export async function resolveIncident(
   monitorId: string,
   incidentId: string
 ) {
-  const resolved_at = Math.floor(Date.now() / 1000);
-  await env.DB.prepare(
-    `UPDATE incidents SET status = 'resolved', resolved_at = ? WHERE id = ?`
-  )
-    .bind(resolved_at, incidentId)
-    .run();
+  const db = createDb(env.DB);
+  const resolvedAt = Math.floor(Date.now() / 1000);
+  
+  await db.update(schema.incidents)
+    .set({ 
+      status: 'resolved', 
+      resolvedAt 
+    })
+    .where(eq(schema.incidents.id, incidentId));
 
-  await env.DB.prepare(
-    `
-    INSERT INTO incident_updates (id, incident_id, message, status, created_at)
-    VALUES (?, ?, 'Service has recovered.', 'resolved', ?)
-  `
-  )
-    .bind(`up_${crypto.randomUUID()}`, incidentId, nowIso())
-    .run();
+  await db.insert(schema.incidentUpdates).values({
+    id: `up_${crypto.randomUUID()}`,
+    incidentId,
+    message: 'Service has recovered.',
+    status: 'resolved',
+    createdAt: nowIso(),
+  });
 
-  await env.DB.prepare(
-    `UPDATE monitor_state SET incident_open = 0, updated_at = ? WHERE monitor_id = ?`
-  )
-    .bind(nowIso(), monitorId)
-    .run();
+  await db.update(schema.monitorState)
+    .set({ 
+      incidentOpen: 0, 
+      updatedAt: nowIso() 
+    })
+    .where(eq(schema.monitorState.monitorId, monitorId));
 }

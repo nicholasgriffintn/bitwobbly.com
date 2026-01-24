@@ -3,14 +3,22 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./db": "./src/db/index.ts",
+    "./schema": "./src/db/schema.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "drizzle-orm": "^0.36.4"
+  },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260103.0",
+    "@cloudflare/workers-types": "^4.20260123.0",
+    "drizzle-kit": "^0.28.1",
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   }
 }

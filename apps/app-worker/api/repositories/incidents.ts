@@ -1,35 +1,44 @@
-import { D1Database } from '@cloudflare/workers-types';
+import { schema } from "@bitwobbly/shared";
+import { eq, and, ne, inArray } from "drizzle-orm";
+import type { DrizzleD1Database } from "drizzle-orm/d1";
 
 export async function listOpenIncidents(
-  db: D1Database,
+  db: DrizzleD1Database,
   teamId: string,
   statusPageId: string | null,
 ) {
-  const query = statusPageId
-    ? "SELECT * FROM incidents WHERE team_id = ? AND status_page_id = ? AND status != 'resolved' ORDER BY started_at DESC"
-    : "SELECT * FROM incidents WHERE team_id = ? AND status != 'resolved' ORDER BY started_at DESC";
-  const stmt = statusPageId
-    ? db.prepare(query).bind(teamId, statusPageId)
-    : db.prepare(query).bind(teamId);
-  const incs = (await stmt.all()).results as any[];
+  const whereClause = statusPageId
+    ? and(
+        eq(schema.incidents.teamId, teamId),
+        eq(schema.incidents.statusPageId, statusPageId),
+        ne(schema.incidents.status, "resolved"),
+      )
+    : and(
+        eq(schema.incidents.teamId, teamId),
+        ne(schema.incidents.status, "resolved"),
+      );
+
+  const incs = await db
+    .select()
+    .from(schema.incidents)
+    .where(whereClause)
+    .orderBy(schema.incidents.startedAt);
 
   if (!incs.length) return [];
   const incIds = incs.map((i) => i.id);
-  const q = `SELECT * FROM incident_updates WHERE incident_id IN (${incIds
-    .map(() => '?')
-    .join(',')}) ORDER BY created_at ASC`;
-  const updates = (
-    await db
-      .prepare(q)
-      .bind(...incIds)
-      .all()
-  ).results as any[];
+  const updates = incIds.length
+    ? await db
+        .select()
+        .from(schema.incidentUpdates)
+        .where(inArray(schema.incidentUpdates.incidentId, incIds))
+        .orderBy(schema.incidentUpdates.createdAt)
+    : [];
 
-  const byId = new Map<string, any[]>();
+  const byId = new Map<string, typeof updates>();
   for (const u of updates) {
-    const arr = byId.get(u.incident_id) || [];
+    const arr = byId.get(u.incidentId) || [];
     arr.push(u);
-    byId.set(u.incident_id, arr);
+    byId.set(u.incidentId, arr);
   }
 
   return incs.map((i) => ({ ...i, updates: byId.get(i.id) || [] }));

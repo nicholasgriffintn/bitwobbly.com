@@ -1,27 +1,5 @@
 export type UUID = string;
 
-export type Monitor = {
-  id: UUID;
-  team_id: UUID;
-  name: string;
-  url: string;
-  method: "GET";
-  timeout_ms: number;
-  interval_seconds: number;
-  failure_threshold: number;
-  enabled: 0 | 1;
-  created_at: string;
-};
-
-export type StatusPage = {
-  id: UUID;
-  team_id: UUID;
-  slug: string;
-  name: string;
-  is_public: 0 | 1;
-  created_at: string;
-};
-
 export type CheckJob = {
   job_id: string;
   team_id: UUID;
@@ -40,24 +18,10 @@ export type AlertJob = {
   incident_id?: UUID;
 };
 
-export type User = {
-  id: UUID;
-  email: string;
-  password_hash: string;
-  team_id: UUID;
-  created_at: string;
-};
-
 export type NotificationChannelType = "webhook" | "email";
 
-export type NotificationChannel = {
-  id: UUID;
-  team_id: UUID;
-  type: NotificationChannelType;
-  config_json: string;
-  enabled: 0 | 1;
-  created_at: string;
-};
+// Re-export Drizzle types
+export * from './db';
 
 export function nowIso(): string {
   return new Date().toISOString();

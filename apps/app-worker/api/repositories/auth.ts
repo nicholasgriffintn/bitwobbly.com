@@ -1,14 +1,21 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { nowIso, randomId, type User, type UUID } from '@bitwobbly/shared';
+import {
+  nowIso,
+  randomId,
+  schema,
+  type User,
+  type UUID,
+} from "@bitwobbly/shared";
+import { eq } from "drizzle-orm";
+import type { DrizzleD1Database } from "drizzle-orm/d1";
 
 import {
   hashPassword,
   verifyPassword,
   generateSessionToken,
-} from '../lib/auth';
+} from "../lib/auth";
 
 export async function createUser(
-  db: D1Database,
+  db: DrizzleD1Database,
   input: {
     email: string;
     password: string;
@@ -16,125 +23,115 @@ export async function createUser(
   },
 ): Promise<{ user: User }> {
   const existing = await db
-    .prepare('SELECT id FROM users WHERE email = ?')
-    .bind(input.email)
-    .first();
-  if (existing) {
-    throw new Error('User with this email already exists');
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.email, input.email))
+    .limit(1);
+
+  if (existing.length > 0) {
+    throw new Error("User with this email already exists");
   }
 
-  const password_hash = await hashPassword(input.password);
+  const passwordHash = await hashPassword(input.password);
   const user = {
-    id: randomId('usr'),
+    id: randomId("usr"),
     email: input.email,
-    password_hash,
-    team_id: input.team_id,
-    created_at: nowIso(),
+    passwordHash,
+    teamId: input.team_id,
+    createdAt: nowIso(),
   };
 
-  await db
-    .prepare(
-      'INSERT INTO users (id, email, password_hash, team_id, created_at) VALUES (?, ?, ?, ?, ?)',
-    )
-    .bind(
-      user.id,
-      user.email,
-      user.password_hash,
-      user.team_id,
-      user.created_at,
-    )
-    .run();
+  await db.insert(schema.users).values(user);
 
   return { user };
 }
 
 export async function authenticateUser(
-  db: D1Database,
+  db: DrizzleD1Database,
   email: string,
   password: string,
-): Promise<{ user: Omit<User, 'password_hash'> }> {
-  const user = (await db
-    .prepare('SELECT * FROM users WHERE email = ?')
-    .bind(email)
-    .first()) as User | null;
+): Promise<{ user: Omit<User, "password_hash"> }> {
+  const user = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.email, email))
+    .limit(1);
 
-  if (!user) {
-    throw new Error('Invalid email or password');
+  if (!user.length) {
+    throw new Error("Invalid email or password");
   }
 
-  const isValid = await verifyPassword(password, user.password_hash);
+  const userData = user[0];
+  const isValid = await verifyPassword(password, userData.passwordHash);
   if (!isValid) {
-    throw new Error('Invalid email or password');
+    throw new Error("Invalid email or password");
   }
 
-  const { password_hash: _, ...userWithoutPassword } = user;
+  const { passwordHash: _, ...userWithoutPassword } = userData;
   return { user: userWithoutPassword };
 }
 
 export async function getUserById(
-  db: D1Database,
+  db: DrizzleD1Database,
   userId: UUID,
-): Promise<Omit<User, 'password_hash'> | null> {
-  const user = (await db
-    .prepare('SELECT * FROM users WHERE id = ?')
-    .bind(userId)
-    .first()) as User | null;
+): Promise<Omit<User, "password_hash"> | null> {
+  const user = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
 
-  if (!user) return null;
+  if (!user.length) return null;
 
-  const { password_hash: _, ...userWithoutPassword } = user;
+  const { passwordHash: _, ...userWithoutPassword } = user[0];
   return userWithoutPassword;
 }
 
 export async function createSession(
-  db: D1Database,
+  db: DrizzleD1Database,
   userId: UUID,
 ): Promise<{ sessionToken: string }> {
   const sessionToken = generateSessionToken();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30);
 
-  await db
-    .prepare(
-      'INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
-    )
-    .bind(sessionToken, userId, expiresAt.toISOString(), nowIso())
-    .run();
+  await db.insert(schema.sessions).values({
+    id: sessionToken,
+    userId,
+    expiresAt: Math.floor(expiresAt.getTime() / 1000),
+  });
 
   return { sessionToken };
 }
 
 export async function validateSession(
-  db: D1Database,
+  db: DrizzleD1Database,
   sessionToken: string,
 ): Promise<{ userId: UUID } | null> {
   const session = await db
-    .prepare('SELECT user_id, expires_at FROM sessions WHERE id = ?')
-    .bind(sessionToken)
-    .first();
+    .select()
+    .from(schema.sessions)
+    .where(eq(schema.sessions.id, sessionToken))
+    .limit(1);
 
-  if (!session) return null;
+  if (!session.length) return null;
 
-  const now = new Date();
-  const expiresAt = new Date(session.expires_at as string);
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = session[0].expiresAt;
 
   if (now > expiresAt) {
     await db
-      .prepare('DELETE FROM sessions WHERE id = ?')
-      .bind(sessionToken)
-      .run();
+      .delete(schema.sessions)
+      .where(eq(schema.sessions.id, sessionToken));
     return null;
   }
 
-  return { userId: session.user_id as UUID };
+  return { userId: session[0].userId as UUID };
 }
 
 export async function deleteSession(
-  db: D1Database,
+  db: DrizzleD1Database,
   sessionToken: string,
 ): Promise<void> {
-  await db
-    .prepare('DELETE FROM sessions WHERE id = ?')
-    .bind(sessionToken)
-    .run();
+  await db.delete(schema.sessions).where(eq(schema.sessions.id, sessionToken));
 }

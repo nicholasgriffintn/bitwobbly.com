@@ -1,11 +1,13 @@
-import { D1Database } from '@cloudflare/workers-types';
-import { nowIso } from '@bitwobbly/shared';
+import { schema, nowIso } from "@bitwobbly/shared";
+import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function ensureDemoTeam(db: D1Database, teamId: string) {
+export async function ensureDemoTeam(db: DrizzleD1Database, teamId: string) {
   await db
-    .prepare(
-      'INSERT OR IGNORE INTO teams (id, name, created_at) VALUES (?, ?, ?)',
-    )
-    .bind(teamId, 'Demo Team', nowIso())
-    .run();
+    .insert(schema.teams)
+    .values({
+      id: teamId,
+      name: "Demo Team",
+      createdAt: nowIso(),
+    })
+    .onConflictDoNothing();
 }

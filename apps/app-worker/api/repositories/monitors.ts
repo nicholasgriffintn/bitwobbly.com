@@ -1,38 +1,33 @@
-import { D1Database } from '@cloudflare/workers-types';
-import { nowIso, randomId } from '@bitwobbly/shared';
+import { schema, nowIso, randomId } from "@bitwobbly/shared";
+import { eq, inArray, and } from "drizzle-orm";
+import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function listMonitors(db: D1Database, teamId: string) {
-  const monitors = (
-    await db
-      .prepare(
-        'SELECT * FROM monitors WHERE team_id = ? ORDER BY created_at DESC',
-      )
-      .bind(teamId)
-      .all()
-  ).results;
+export async function listMonitors(db: DrizzleD1Database, teamId: string) {
+  const monitors = await db
+    .select()
+    .from(schema.monitors)
+    .where(eq(schema.monitors.teamId, teamId))
+    .orderBy(schema.monitors.createdAt);
 
   if (!monitors.length) return [];
 
-  const ids = monitors.map((m: any) => m.id);
-  const q = `SELECT * FROM monitor_state WHERE monitor_id IN (${ids
-    .map(() => '?')
-    .join(',')})`;
-  const states = (
-    await db
-      .prepare(q)
-      .bind(...ids)
-      .all()
-  ).results;
-  const stateMap = new Map(states.map((s: any) => [s.monitor_id, s]));
+  const ids = monitors.map((m) => m.id);
+  const states = ids.length
+    ? await db
+        .select()
+        .from(schema.monitorState)
+        .where(inArray(schema.monitorState.monitorId, ids))
+    : [];
+  const stateMap = new Map(states.map((s) => [s.monitorId, s]));
 
-  return monitors.map((m: any) => ({
+  return monitors.map((m) => ({
     ...m,
     state: stateMap.get(m.id) || null,
   }));
 }
 
 export async function createMonitor(
-  db: D1Database,
+  db: DrizzleD1Database,
   teamId: string,
   input: {
     name: string;
@@ -42,53 +37,93 @@ export async function createMonitor(
     failure_threshold: number;
   },
 ) {
-  const id = randomId('mon');
+  const id = randomId("mon");
   const created_at = nowIso();
   const next_run_at = Math.floor(Date.now() / 1000);
-  await db
-    .prepare(
-      `
-    INSERT INTO monitors (id, team_id, name, url, method, timeout_ms, interval_seconds, failure_threshold, enabled, next_run_at, created_at)
-    VALUES (?, ?, ?, ?, 'GET', ?, ?, ?, 1, ?, ?)
-  `,
-    )
-    .bind(
-      id,
-      teamId,
-      input.name,
-      input.url,
-      input.timeout_ms,
-      input.interval_seconds,
-      input.failure_threshold,
-      next_run_at,
-      created_at,
-    )
-    .run();
+
+  await db.insert(schema.monitors).values({
+    id,
+    teamId,
+    name: input.name,
+    url: input.url,
+    method: "GET",
+    timeoutMs: input.timeout_ms,
+    intervalSeconds: input.interval_seconds,
+    failureThreshold: input.failure_threshold,
+    enabled: 1,
+    nextRunAt: next_run_at,
+    createdAt: created_at,
+  });
 
   await db
-    .prepare(
-      `
-    INSERT OR IGNORE INTO monitor_state (monitor_id, last_checked_at, last_status, last_latency_ms, consecutive_failures, last_error, incident_open, updated_at)
-    VALUES (?, 0, 'unknown', NULL, 0, NULL, 0, ?)
-  `,
-    )
-    .bind(id, nowIso())
-    .run();
+    .insert(schema.monitorState)
+    .values({
+      monitorId: id,
+      lastCheckedAt: 0,
+      lastStatus: "unknown",
+      lastLatencyMs: null,
+      consecutiveFailures: 0,
+      lastError: null,
+      incidentOpen: 0,
+      updatedAt: nowIso(),
+    })
+    .onConflictDoNothing();
 
   return { id };
 }
 
 export async function deleteMonitor(
-  db: D1Database,
+  db: DrizzleD1Database,
   teamId: string,
   monitorId: string,
 ) {
   await db
-    .prepare('DELETE FROM monitors WHERE team_id = ? AND id = ?')
-    .bind(teamId, monitorId)
-    .run();
+    .delete(schema.monitors)
+    .where(
+      and(
+        eq(schema.monitors.teamId, teamId),
+        eq(schema.monitors.id, monitorId),
+      ),
+    );
   await db
-    .prepare('DELETE FROM monitor_state WHERE monitor_id = ?')
-    .bind(monitorId)
-    .run();
+    .delete(schema.monitorState)
+    .where(eq(schema.monitorState.monitorId, monitorId));
+}
+
+export async function monitorExists(
+  db: DrizzleD1Database,
+  teamId: string,
+  monitorId: string,
+): Promise<boolean> {
+  const monitor = await db
+    .select({ id: schema.monitors.id })
+    .from(schema.monitors)
+    .where(
+      and(
+        eq(schema.monitors.teamId, teamId),
+        eq(schema.monitors.id, monitorId),
+      ),
+    )
+    .limit(1);
+
+  return monitor.length > 0;
+}
+
+export async function getMonitorById(
+  db: DrizzleD1Database,
+  teamId: string,
+  monitorId: string,
+) {
+  const monitors = await db
+    .select({ id: schema.monitors.id })
+    .from(schema.monitors)
+    .where(
+      and(
+        eq(schema.monitors.teamId, teamId),
+        eq(schema.monitors.id, monitorId),
+      ),
+    )
+    .limit(1);
+
+  return monitors[0] || null;
 }

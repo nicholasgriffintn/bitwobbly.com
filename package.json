@@ -8,6 +8,10 @@
   ],
   "scripts": {
     "lint": "pnpm -r lint",
+    "lint:monorepo": "sherif",
     "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "sherif": "^1.10.0"
   }
 }

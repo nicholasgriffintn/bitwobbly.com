@@ -1,26 +1,39 @@
-import { D1Database } from '@cloudflare/workers-types';
-import { nowIso, randomId } from '@bitwobbly/shared';
+import { schema, nowIso, randomId } from "@bitwobbly/shared";
+import { eq, and } from "drizzle-orm";
+import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function listNotificationPolicies(db: D1Database, teamId: string) {
-  return (
-    await db
-      .prepare(
-        `
-    SELECT np.*, nc.type as channel_type, nc.config_json as channel_config, m.name as monitor_name
-    FROM notification_policies np
-    JOIN notification_channels nc ON nc.id = np.channel_id
-    JOIN monitors m ON m.id = np.monitor_id
-    WHERE np.team_id = ?
-    ORDER BY np.created_at DESC
-  `,
-      )
-      .bind(teamId)
-      .all()
-  ).results;
+export async function listNotificationPolicies(
+  db: DrizzleD1Database,
+  teamId: string,
+) {
+  return await db
+    .select({
+      id: schema.notificationPolicies.id,
+      teamId: schema.notificationPolicies.teamId,
+      monitorId: schema.notificationPolicies.monitorId,
+      channelId: schema.notificationPolicies.channelId,
+      thresholdFailures: schema.notificationPolicies.thresholdFailures,
+      notifyOnRecovery: schema.notificationPolicies.notifyOnRecovery,
+      createdAt: schema.notificationPolicies.createdAt,
+      channelType: schema.notificationChannels.type,
+      channelConfig: schema.notificationChannels.configJson,
+      monitorName: schema.monitors.name,
+    })
+    .from(schema.notificationPolicies)
+    .innerJoin(
+      schema.notificationChannels,
+      eq(schema.notificationChannels.id, schema.notificationPolicies.channelId),
+    )
+    .innerJoin(
+      schema.monitors,
+      eq(schema.monitors.id, schema.notificationPolicies.monitorId),
+    )
+    .where(eq(schema.notificationPolicies.teamId, teamId))
+    .orderBy(schema.notificationPolicies.createdAt);
 }
 
 export async function createNotificationPolicy(
-  db: D1Database,
+  db: DrizzleD1Database,
   teamId: string,
   input: {
     monitor_id: string;
@@ -29,35 +42,30 @@ export async function createNotificationPolicy(
     notify_on_recovery: number;
   },
 ) {
-  const id = randomId('pol');
-  const created_at = nowIso();
-  await db
-    .prepare(
-      `
-    INSERT INTO notification_policies (id, team_id, monitor_id, channel_id, threshold_failures, notify_on_recovery, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `,
-    )
-    .bind(
-      id,
-      teamId,
-      input.monitor_id,
-      input.channel_id,
-      input.threshold_failures,
-      input.notify_on_recovery,
-      created_at,
-    )
-    .run();
+  const id = randomId("pol");
+  await db.insert(schema.notificationPolicies).values({
+    id,
+    teamId,
+    monitorId: input.monitor_id,
+    channelId: input.channel_id,
+    thresholdFailures: input.threshold_failures,
+    notifyOnRecovery: input.notify_on_recovery,
+    createdAt: nowIso(),
+  });
   return { id };
 }
 
 export async function deleteNotificationPolicy(
-  db: D1Database,
+  db: DrizzleD1Database,
   teamId: string,
   policyId: string,
 ) {
   await db
-    .prepare('DELETE FROM notification_policies WHERE team_id = ? AND id = ?')
-    .bind(teamId, policyId)
-    .run();
+    .delete(schema.notificationPolicies)
+    .where(
+      and(
+        eq(schema.notificationPolicies.teamId, teamId),
+        eq(schema.notificationPolicies.id, policyId),
+      ),
+    );
 }
