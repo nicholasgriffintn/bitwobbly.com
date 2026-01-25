@@ -40,6 +40,9 @@ function Overview() {
   const overallStatus =
     downCount > 0 ? 'degraded' : upCount > 0 ? 'operational' : 'unknown';
 
+  const hasCompletedSetup =
+    monitors.length > 0 && channels.length > 0 && pages.length > 0;
+
   return (
     <div className="page">
       <div className="page-header mb-6">
@@ -121,83 +124,85 @@ function Overview() {
         </div>
       </div>
 
-      <div className="grid two">
-        <div className="card">
-          <div className="card-title">Getting started</div>
-          <div className="list">
-            <div className="list-row">
-              <div className="muted">
-                1. Create monitors to track your endpoints
+      {!hasCompletedSetup && (
+        <div className="grid two mb-1.5">
+          <div className="card">
+            <div className="card-title">Getting started</div>
+            <div className="list">
+              <div className="list-row">
+                <div className="muted">
+                  1. Create monitors to track your endpoints
+                </div>
               </div>
-            </div>
-            <div className="list-row">
-              <div className="muted">2. Group monitors into components</div>
-            </div>
-            <div className="list-row">
-              <div className="muted">3. Set up notification channels</div>
-            </div>
-            <div className="list-row">
-              <div className="muted">4. Create a public status page</div>
-            </div>
-            <div className="list-row">
-              <div className="muted">
-                5. Link components to your status page
+              <div className="list-row">
+                <div className="muted">2. Group monitors into components</div>
+              </div>
+              <div className="list-row">
+                <div className="muted">3. Set up notification channels</div>
+              </div>
+              <div className="list-row">
+                <div className="muted">4. Create a public status page</div>
+              </div>
+              <div className="list-row">
+                <div className="muted">
+                  5. Link components to your status page
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="card">
-          <div className="card-title">Quick setup</div>
-          <div className="list">
-            <div className="list-row">
-              <div>
-                <div className="list-title">Monitors</div>
-                <div className="muted">{monitors.length} configured</div>
+          <div className="card">
+            <div className="card-title">Quick setup</div>
+            <div className="list">
+              <div className="list-row">
+                <div>
+                  <div className="list-title">Monitors</div>
+                  <div className="muted">{monitors.length} configured</div>
+                </div>
+                {monitors.length === 0 ? (
+                  <Link to="/app/monitors">
+                    <button type="button" className="outline">
+                      Add first
+                    </button>
+                  </Link>
+                ) : (
+                  <span className="pill small">done</span>
+                )}
               </div>
-              {monitors.length === 0 ? (
-                <Link to="/app/monitors">
-                  <button type="button" className="outline">
-                    Add first
-                  </button>
-                </Link>
-              ) : (
-                <span className="pill small">done</span>
-              )}
-            </div>
-            <div className="list-row">
-              <div>
-                <div className="list-title">Notification channels</div>
-                <div className="muted">{channels.length} configured</div>
+              <div className="list-row">
+                <div>
+                  <div className="list-title">Notification channels</div>
+                  <div className="muted">{channels.length} configured</div>
+                </div>
+                {channels.length === 0 ? (
+                  <Link to="/app/notifications">
+                    <button type="button" className="outline">
+                      Add first
+                    </button>
+                  </Link>
+                ) : (
+                  <span className="pill small">done</span>
+                )}
               </div>
-              {channels.length === 0 ? (
-                <Link to="/app/notifications">
-                  <button type="button" className="outline">
-                    Add first
-                  </button>
-                </Link>
-              ) : (
-                <span className="pill small">done</span>
-              )}
-            </div>
-            <div className="list-row">
-              <div>
-                <div className="list-title">Status pages</div>
-                <div className="muted">{pages.length} configured</div>
+              <div className="list-row">
+                <div>
+                  <div className="list-title">Status pages</div>
+                  <div className="muted">{pages.length} configured</div>
+                </div>
+                {pages.length === 0 ? (
+                  <Link to="/app/status-pages">
+                    <button type="button" className="outline">
+                      Add first
+                    </button>
+                  </Link>
+                ) : (
+                  <span className="pill small">done</span>
+                )}
               </div>
-              {pages.length === 0 ? (
-                <Link to="/app/status-pages">
-                  <button type="button" className="outline">
-                    Add first
-                  </button>
-                </Link>
-              ) : (
-                <span className="pill small">done</span>
-              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {incidents.length > 0 && (
         <div className="card mb-1.5">
