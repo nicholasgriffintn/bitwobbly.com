@@ -99,6 +99,17 @@ export default {
 
     for (const msg of batch.messages) {
       try {
+        if (
+          msg.body.monitor_type === "webhook" ||
+          msg.body.monitor_type === "manual"
+        ) {
+          console.log(
+            `[CHECKER] Skipping ${msg.body.monitor_type} monitor ${msg.body.monitor_id}`,
+          );
+          msg.ack();
+          continue;
+        }
+
         console.log(
           `[CHECKER] Processing check for monitor ${msg.body.monitor_id} -> ${msg.body.url}`,
         );
@@ -123,40 +134,48 @@ async function handleCheck(
 ) {
   const started = Date.now();
   const timeout = Math.max(1000, Math.min(30000, job.timeout_ms || 8000));
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort("timeout"), timeout);
 
   let status: "up" | "down" = "down";
   let reason: string | undefined;
   let latency_ms: number | null = null;
 
-  console.log(`[CHECKER] Checking ${job.url} with ${timeout}ms timeout`);
+  if (job.monitor_type === "external") {
+    const result = await checkExternalService(job, timeout);
+    status = result.status;
+    reason = result.reason;
+    latency_ms = result.latency_ms;
+  } else {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort("timeout"), timeout);
 
-  try {
-    const res = await fetch(job.url, {
-      method: "GET",
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    latency_ms = Date.now() - started;
-    status = res.ok ? "up" : "down";
-    if (!res.ok) reason = `HTTP ${res.status}`;
-    console.log(
-      `[CHECKER] Check result: ${status} (${latency_ms}ms) ${reason || ""}`,
-    );
-  } catch (e: unknown) {
-    const error = e as Error;
-    latency_ms = Date.now() - started;
-    status = "down";
-    reason =
-      error?.name === "AbortError"
-        ? "Timeout"
-        : error?.message || "Fetch error";
-    console.log(
-      `[CHECKER] Check failed: ${status} (${latency_ms}ms) - ${reason}`,
-    );
-  } finally {
-    clearTimeout(t);
+    console.log(`[CHECKER] Checking ${job.url} with ${timeout}ms timeout`);
+
+    try {
+      const res = await fetch(job.url, {
+        method: "GET",
+        signal: controller.signal,
+        redirect: "follow",
+      });
+      latency_ms = Date.now() - started;
+      status = res.ok ? "up" : "down";
+      if (!res.ok) reason = `HTTP ${res.status}`;
+      console.log(
+        `[CHECKER] Check result: ${status} (${latency_ms}ms) ${reason || ""}`,
+      );
+    } catch (e: unknown) {
+      const error = e as Error;
+      latency_ms = Date.now() - started;
+      status = "down";
+      reason =
+        error?.name === "AbortError"
+          ? "Timeout"
+          : error?.message || "Fetch error";
+      console.log(
+        `[CHECKER] Check failed: ${status} (${latency_ms}ms) - ${reason}`,
+      );
+    } finally {
+      clearTimeout(t);
+    }
   }
 
   ctx.waitUntil(writeCheckEvent(env, job, status, latency_ms));
@@ -253,6 +272,92 @@ async function transitionViaDO(
     return data.incident_id || null;
   } catch {
     return null;
+  }
+}
+
+async function checkExternalService(
+  job: CheckJob,
+  timeout: number,
+): Promise<{ status: "up" | "down"; reason?: string; latency_ms: number }> {
+  const started = Date.now();
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort("timeout"), timeout);
+
+  try {
+    let config;
+    try {
+      config = job.external_config ? JSON.parse(job.external_config) : null;
+    } catch {
+      return {
+        status: "down",
+        reason: "Invalid external config",
+        latency_ms: Date.now() - started,
+      };
+    }
+
+    const serviceType = config?.serviceType;
+    const statusUrl = config?.statusUrl || job.url;
+
+    console.log(
+      `[CHECKER] Checking external service: ${serviceType || "custom"} at ${statusUrl}`,
+    );
+
+    if (serviceType && serviceType.startsWith("cloudflare-")) {
+      const cfStatusUrl = "https://www.cloudflarestatus.com/api/v2/status.json";
+      const res = await fetch(cfStatusUrl, {
+        signal: controller.signal,
+        headers: { accept: "application/json" },
+      });
+
+      if (!res.ok) {
+        return {
+          status: "down",
+          reason: `Cloudflare status API returned ${res.status}`,
+          latency_ms: Date.now() - started,
+        };
+      }
+
+      const data = (await res.json()) as {
+        status?: { indicator?: string };
+      };
+      const indicator = data?.status?.indicator;
+
+      if (indicator === "none" || indicator === "minor") {
+        return {
+          status: "up",
+          latency_ms: Date.now() - started,
+        };
+      }
+
+      return {
+        status: "down",
+        reason: `Cloudflare status: ${indicator || "unknown"}`,
+        latency_ms: Date.now() - started,
+      };
+    }
+
+    const res = await fetch(statusUrl, {
+      method: "GET",
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    const latency_ms = Date.now() - started;
+    const status = res.ok ? "up" : "down";
+    const reason = !res.ok ? `HTTP ${res.status}` : undefined;
+
+    return { status, reason, latency_ms };
+  } catch (e: unknown) {
+    const error = e as Error;
+    return {
+      status: "down",
+      reason:
+        error?.name === "AbortError"
+          ? "Timeout"
+          : error?.message || "Fetch error",
+      latency_ms: Date.now() - started,
+    };
+  } finally {
+    clearTimeout(t);
   }
 }
 

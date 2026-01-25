@@ -15,6 +15,13 @@
       "when": 1769303169960,
       "tag": "0001_funny_photon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1769315055611,
+      "tag": "0002_redundant_outlaw_kid",
+      "breakpoints": true
     }
   ]
 }

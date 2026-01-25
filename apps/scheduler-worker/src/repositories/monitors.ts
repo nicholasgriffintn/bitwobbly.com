@@ -1,5 +1,5 @@
 import { schema } from "@bitwobbly/shared";
-import { eq, and, lte } from "drizzle-orm";
+import { eq, and, lte, inArray, or } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 
 export async function getDueMonitors(
@@ -11,11 +11,14 @@ export async function getDueMonitors(
   return await db
     .select({
       id: schema.monitors.id,
+      name: schema.monitors.name,
       teamId: schema.monitors.teamId,
       url: schema.monitors.url,
+      type: schema.monitors.type,
       timeoutMs: schema.monitors.timeoutMs,
       intervalSeconds: schema.monitors.intervalSeconds,
       failureThreshold: schema.monitors.failureThreshold,
+      externalConfig: schema.monitors.externalConfig,
     })
     .from(schema.monitors)
     .where(
@@ -24,6 +27,10 @@ export async function getDueMonitors(
         eq(schema.monitors.enabled, 1),
         lte(schema.monitors.nextRunAt, nowSec),
         lte(schema.monitors.lockedUntil, nowSec),
+        or(
+          eq(schema.monitors.type, "http"),
+          eq(schema.monitors.type, "external"),
+        ),
       ),
     )
     .limit(limit);

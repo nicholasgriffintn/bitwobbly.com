@@ -9,10 +9,12 @@ import {
   deleteMonitor,
   listMonitors,
   updateMonitor,
+  updateMonitorStatus,
 } from "../repositories/monitors";
 import { getMonitorMetrics } from "../repositories/metrics";
 import { clampInt } from "../lib/utils";
 import { useAppSession } from "../lib/session";
+import { generateWebhookToken, hashWebhookToken } from "@bitwobbly/shared";
 
 const authMiddleware = createMiddleware({
   type: "function",
@@ -28,13 +30,29 @@ const authMiddleware = createMiddleware({
   });
 });
 
-const CreateMonitorSchema = z.object({
-  name: z.string().min(1),
-  url: z.string().url(),
-  interval_seconds: z.number().int(),
-  timeout_ms: z.number().int(),
-  failure_threshold: z.number().int(),
-});
+const CreateMonitorSchema = z
+  .object({
+    name: z.string().min(1),
+    url: z.string().optional(),
+    interval_seconds: z.number().int(),
+    timeout_ms: z.number().int(),
+    failure_threshold: z.number().int(),
+    type: z.enum(["http", "webhook", "external", "manual"]).optional(),
+    external_config: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.type === "http" || data.type === "external") {
+        return data.url && z.string().url().safeParse(data.url).success;
+      }
+      return true;
+    },
+    {
+      message:
+        "URL is required and must be valid for HTTP and external monitors",
+      path: ["url"],
+    },
+  );
 
 export const listMonitorsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -56,13 +74,29 @@ export const createMonitorFn = createServerFn({ method: "POST" })
     const timeout_ms = clampInt(data.timeout_ms, 1000, 30000, 8000);
     const failure_threshold = clampInt(data.failure_threshold, 1, 10, 3);
 
+    let webhookToken: string | undefined;
+    let webhookTokenHash: string | undefined;
+
+    if (data.type === "webhook") {
+      webhookToken = generateWebhookToken();
+      webhookTokenHash = await hashWebhookToken(webhookToken);
+    }
+
     const created = await createMonitor(db, vars.PUBLIC_TEAM_ID, {
       ...data,
       interval_seconds,
       timeout_ms,
       failure_threshold,
+      type: data.type || "http",
+      webhook_token: webhookTokenHash,
+      external_config: data.external_config,
     });
-    return { ok: true, ...created };
+
+    return {
+      ok: true,
+      id: created.id,
+      webhookToken: data.type === "webhook" ? webhookToken : undefined,
+    };
   });
 
 export const deleteMonitorFn = createServerFn({ method: "POST" })
@@ -104,6 +138,8 @@ const UpdateMonitorSchema = z.object({
   timeout_ms: z.number().int().optional(),
   failure_threshold: z.number().int().optional(),
   enabled: z.number().optional(),
+  type: z.enum(["http", "webhook", "external", "manual"]).optional(),
+  external_config: z.string().optional(),
 });
 
 export const updateMonitorFn = createServerFn({ method: "POST" })
@@ -123,6 +159,9 @@ export const updateMonitorFn = createServerFn({ method: "POST" })
     if (data.failure_threshold !== undefined)
       updates.failure_threshold = clampInt(data.failure_threshold, 1, 10, 3);
     if (data.enabled !== undefined) updates.enabled = data.enabled;
+    if (data.type !== undefined) updates.type = data.type;
+    if (data.external_config !== undefined)
+      updates.external_config = data.external_config;
 
     await updateMonitor(db, vars.PUBLIC_TEAM_ID, data.id, updates);
     return { ok: true };
@@ -148,4 +187,28 @@ export const triggerSchedulerFn = createServerFn({ method: "POST" })
         "Failed to trigger scheduler. Make sure dev server is running.",
       );
     }
+  });
+
+const SetManualStatusSchema = z.object({
+  monitorId: z.string(),
+  status: z.enum(["up", "down", "degraded"]),
+  message: z.string().optional(),
+});
+
+export const setManualMonitorStatusFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator((data: unknown) => SetManualStatusSchema.parse(data))
+  .handler(async ({ data }) => {
+    const vars = env;
+    const db = getDb(vars.DB);
+
+    await updateMonitorStatus(
+      db,
+      vars.PUBLIC_TEAM_ID,
+      data.monitorId,
+      data.status,
+      data.message,
+    );
+
+    return { ok: true };
   });

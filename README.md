@@ -140,49 +140,7 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 
 ### Missing Core Features
 
-#### 1. Advanced Monitor Types
-
-Currently, only HTTP monitors (up/down based on status code) are supported. The following monitor types should be added:
-
-**Webhook-Based Monitors (Push Model)**
-
-- Allow external services to push status updates to Bit Wobbly
-- Use case: Services that have their own monitoring can notify us of issues
-- Implementation:
-  - Add `type` field to `monitors` table: `http`, `webhook`, `external`, `manual`
-  - Generate unique webhook URLs with authentication tokens per monitor
-  - New API endpoint: `POST /api/webhooks/:monitorId/:token` accepting `{ status: "up" | "down", message?: string }`
-  - Webhook monitors don't get scheduled checks; they wait for incoming pings
-  - Add timeout logic: if no ping received within expected interval, mark as degraded
-  - Store webhook tokens in D1, hashed for security
-
-**External Service Monitors**
-
-- Monitor Cloudflare Workers' own service status (Workers, D1, R2, KV, etc.)
-- Monitor third-party dependencies (Resend, GitHub, AWS, etc.)
-- Implementation:
-  - Integrate with Cloudflare status page API (if available) or RSS feed parsing
-  - For third-party services: poll their status pages or APIs
-  - Add monitor configuration for external service type and endpoint
-  - Cache external status in KV to reduce API calls (TTL: 60s)
-
-**Manual Monitors**
-
-- User manually sets component status (useful for maintenance or known issues)
-- No automated checks; purely manual control from dashboard
-- Used for components without programmatic monitoring capability
-
-**Schema Changes Required:**
-
-UPDATE DRIZZLE SCHEMA ONLY, DRIZZLE MIGRATIONS WILL HANDLE THE REST.
-
-```sql
-ALTER TABLE monitors ADD COLUMN type TEXT NOT NULL DEFAULT 'http';
-ALTER TABLE monitors ADD COLUMN webhook_token TEXT; -- For webhook monitors
-ALTER TABLE monitors ADD COLUMN external_config TEXT; -- JSON config for external monitors
-```
-
-#### 2. Manual Component Status in Incidents
+#### 1. Manual Component Status in Incidents
 
 When creating an incident, users should be able to manually mark specific components as affected, and this should impact uptime calculations.
 
@@ -232,7 +190,7 @@ ALTER TABLE components ADD COLUMN status_updated_at INTEGER;
 - Component cards show current status from incidents + monitors
 - Timeline view showing manual vs. automated status changes
 
-#### 3. Third-Party Component Monitoring
+#### 2. Third-Party Component Monitoring
 
 Support for monitoring external dependencies that aren't under direct HTTP monitoring control.
 
@@ -281,7 +239,7 @@ ALTER TABLE components ADD COLUMN external_monitor_config TEXT; -- JSON config f
 }
 ```
 
-#### 4. Enhanced Uptime Graphs and Historical Reporting
+#### 3. Enhanced Uptime Graphs and Historical Reporting
 
 **Current State:**
 
@@ -340,7 +298,7 @@ interface UptimeMetrics {
 }
 ```
 
-#### 5. Custom Domain Configuration for Status Pages
+#### 4. Custom Domain Configuration for Status Pages
 
 Allow users to serve their status pages from their own domain (e.g., `status.acme.com`) instead of `bitwobbly.com/status/acme`.
 

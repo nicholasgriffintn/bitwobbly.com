@@ -17,7 +17,7 @@ export const monitors = sqliteTable("monitors", {
     .notNull()
     .references(() => teams.id),
   name: text("name").notNull(),
-  url: text("url").notNull(),
+  url: text("url"),
   method: text("method").notNull().default("GET"),
   timeoutMs: integer("timeout_ms").notNull().default(8000),
   intervalSeconds: integer("interval_seconds").notNull().default(60),
@@ -25,6 +25,9 @@ export const monitors = sqliteTable("monitors", {
   enabled: integer("enabled").notNull().default(1),
   nextRunAt: integer("next_run_at").notNull().default(0),
   lockedUntil: integer("locked_until").notNull().default(0),
+  type: text("type").notNull().default("http"),
+  webhookToken: text("webhook_token"),
+  externalConfig: text("external_config"),
   createdAt: text("created_at").notNull(),
 });
 

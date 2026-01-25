@@ -30,10 +30,13 @@ export async function createMonitor(
   teamId: string,
   input: {
     name: string;
-    url: string;
+    url?: string;
     interval_seconds: number;
     timeout_ms: number;
     failure_threshold: number;
+    type?: string;
+    webhook_token?: string;
+    external_config?: string;
   },
 ) {
   const id = randomId("mon");
@@ -44,13 +47,16 @@ export async function createMonitor(
     id,
     teamId,
     name: input.name,
-    url: input.url,
+    url: input.url || null,
     method: "GET",
     timeoutMs: input.timeout_ms,
     intervalSeconds: input.interval_seconds,
     failureThreshold: input.failure_threshold,
     enabled: 1,
     nextRunAt: next_run_at,
+    type: input.type || "http",
+    webhookToken: input.webhook_token || null,
+    externalConfig: input.external_config || null,
     createdAt: created_at,
   });
 
@@ -68,7 +74,7 @@ export async function createMonitor(
     })
     .onConflictDoNothing();
 
-  return { id };
+  return { id, webhookToken: input.webhook_token };
 }
 
 export async function deleteMonitor(db: DB, teamId: string, monitorId: string) {
@@ -134,6 +140,8 @@ export async function updateMonitor(
     timeout_ms?: number;
     failure_threshold?: number;
     enabled?: number;
+    type?: string;
+    external_config?: string;
   },
 ) {
   const updates: Record<string, unknown> = {};
@@ -145,6 +153,9 @@ export async function updateMonitor(
   if (input.failure_threshold !== undefined)
     updates.failureThreshold = input.failure_threshold;
   if (input.enabled !== undefined) updates.enabled = input.enabled;
+  if (input.type !== undefined) updates.type = input.type;
+  if (input.external_config !== undefined)
+    updates.externalConfig = input.external_config;
 
   if (Object.keys(updates).length === 0) return;
 
@@ -157,4 +168,46 @@ export async function updateMonitor(
         eq(schema.monitors.id, monitorId),
       ),
     );
+}
+
+export async function updateMonitorStatus(
+  db: DB,
+  teamId: string,
+  monitorId: string,
+  status: "up" | "down" | "degraded",
+  message?: string,
+) {
+  const monitor = await getMonitorById(db, teamId, monitorId);
+  if (!monitor) {
+    throw new Error("Monitor not found");
+  }
+
+  await db
+    .update(schema.monitorState)
+    .set({
+      lastStatus: status,
+      lastCheckedAt: Math.floor(Date.now() / 1000),
+      lastError: message || null,
+      updatedAt: nowIso(),
+    })
+    .where(eq(schema.monitorState.monitorId, monitorId));
+}
+
+export async function getMonitorByWebhookToken(
+  db: DB,
+  monitorId: string,
+  tokenHash: string,
+) {
+  const monitors = await db
+    .select()
+    .from(schema.monitors)
+    .where(
+      and(
+        eq(schema.monitors.id, monitorId),
+        eq(schema.monitors.webhookToken, tokenHash),
+      ),
+    )
+    .limit(1);
+
+  return monitors[0] || null;
 }

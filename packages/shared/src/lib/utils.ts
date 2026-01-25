@@ -19,3 +19,14 @@ export async function sha256Hex(input: string): Promise<string> {
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
+
+export function generateWebhookToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function hashWebhookToken(token: string): Promise<string> {
+  return sha256Hex(token);
+}

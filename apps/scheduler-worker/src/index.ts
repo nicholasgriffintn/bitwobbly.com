@@ -46,13 +46,15 @@ export default {
             job_id: randomId("job"),
             team_id: m.teamId,
             monitor_id: m.id,
+            monitor_type: m.type || "http",
             url: m.url,
             timeout_ms: Number(m.timeoutMs) || 8000,
             failure_threshold: Number(m.failureThreshold) || 3,
+            external_config: m.externalConfig || undefined,
           };
           await env.CHECK_JOBS.send(msg);
           console.log(
-            `[SCHEDULER] Enqueued check job for monitor ${m.id} (${m.name}) -> ${m.url}`,
+            `[SCHEDULER] Enqueued ${m.type} check job for monitor ${m.id} (${m.name}) -> ${m.url}`,
           );
 
           const next =

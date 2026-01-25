@@ -20,6 +20,7 @@ import { Route as AppNotificationsRouteImport } from './routes/app/notifications
 import { Route as AppMonitorsRouteImport } from './routes/app/monitors'
 import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
 import { Route as AppComponentsRouteImport } from './routes/app/components'
+import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.$monitorId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -76,6 +77,11 @@ const AppComponentsRoute = AppComponentsRouteImport.update({
   path: '/components',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiWebhooksMonitorIdRoute = ApiWebhooksMonitorIdRouteImport.update({
+  id: '/api/webhooks/$monitorId',
+  path: '/api/webhooks/$monitorId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRoute
   '/app/': typeof AppIndexRoute
+  '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRoute
   '/app': typeof AppIndexRoute
+  '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRoute
   '/app/': typeof AppIndexRoute
+  '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app/'
+    | '/api/webhooks/$monitorId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app'
+    | '/api/webhooks/$monitorId'
   id:
     | '__root__'
     | '/'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app/'
+    | '/api/webhooks/$monitorId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -162,6 +174,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   StatusSlugRoute: typeof StatusSlugRoute
+  ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -243,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppComponentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/webhooks/$monitorId': {
+      id: '/api/webhooks/$monitorId'
+      path: '/api/webhooks/$monitorId'
+      fullPath: '/api/webhooks/$monitorId'
+      preLoaderRoute: typeof ApiWebhooksMonitorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -273,6 +293,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   StatusSlugRoute: StatusSlugRoute,
+  ApiWebhooksMonitorIdRoute: ApiWebhooksMonitorIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
