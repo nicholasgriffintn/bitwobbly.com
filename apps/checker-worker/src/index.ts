@@ -159,7 +159,7 @@ async function handleCheck(
     clearTimeout(t);
   }
 
-  ctx.waitUntil(writeCheckEvent(env, job, status, latency_ms, reason));
+  ctx.waitUntil(writeCheckEvent(env, job, status, latency_ms));
 
   const nowSec = Math.floor(Date.now() / 1000);
   const prev = await getMonitorState(db, job.monitor_id);
@@ -214,15 +214,14 @@ async function handleCheck(
 async function writeCheckEvent(
   env: Env,
   job: CheckJob,
-  status: "up" | "down",
+  status: 'up' | 'down',
   latency_ms: number | null,
-  reason?: string,
 ) {
   if (!env.AE) return;
   env.AE.writeDataPoint({
     blobs: [job.team_id, job.monitor_id, status],
     doubles: [latency_ms ?? 0],
-    indexes: ["team_id", "monitor_id", "status", "latency_ms"],
+    indexes: ['team_id', 'monitor_id', 'status', 'latency_ms'],
   });
 }
 
