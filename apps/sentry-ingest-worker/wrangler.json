@@ -42,7 +42,7 @@
   "pipelines": [
     {
       "binding": "SENTRY_PIPELINE",
-      "pipeline": "bitwobbly_sentry_manifests"
+      "pipeline": "ac646c8e793d4b79bb9844b5e175ebbb"
     }
   ],
   "queues": {

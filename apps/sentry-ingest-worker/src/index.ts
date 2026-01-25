@@ -4,13 +4,23 @@ import { buildManifests } from "./lib/manifest";
 import { validateDsn } from "./repositories/auth";
 import type { Env } from "./types/env";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Sentry-Auth",
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
     const url = new URL(request.url);
 
     const match = url.pathname.match(/^\/api\/(\d+)\/envelope\/?$/);
     if (!match || request.method !== "POST") {
-      return new Response("Not Found", { status: 404 });
+      return new Response("Not Found", { status: 404, headers: CORS_HEADERS });
     }
 
     const sentryProjectId = parseInt(match[1], 10);
@@ -18,13 +28,16 @@ export default {
     try {
       const publicKey = extractPublicKey(request);
       if (!publicKey) {
-        return new Response("Missing authentication", { status: 401 });
+        return new Response("Missing authentication", {
+          status: 401,
+          headers: CORS_HEADERS,
+        });
       }
 
       const cacheKey = `dsn:${sentryProjectId}:${publicKey}`;
       let project: { id: string; teamId: string } | null = null;
 
-      const cached = await env.KV.get(cacheKey, 'json');
+      const cached = await env.KV.get(cacheKey, "json");
       if (cached) {
         project = cached as { id: string; teamId: string };
       } else {
@@ -39,7 +52,10 @@ export default {
       }
 
       if (!project) {
-        return new Response("Invalid DSN", { status: 401 });
+        return new Response("Invalid DSN", {
+          status: 401,
+          headers: CORS_HEADERS,
+        });
       }
 
       const body = new Uint8Array(await request.arrayBuffer());
@@ -78,11 +94,14 @@ export default {
       }
 
       return new Response(JSON.stringify({ id: envelope.header.event_id }), {
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     } catch (error) {
       console.error("[SENTRY-INGEST] Error:", error);
-      return new Response("Internal Error", { status: 500 });
+      return new Response("Internal Error", {
+        status: 500,
+        headers: CORS_HEADERS,
+      });
     }
   },
 };

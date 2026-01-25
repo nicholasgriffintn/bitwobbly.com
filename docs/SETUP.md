@@ -74,6 +74,12 @@ Refer to the `.env.example` files in each app for guidance on which variables ar
 
 ## 9) Setup the sentry issues pipelines
 
+### Create the Queue
+
+First we need to create the Queue that will be used to store the sentry events.
+
+This should be named `bitwobbly-sentry-events`.
+
 ### Create the R2 Buckets
 
 First we need to create the R2 buckets that will be used to store the raw envelopes and the data catalog.

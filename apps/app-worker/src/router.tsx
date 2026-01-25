@@ -1,13 +1,27 @@
-import { createRouter } from "@tanstack/react-router";
+import * as Sentry from '@sentry/react';
+import { createRouter } from '@tanstack/react-router';
 
-import { routeTree } from "./routeTree.gen";
+import { routeTree } from './routeTree.gen';
 
 export const getRouter = () => {
   const router = createRouter({
     routeTree,
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
-    notFoundMode: "root",
+    notFoundMode: 'root',
+  });
+
+  Sentry.init({
+    dsn: 'https://ff9b8d6c174c4aaa90ddaa53a5fe178d@ingest.bitwobbly.com/1',
+    integrations: [
+      Sentry.tanstackRouterBrowserTracingIntegration(router),
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+    enableLogs: true,
+    tracesSampleRate: 1.0,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
   });
 
   return router;

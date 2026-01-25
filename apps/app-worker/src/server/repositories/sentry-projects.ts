@@ -90,7 +90,7 @@ export async function getSentryProjectDsn(
 
   if (!keys[0]) return null;
 
-  const dsn = `https://${keys[0].publicKey}@${ingestHost}/api/${project.sentryProjectId}`;
+  const dsn = `https://${keys[0].publicKey}@${ingestHost}/${project.sentryProjectId}`;
 
   return { project, key: keys[0], dsn };
 }
