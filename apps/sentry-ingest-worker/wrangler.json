@@ -1,12 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bitwobbly-app",
-  "main": "@tanstack/react-start/server-entry",
+  "name": "bitwobbly-sentry-ingest",
+  "main": "src/index.ts",
   "compatibility_date": "2025-07-15",
   "compatibility_flags": ["nodejs_compat"],
   "routes": [
     {
-      "pattern": "bitwobbly.com",
+      "pattern": "ingest.bitwobbly.com",
       "custom_domain": true
     }
   ],
@@ -21,19 +21,16 @@
       "invocation_logs": false
     }
   },
+  "dev": {
+    "port": 8789,
+    "inspector_port": 9232
+  },
   "vars": {},
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "bitwobbly_db",
-      "database_id": "f2424789-6b8b-4b06-aadd-0de982901cab",
-      "migrations_dir": "../../packages/shared/drizzle"
-    }
-  ],
-  "kv_namespaces": [
-    {
-      "binding": "KV",
-      "id": "7b37c9a568bf44558ba6959148073058"
+      "database_id": "f2424789-6b8b-4b06-aadd-0de982901cab"
     }
   ],
   "r2_buckets": [
@@ -42,11 +39,17 @@
       "bucket_name": "bitwobbly-sentry-raw"
     }
   ],
+  "pipelines": [
+    {
+      "binding": "SENTRY_PIPELINE",
+      "pipeline": "bitwobbly_sentry_manifests"
+    }
+  ],
   "queues": {
     "producers": [
       {
-        "binding": "ALERT_JOBS",
-        "queue": "bitwobbly-alert-jobs"
+        "binding": "SENTRY_EVENTS",
+        "queue": "bitwobbly-sentry-events"
       }
     ]
   }

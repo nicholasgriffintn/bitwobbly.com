@@ -151,6 +151,44 @@ importers:
         specifier: ^4.60.0
         version: 4.60.0(@cloudflare/workers-types@4.20260123.0)
 
+  apps/sentry-ingest-worker:
+    dependencies:
+      '@bitwobbly/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20260123.0
+        version: 4.20260123.0
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      wrangler:
+        specifier: ^4.60.0
+        version: 4.60.0(@cloudflare/workers-types@4.20260123.0)
+
+  apps/sentry-processor-worker:
+    dependencies:
+      '@bitwobbly/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20260123.0
+        version: 4.20260123.0
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      wrangler:
+        specifier: ^4.60.0
+        version: 4.60.0(@cloudflare/workers-types@4.20260123.0)
+
   packages/shared:
     dependencies:
       drizzle-orm:
