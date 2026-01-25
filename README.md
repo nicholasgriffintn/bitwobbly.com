@@ -137,7 +137,7 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 ### Incomplete Features
 
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
-- **Analytics Engine integration** -- The Checker Worker writes check results (latency, status) to the Analytics Engine dataset. The App Worker queries it for monitor metrics and uptime charts. This is not fully implemented / relised yet to produce graphs that are useful to users, it's just a base level at the moment. The queries need to be removed.
+- **Analytics Engine integration** -- The Checker Worker writes check results (latency, status) to the Analytics Engine dataset. The App Worker queries it for monitor metrics and uptime charts. This is not fully implemented / relised yet to produce graphs that are useful to users, it's just a base level at the moment. The queries need to be removed. This is likely more of a problem for the histories on the status pages.
 
 ### Missing Integrations
 

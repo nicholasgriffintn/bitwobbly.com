@@ -63,11 +63,18 @@ export const createStatusPageFn = createServerFn({ method: "POST" })
     const created = await createStatusPage(db, vars.PUBLIC_TEAM_ID, {
       ...data,
       logo_url: data.logo_url?.trim() || undefined,
-      brand_color: data.brand_color?.trim() || '#007bff',
+      brand_color: data.brand_color?.trim() || "#007bff",
       custom_css: data.custom_css?.trim() || undefined,
     });
 
-    await rebuildStatusSnapshot(db, vars.KV, vars.PUBLIC_TEAM_ID, data.slug);
+    await rebuildStatusSnapshot(
+      db,
+      vars.KV,
+      vars.PUBLIC_TEAM_ID,
+      data.slug,
+      vars.CLOUDFLARE_ACCOUNT_ID,
+      vars.CLOUDFLARE_API_TOKEN,
+    );
 
     return { ok: true, ...created };
   });
@@ -99,7 +106,14 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
     await updateStatusPage(db, vars.PUBLIC_TEAM_ID, id, processedUpdates);
 
     const newSlug = updates.slug || page.slug;
-    await rebuildStatusSnapshot(db, vars.KV, vars.PUBLIC_TEAM_ID, newSlug);
+    await rebuildStatusSnapshot(
+      db,
+      vars.KV,
+      vars.PUBLIC_TEAM_ID,
+      newSlug,
+      vars.CLOUDFLARE_ACCOUNT_ID,
+      vars.CLOUDFLARE_API_TOKEN,
+    );
 
     if (updates.slug && updates.slug !== page.slug) {
       await vars.KV.delete(`status:${page.slug}`);
@@ -139,6 +153,8 @@ export const rebuildStatusPageFn = createServerFn({ method: "POST" })
       vars.KV,
       vars.PUBLIC_TEAM_ID,
       data.slug,
+      vars.CLOUDFLARE_ACCOUNT_ID,
+      vars.CLOUDFLARE_API_TOKEN,
     );
     return { ok: true, snapshot };
   });

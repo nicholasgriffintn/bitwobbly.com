@@ -1,11 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getPublicStatusFn } from "@/server/functions/public";
+import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
+
+type DayStatus = {
+  date: string;
+  status: "operational" | "degraded" | "down" | "unknown";
+  uptimePercentage: number;
+};
 
 type ComponentStatus = {
   id: string;
   name: string;
   description: string | null;
   status: "up" | "down" | "unknown";
+  historical_data?: DayStatus[];
+  overall_uptime?: number;
 };
 
 type IncidentUpdate = {
@@ -316,6 +325,32 @@ function PublicStatusPage() {
             text-decoration: underline;
           }
 
+          .uptime-header-section {
+            margin-bottom: 1rem;
+          }
+
+          .uptime-subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin: 0.5rem 0 0 0;
+          }
+
+          .historical-uptime-container {
+            margin-top: 1.5rem;
+          }
+
+          .uptime-footer {
+            margin-top: 0.75rem;
+            padding-top: 0.5rem;
+          }
+
+          .time-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #9ca3af;
+          }
+
           ${page.custom_css || ""}
         `}
       </style>
@@ -356,6 +391,43 @@ function PublicStatusPage() {
                 ))}
               </div>
             </div>
+
+            {components.some(
+              (c) => c.historical_data && c.historical_data.length > 0,
+            ) && (
+              <div className="status-section">
+                <div className="uptime-header-section">
+                  <h2 className="status-section-title">
+                    Uptime over the past 90 days
+                  </h2>
+                  <p className="uptime-subtitle">View historical uptime.</p>
+                </div>
+                <div className="historical-uptime-container">
+                  {components.map((component) => {
+                    if (
+                      !component.historical_data ||
+                      component.historical_data.length === 0
+                    ) {
+                      return null;
+                    }
+                    return (
+                      <HistoricalUptimeBar
+                        key={component.id}
+                        data={component.historical_data}
+                        componentName={component.name}
+                        overallUptime={component.overall_uptime || 100}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="uptime-footer">
+                  <div className="time-labels">
+                    <span>90 days ago</span>
+                    <span>Today</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
