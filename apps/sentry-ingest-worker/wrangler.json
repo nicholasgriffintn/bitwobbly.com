@@ -52,5 +52,11 @@
         "queue": "bitwobbly-sentry-events"
       }
     ]
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "7b37c9a568bf44558ba6959148073058"
+    }
+  ]
 }

@@ -21,8 +21,23 @@ export default {
         return new Response("Missing authentication", { status: 401 });
       }
 
-      const db = getDb(env.DB);
-      const project = await validateDsn(db, sentryProjectId, publicKey);
+      const cacheKey = `dsn:${sentryProjectId}:${publicKey}`;
+      let project: { id: string; teamId: string } | null = null;
+
+      const cached = await env.KV.get(cacheKey, 'json');
+      if (cached) {
+        project = cached as { id: string; teamId: string };
+      } else {
+        const db = getDb(env.DB);
+        project = await validateDsn(db, sentryProjectId, publicKey);
+
+        if (project) {
+          await env.KV.put(cacheKey, JSON.stringify(project), {
+            expirationTtl: 300,
+          });
+        }
+      }
+
       if (!project) {
         return new Response("Invalid DSN", { status: 401 });
       }

@@ -5,4 +5,5 @@ export interface Env {
   SENTRY_RAW: R2Bucket;
   SENTRY_PIPELINE: Pipeline;
   SENTRY_EVENTS: Queue;
+  KV: KVNamespace;
 }

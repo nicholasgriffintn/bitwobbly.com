@@ -147,6 +147,7 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 - **MFA support** -- No multi-factor authentication options for user accounts.
 - **Rate limiting** -- API endpoints have no rate limiting. Exposed public status page endpoints could be abused.
 - **Manually trigger checks** -- No API endpoint or CLI command to manually trigger monitor checks outside of the scheduler cron.
+- **Build in a pipelines / iceberg integration** -- At the moment, we just stream to pipelines and iceberg, we don't do anything with it.
 
 ### Nice-to-Haves
 
@@ -155,10 +156,3 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 - **Monitor response validation** -- Only HTTP status is checked. Body content matching, certificate expiry checks, and DNS monitoring would add value.
 - **API keys** -- No programmatic API access for users (settings page placeholder exists).
 - **Add more notification channels** -- Support for SMS, Slack, PagerDuty, etc. Maybe a bit of AI calling for incident response?
-- **Add SDK-compatible issue tracking**
-  - [x] Phase A: Create Pipelines infrastructure (stream + R2 Data Catalog sink)
-  - [x] Phase B: Extend D1 schema with issue tracking tables (projects, keys, events, issues)
-  - [x] Phase C: Build `sentry-ingest-worker` for Sentry SDK-compatible envelope ingestion
-  - [x] Phase D: Add issue tracking API endpoints and repositories to `app-worker`
-  - [x] Phase E: Create dashboard UI for project management and event viewing
-  - [x] Phase F: Build `sentry-processor-worker` for event grouping and fingerprinting
