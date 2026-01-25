@@ -80,7 +80,7 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
     const page = await getStatusPageById(db, teamId, id);
     if (!page) throw new Error("Status page not found");
 
-    const processedUpdates: any = {};
+    const processedUpdates: Record<string, string | null> = {};
     if (updates.name !== undefined) processedUpdates.name = updates.name;
     if (updates.slug !== undefined) processedUpdates.slug = updates.slug;
     if (updates.logo_url !== undefined) {

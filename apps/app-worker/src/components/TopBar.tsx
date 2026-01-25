@@ -9,7 +9,7 @@ export default function TopBar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentTeam = teams?.find(
-    (t: any) => t.id === (user?.currentTeamId || user?.teamId),
+    (t) => t.id === (user?.currentTeamId || user?.teamId),
   );
 
   useEffect(() => {
@@ -35,8 +35,12 @@ export default function TopBar() {
   const handleSwitchTeam = async (teamId: string) => {
     try {
       await switchTeamFn({ data: { teamId } });
-    } catch (err: any) {
-      if (err?.status === 307 || err?.isRedirect) {
+    } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        ("status" in err || "isRedirect" in err)
+      ) {
         window.location.reload();
         return;
       }

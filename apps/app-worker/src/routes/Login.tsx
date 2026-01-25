@@ -55,11 +55,11 @@ export default function Login() {
       await navigate({
         to: "/app",
       });
-    } catch (err: any) {
+    } catch (err) {
       if (isRedirect(err)) {
         throw err;
       }
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setSubmitting(false);
     }

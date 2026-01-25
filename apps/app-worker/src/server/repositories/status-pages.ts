@@ -231,7 +231,7 @@ export async function updateStatusPage(
     custom_css?: string | null;
   },
 ) {
-  const updates: any = {};
+  const updates: Record<string, string | null> = {};
   if (input.name !== undefined) updates.name = input.name;
   if (input.slug !== undefined) updates.slug = input.slug;
   if (input.logo_url !== undefined) updates.logoUrl = input.logo_url;
@@ -288,14 +288,52 @@ export async function listComponentsForStatusPage(
   return rows || [];
 }
 
+type ComponentStatus = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: 'up' | 'down' | 'unknown';
+  historical_data?: DayStatus[];
+  overall_uptime?: number;
+};
+
+type IncidentUpdate = {
+  id: string;
+  message: string;
+  status: string;
+  created_at: string;
+};
+
+type Incident = {
+  id: string;
+  title: string;
+  status: string;
+  started_at: number;
+  resolved_at: number | null;
+  updates: IncidentUpdate[];
+};
+
+export type StatusSnapshot = {
+  generated_at: string;
+  page: {
+    id: string;
+    name: string;
+    slug: string;
+    logo_url: string | null;
+    brand_color: string | null;
+    custom_css: string | null;
+  };
+  components: ComponentStatus[];
+  incidents: Incident[];
+};
+
 export async function rebuildStatusSnapshot(
   db: DB,
   kv: KVNamespace,
   slug: string,
   accountId?: string,
   apiToken?: string,
-) {
-  // First, find the status page by slug to get its team ID
+): Promise<StatusSnapshot | null> {
   const pageRows = await db
     .select()
     .from(schema.statusPages)
@@ -311,10 +349,10 @@ export async function rebuildStatusSnapshot(
   const compsWithStatus = [];
 
   for (const c of components) {
-    let status: "up" | "down" | "unknown" = "unknown";
+    let status: 'up' | 'down' | 'unknown' = 'unknown';
 
-    if (c.currentStatus && c.currentStatus !== "operational") {
-      status = "down";
+    if (c.currentStatus && c.currentStatus !== 'operational') {
+      status = 'down';
     } else {
       const monitorRows = await db
         .select({
@@ -328,9 +366,9 @@ export async function rebuildStatusSnapshot(
         .where(eq(schema.componentMonitors.componentId, c.id));
 
       if (monitorRows.length) {
-        status = monitorRows.some((r) => r.lastStatus === "down")
-          ? "down"
-          : "up";
+        status = monitorRows.some((r) => r.lastStatus === 'down')
+          ? 'down'
+          : 'up';
       }
     }
 
@@ -354,11 +392,11 @@ export async function rebuildStatusSnapshot(
       );
 
       const totalDays = historicalData.filter(
-        (d) => d.status !== "unknown",
+        (d) => d.status !== 'unknown',
       ).length;
       if (totalDays > 0) {
         const totalUptime = historicalData
-          .filter((d) => d.status !== "unknown")
+          .filter((d) => d.status !== 'unknown')
           .reduce((sum, d) => sum + d.uptimePercentage, 0);
         overallUptime = totalUptime / totalDays;
       }

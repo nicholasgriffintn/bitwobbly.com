@@ -3,14 +3,20 @@ import { env } from "cloudflare:workers";
 import { notFound } from "@tanstack/react-router";
 
 import { getDb } from "../lib/db";
-import { rebuildStatusSnapshot } from "../repositories/status-pages";
+import {
+  rebuildStatusSnapshot,
+  StatusSnapshot,
+} from '../repositories/status-pages';
 
-export const getPublicStatusFn = createServerFn({ method: "GET" })
+export const getPublicStatusFn = createServerFn({ method: 'GET' })
   .inputValidator((data: { slug: string }) => data)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<StatusSnapshot> => {
     const vars = env;
 
-    const cached = await vars.KV.get(`status:${data.slug}`, "json");
+    const cached = (await vars.KV.get(
+      `status:${data.slug}`,
+      'json',
+    )) as StatusSnapshot | null;
     if (cached) {
       return cached;
     }

@@ -6,7 +6,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { signInFn, signUpFn, signOutFn } from "../server/functions/auth";
+import { signInFn, signUpFn, signOutFn } from '../server/functions/auth';
 
 export type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
@@ -28,8 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       await signInFn({ data: { email, password } });
-    } catch (err: any) {
-      if (err?.isRedirect) {
+    } catch (err) {
+      if (err && typeof err === "object" && "isRedirect" in err) {
         throw err;
       }
       throw err;
@@ -42,9 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string, inviteCode: string) => {
       setLoading(true);
       try {
-        await signUpFn({ data: { email, password, inviteCode } });
-      } catch (err: any) {
-        if (err?.isRedirect) {
+        await signUpFn({
+          data: { email, password, inviteCode },
+        });
+      } catch (err) {
+        if (err && typeof err === "object" && "isRedirect" in err) {
           throw err;
         }
         throw err;
@@ -58,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     try {
       await signOutFn();
-    } catch (err: any) {
-      if (err?.isRedirect) {
+    } catch (err) {
+      if (err && typeof err === "object" && "isRedirect" in err) {
         throw err;
       }
     }

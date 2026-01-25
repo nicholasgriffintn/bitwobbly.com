@@ -52,7 +52,9 @@ export async function addUserToTeam(
     .limit(1);
 
   if (user.length) {
-    const updates: any = { currentTeamId: teamId };
+    const updates: { currentTeamId: string; teamId?: string } = {
+      currentTeamId: teamId,
+    };
     if (!user[0].teamId) {
       updates.teamId = teamId;
     }

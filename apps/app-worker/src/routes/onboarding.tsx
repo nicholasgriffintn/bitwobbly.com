@@ -42,11 +42,11 @@ export default function Onboarding() {
     try {
       await createTeamFn({ data: { name: teamName.trim() } });
       await navigate({ to: "/app" });
-    } catch (err: any) {
+    } catch (err) {
       if (isRedirect(err)) {
         throw err;
       }
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setSubmitting(false);
     }
@@ -63,11 +63,11 @@ export default function Onboarding() {
     try {
       await joinTeamFn({ data: { inviteCode: inviteCode.trim() } });
       await navigate({ to: "/app" });
-    } catch (err: any) {
+    } catch (err) {
       if (isRedirect(err)) {
         throw err;
       }
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setSubmitting(false);
     }

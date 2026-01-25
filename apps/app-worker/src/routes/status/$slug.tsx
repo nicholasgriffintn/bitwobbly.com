@@ -1,57 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+
 import { getPublicStatusFn } from "@/server/functions/public";
 import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
-
-type DayStatus = {
-  date: string;
-  status: "operational" | "degraded" | "down" | "unknown";
-  uptimePercentage: number;
-};
-
-type ComponentStatus = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: "up" | "down" | "unknown";
-  historical_data?: DayStatus[];
-  overall_uptime?: number;
-};
-
-type IncidentUpdate = {
-  id: string;
-  message: string;
-  status: string;
-  created_at: string;
-};
-
-type Incident = {
-  id: string;
-  title: string;
-  status: string;
-  started_at: string;
-  resolved_at: string | null;
-  updates: IncidentUpdate[];
-};
-
-type StatusSnapshot = {
-  generated_at: string;
-  page: {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url: string | null;
-    brand_color: string;
-    custom_css: string | null;
-  };
-  components: ComponentStatus[];
-  incidents: Incident[];
-};
+import { StatusSnapshot } from '@/server/repositories/status-pages';
 
 export const Route = createFileRoute("/status/$slug")({
   component: PublicStatusPage,
   loader: async ({ params }): Promise<StatusSnapshot> => {
     const snapshot = await getPublicStatusFn({ data: { slug: params.slug } });
-    return snapshot as StatusSnapshot;
+    return snapshot;
   },
   notFoundComponent: () => {
     return (
@@ -86,8 +43,12 @@ function PublicStatusPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString();
+  const formatDate = (dateStrOrTimestamp: string | number) => {
+    const timestamp =
+      typeof dateStrOrTimestamp === 'string'
+        ? dateStrOrTimestamp
+        : dateStrOrTimestamp * 1000;
+    return new Date(timestamp).toLocaleString();
   };
 
   return (
