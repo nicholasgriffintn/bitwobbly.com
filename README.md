@@ -148,7 +148,6 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 
 ### Blocking Issues
 
-- **Resource ID placeholders** -- All `wrangler.jsonc` files contain `REPLACE_ME` for D1 database IDs and KV namespace IDs. These must be filled before any deployment.
 - **No CI/CD pipeline** -- No GitHub Actions or deployment automation exists. Workers must be deployed manually via Wrangler CLI.
 
 ### Incomplete Features

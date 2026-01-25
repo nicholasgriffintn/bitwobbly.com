@@ -12,13 +12,19 @@
     "dev:scheduler": "pnpm -C apps/scheduler-worker dev",
     "dev:checker": "pnpm -C apps/checker-worker dev",
     "dev:notifier": "pnpm -C apps/notifier-worker dev",
-    "lint": "pnpm -r lint",
+    "lint": "turbo run lint",
     "lint:monorepo": "sherif",
-    "typecheck": "pnpm -r typecheck",
-    "deploy:all": "pnpm run -r deploy"
+    "typecheck": "turbo run typecheck",
+    "build": "turbo run build",
+    "build:staging": "turbo run build:staging",
+    "test": "turbo run test",
+    "deploy": "pnpm run -r deploy",
+    "deploy:staging": "pnpm run -r deploy:staging",
+    "deploy:prod": "pnpm run -r deploy:prod"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
-    "sherif": "^1.10.0"
+    "sherif": "^1.10.0",
+    "turbo": "^2.7.6"
   }
 }
