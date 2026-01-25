@@ -40,7 +40,7 @@ export default function Login() {
       if (isRedirect(err)) {
         return;
       }
-      setError((err).message);
+      setError(err.message);
     } finally {
       setSubmitting(false);
     }

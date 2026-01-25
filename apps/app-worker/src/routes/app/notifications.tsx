@@ -103,7 +103,7 @@ export default function Notifications() {
       setUrl('');
       setLabel('');
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
@@ -122,7 +122,7 @@ export default function Notifications() {
       const res = await listPolicies();
       setPolicies(res.policies);
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
@@ -133,7 +133,7 @@ export default function Notifications() {
       setChannels((prev) => prev.filter((c) => c.id !== id));
       setPolicies((prev) => prev.filter((p) => p.channel_id !== id));
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
@@ -143,7 +143,7 @@ export default function Notifications() {
       await deletePolicy({ data: { id } });
       setPolicies((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 

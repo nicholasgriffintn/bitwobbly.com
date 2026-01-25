@@ -50,7 +50,7 @@ function Monitors() {
       const res = await listMonitors();
       setMonitors(res.monitors);
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
@@ -71,7 +71,7 @@ function Monitors() {
       setName('');
       setUrl('');
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
@@ -81,7 +81,7 @@ function Monitors() {
       await deleteMonitor({ data: { id } });
       setMonitors((prev) => prev.filter((m) => m.id !== id));
     } catch (err) {
-      setError((err).message);
+      setError(err.message);
     }
   };
 
