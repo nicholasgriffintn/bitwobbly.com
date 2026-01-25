@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { schema } from "@bitwobbly/shared";
 
 import { getDb } from "../lib/db";
@@ -15,6 +15,7 @@ import {
   linkComponentToStatusPage,
   unlinkComponentFromStatusPage,
   getComponentsForStatusPage,
+  getComponentById,
 } from "../repositories/components";
 import {
   getStatusPageById,
@@ -101,7 +102,7 @@ export const linkMonitorFn = createServerFn({ method: "POST" })
     const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    await linkMonitorToComponent(db, data.componentId, data.monitorId);
+    await linkMonitorToComponent(db, teamId, data.componentId, data.monitorId);
 
     await clearAllStatusPageCaches(db, vars.KV, teamId);
 
@@ -114,7 +115,12 @@ export const unlinkMonitorFn = createServerFn({ method: "POST" })
     const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    await unlinkMonitorFromComponent(db, data.componentId, data.monitorId);
+    await unlinkMonitorFromComponent(
+      db,
+      teamId,
+      data.componentId,
+      data.monitorId,
+    );
 
     await clearAllStatusPageCaches(db, vars.KV, teamId);
 
@@ -133,6 +139,7 @@ export const linkToPageFn = createServerFn({ method: "POST" })
 
     await linkComponentToStatusPage(
       db,
+      teamId,
       data.statusPageId,
       data.componentId,
       data.sortOrder || 0,
@@ -157,6 +164,7 @@ export const unlinkFromPageFn = createServerFn({ method: "POST" })
 
     await unlinkComponentFromStatusPage(
       db,
+      teamId,
       data.statusPageId,
       data.componentId,
     );
@@ -169,10 +177,14 @@ export const unlinkFromPageFn = createServerFn({ method: "POST" })
 export const getPageComponentsFn = createServerFn({ method: "GET" })
   .inputValidator((data: { statusPageId: string }) => data)
   .handler(async ({ data }) => {
-    await requireTeam();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    const components = await getComponentsForStatusPage(db, data.statusPageId);
+    const components = await getComponentsForStatusPage(
+      db,
+      teamId,
+      data.statusPageId,
+    );
     return { components };
   });
 
@@ -190,18 +202,13 @@ const GetComponentMetricsSchema = z.object({
 export const getComponentUptimeFn = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => GetComponentUptimeSchema.parse(data))
   .handler(async ({ data }) => {
-    await requireTeam();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
-    const component = await db
-      .select()
-      .from(schema.components)
-      .where(eq(schema.components.id, data.componentId))
-      .limit(1);
-
-    if (!component.length) {
-      throw new Error("Component not found");
+    const component = await getComponentById(db, teamId, data.componentId);
+    if (!component) {
+      throw new Error("Component not found or access denied");
     }
 
     const links = await db
@@ -226,18 +233,13 @@ export const getComponentUptimeFn = createServerFn({ method: "GET" })
 export const getComponentMetricsFn = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => GetComponentMetricsSchema.parse(data))
   .handler(async ({ data }) => {
-    await requireTeam();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
-    const component = await db
-      .select()
-      .from(schema.components)
-      .where(eq(schema.components.id, data.componentId))
-      .limit(1);
-
-    if (!component.length) {
-      throw new Error("Component not found");
+    const component = await getComponentById(db, teamId, data.componentId);
+    if (!component) {
+      throw new Error("Component not found or access denied");
     }
 
     const links = await db
@@ -251,7 +253,7 @@ export const getComponentMetricsFn = createServerFn({ method: "GET" })
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
       data.componentId,
-      component[0].name,
+      component.name,
       monitorIds,
       data.from,
       data.to,

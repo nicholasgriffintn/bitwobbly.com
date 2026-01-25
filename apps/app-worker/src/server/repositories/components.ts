@@ -85,11 +85,51 @@ export async function deleteComponent(
     );
 }
 
+export async function getComponentById(
+  db: DB,
+  teamId: string,
+  componentId: string,
+) {
+  const components = await db
+    .select()
+    .from(schema.components)
+    .where(
+      and(
+        eq(schema.components.teamId, teamId),
+        eq(schema.components.id, componentId),
+      ),
+    )
+    .limit(1);
+
+  return components[0] || null;
+}
+
 export async function linkMonitorToComponent(
   db: DB,
+  teamId: string,
   componentId: string,
   monitorId: string,
 ) {
+  const component = await getComponentById(db, teamId, componentId);
+  if (!component) {
+    throw new Error("Component not found or access denied");
+  }
+
+  const monitor = await db
+    .select({ id: schema.monitors.id })
+    .from(schema.monitors)
+    .where(
+      and(
+        eq(schema.monitors.teamId, teamId),
+        eq(schema.monitors.id, monitorId),
+      ),
+    )
+    .limit(1);
+
+  if (!monitor.length) {
+    throw new Error("Monitor not found or access denied");
+  }
+
   await db
     .insert(schema.componentMonitors)
     .values({ componentId, monitorId })
@@ -98,9 +138,30 @@ export async function linkMonitorToComponent(
 
 export async function unlinkMonitorFromComponent(
   db: DB,
+  teamId: string,
   componentId: string,
   monitorId: string,
 ) {
+  const component = await getComponentById(db, teamId, componentId);
+  if (!component) {
+    throw new Error("Component not found or access denied");
+  }
+
+  const monitor = await db
+    .select({ id: schema.monitors.id })
+    .from(schema.monitors)
+    .where(
+      and(
+        eq(schema.monitors.teamId, teamId),
+        eq(schema.monitors.id, monitorId),
+      ),
+    )
+    .limit(1);
+
+  if (!monitor.length) {
+    throw new Error("Monitor not found or access denied");
+  }
+
   await db
     .delete(schema.componentMonitors)
     .where(
@@ -113,10 +174,31 @@ export async function unlinkMonitorFromComponent(
 
 export async function linkComponentToStatusPage(
   db: DB,
+  teamId: string,
   statusPageId: string,
   componentId: string,
   sortOrder: number = 0,
 ) {
+  const statusPage = await db
+    .select({ id: schema.statusPages.id })
+    .from(schema.statusPages)
+    .where(
+      and(
+        eq(schema.statusPages.teamId, teamId),
+        eq(schema.statusPages.id, statusPageId),
+      ),
+    )
+    .limit(1);
+
+  if (!statusPage.length) {
+    throw new Error("Status page not found or access denied");
+  }
+
+  const component = await getComponentById(db, teamId, componentId);
+  if (!component) {
+    throw new Error("Component not found or access denied");
+  }
+
   await db
     .insert(schema.statusPageComponents)
     .values({ statusPageId, componentId, sortOrder })
@@ -125,9 +207,30 @@ export async function linkComponentToStatusPage(
 
 export async function unlinkComponentFromStatusPage(
   db: DB,
+  teamId: string,
   statusPageId: string,
   componentId: string,
 ) {
+  const statusPage = await db
+    .select({ id: schema.statusPages.id })
+    .from(schema.statusPages)
+    .where(
+      and(
+        eq(schema.statusPages.teamId, teamId),
+        eq(schema.statusPages.id, statusPageId),
+      ),
+    )
+    .limit(1);
+
+  if (!statusPage.length) {
+    throw new Error("Status page not found or access denied");
+  }
+
+  const component = await getComponentById(db, teamId, componentId);
+  if (!component) {
+    throw new Error("Component not found or access denied");
+  }
+
   await db
     .delete(schema.statusPageComponents)
     .where(
@@ -138,7 +241,26 @@ export async function unlinkComponentFromStatusPage(
     );
 }
 
-export async function getComponentsForStatusPage(db: DB, statusPageId: string) {
+export async function getComponentsForStatusPage(
+  db: DB,
+  teamId: string,
+  statusPageId: string,
+) {
+  const statusPage = await db
+    .select({ id: schema.statusPages.id })
+    .from(schema.statusPages)
+    .where(
+      and(
+        eq(schema.statusPages.teamId, teamId),
+        eq(schema.statusPages.id, statusPageId),
+      ),
+    )
+    .limit(1);
+
+  if (!statusPage.length) {
+    throw new Error("Status page not found or access denied");
+  }
+
   const rows = await db
     .select({
       componentId: schema.statusPageComponents.componentId,
@@ -160,6 +282,7 @@ export async function getComponentsForStatusPage(db: DB, statusPageId: string) {
 
 export async function updateComponentStatus(
   db: DB,
+  teamId: string,
   componentId: string,
   status: string,
 ) {
@@ -170,17 +293,31 @@ export async function updateComponentStatus(
       currentStatus: status,
       statusUpdatedAt,
     })
-    .where(eq(schema.components.id, componentId));
+    .where(
+      and(
+        eq(schema.components.teamId, teamId),
+        eq(schema.components.id, componentId),
+      ),
+    );
 }
 
-export async function getComponentStatus(db: DB, componentId: string) {
+export async function getComponentStatus(
+  db: DB,
+  teamId: string,
+  componentId: string,
+) {
   const component = await db
     .select({
       currentStatus: schema.components.currentStatus,
       statusUpdatedAt: schema.components.statusUpdatedAt,
     })
     .from(schema.components)
-    .where(eq(schema.components.id, componentId))
+    .where(
+      and(
+        eq(schema.components.teamId, teamId),
+        eq(schema.components.id, componentId),
+      ),
+    )
     .limit(1);
 
   return component[0] || null;

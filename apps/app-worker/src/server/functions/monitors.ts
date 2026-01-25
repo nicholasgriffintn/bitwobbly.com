@@ -9,6 +9,7 @@ import {
   listMonitors,
   updateMonitor,
   updateMonitorStatus,
+  getMonitorById,
 } from "../repositories/monitors";
 import { getMonitorMetrics } from "../repositories/metrics";
 import { clampInt } from "../lib/utils";
@@ -98,8 +99,14 @@ export const deleteMonitorFn = createServerFn({ method: "POST" })
 export const getMonitorMetricsFn = createServerFn({ method: "GET" })
   .inputValidator((data: { monitorId: string; hours?: number }) => data)
   .handler(async ({ data }) => {
-    await requireTeam();
+    const { teamId } = await requireTeam();
     const vars = env;
+    const db = getDb(vars.DB);
+
+    const monitor = await getMonitorById(db, teamId, data.monitorId);
+    if (!monitor) {
+      throw new Error("Monitor not found or access denied");
+    }
 
     try {
       const hours = Math.min(Math.max(data.hours || 24, 1), 168);
