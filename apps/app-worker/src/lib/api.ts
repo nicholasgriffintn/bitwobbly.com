@@ -12,7 +12,19 @@ export async function apiFetch<T>(
   }
   const res = await fetch(input, { ...init, credentials: "include", headers });
   const text = await res.text();
-  const json = text ? JSON.parse(text) : null;
+
+  let json = null;
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      if (!res.ok) {
+        throw new Error(text || res.statusText);
+      }
+      throw new Error(`Invalid JSON response: ${text}`);
+    }
+  }
+
   if (!res.ok) {
     const err = (json as ApiError | null)?.error || res.statusText;
     throw new Error(err);
