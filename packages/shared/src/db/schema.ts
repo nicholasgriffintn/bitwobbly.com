@@ -65,6 +65,8 @@ export const components = sqliteTable("components", {
     .references(() => teams.id),
   name: text("name").notNull(),
   description: text("description"),
+  currentStatus: text("current_status").notNull().default("operational"),
+  statusUpdatedAt: integer("status_updated_at"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -122,6 +124,22 @@ export const incidentUpdates = sqliteTable("incident_updates", {
   status: text("status").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const incidentComponents = sqliteTable(
+  "incident_components",
+  {
+    incidentId: text("incident_id")
+      .notNull()
+      .references(() => incidents.id),
+    componentId: text("component_id")
+      .notNull()
+      .references(() => components.id),
+    impactLevel: text("impact_level").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.incidentId, table.componentId] }),
+  }),
+);
 
 export const notificationChannels = sqliteTable("notification_channels", {
   id: text("id").primaryKey(),
@@ -182,6 +200,8 @@ export type Incident = typeof incidents.$inferSelect;
 export type NewIncident = typeof incidents.$inferInsert;
 export type IncidentUpdate = typeof incidentUpdates.$inferSelect;
 export type NewIncidentUpdate = typeof incidentUpdates.$inferInsert;
+export type IncidentComponent = typeof incidentComponents.$inferSelect;
+export type NewIncidentComponent = typeof incidentComponents.$inferInsert;
 export type NotificationChannel = typeof notificationChannels.$inferSelect;
 export type NewNotificationChannel = typeof notificationChannels.$inferInsert;
 export type NotificationPolicy = typeof notificationPolicies.$inferSelect;

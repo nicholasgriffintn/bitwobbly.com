@@ -31,6 +31,14 @@ const CreateIncidentSchema = z.object({
   statusPageId: z.string().optional(),
   monitorId: z.string().optional(),
   message: z.string().optional(),
+  affectedComponents: z
+    .array(
+      z.object({
+        componentId: z.string(),
+        impactLevel: z.enum(["down", "degraded", "maintenance"]),
+      }),
+    )
+    .optional(),
 });
 
 const UpdateIncidentSchema = z.object({
@@ -67,7 +75,9 @@ export const createIncidentFn = createServerFn({ method: "POST" })
     const db = getDb(vars.DB);
     const created = await createIncident(db, vars.PUBLIC_TEAM_ID, data);
 
-    if (data.statusPageId) {
+    if (data.affectedComponents && data.affectedComponents.length > 0) {
+      await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+    } else if (data.statusPageId) {
       await clearStatusPageCache(
         db,
         vars.KV,

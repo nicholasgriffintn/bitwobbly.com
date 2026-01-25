@@ -133,6 +133,7 @@ export async function createIncident(
     statusPageId?: string;
     monitorId?: string;
     message?: string;
+    affectedComponents?: Array<{ componentId: string; impactLevel: string }>;
   },
 ) {
   const id = randomId("inc");
@@ -160,6 +161,26 @@ export async function createIncident(
       status: input.status,
       createdAt: now,
     });
+  }
+
+  if (input.affectedComponents && input.affectedComponents.length > 0) {
+    const componentLinks = input.affectedComponents.map((ac) => ({
+      incidentId: id,
+      componentId: ac.componentId,
+      impactLevel: ac.impactLevel,
+    }));
+    await db.insert(schema.incidentComponents).values(componentLinks);
+
+    const statusUpdatedAt = Math.floor(Date.now() / 1000);
+    for (const ac of input.affectedComponents) {
+      await db
+        .update(schema.components)
+        .set({
+          currentStatus: ac.impactLevel,
+          statusUpdatedAt,
+        })
+        .where(eq(schema.components.id, ac.componentId));
+    }
   }
 
   return { id };
@@ -208,6 +229,43 @@ export async function addIncidentUpdate(
     })
     .where(eq(schema.incidents.id, incidentId));
 
+  if (input.status === "resolved") {
+    const affectedComponents = await db
+      .select()
+      .from(schema.incidentComponents)
+      .where(eq(schema.incidentComponents.incidentId, incidentId));
+
+    if (affectedComponents.length > 0) {
+      const statusUpdatedAt = Math.floor(Date.now() / 1000);
+      for (const ac of affectedComponents) {
+        const otherOpenIncidents = await db
+          .select()
+          .from(schema.incidentComponents)
+          .innerJoin(
+            schema.incidents,
+            eq(schema.incidentComponents.incidentId, schema.incidents.id),
+          )
+          .where(
+            and(
+              eq(schema.incidentComponents.componentId, ac.componentId),
+              ne(schema.incidentComponents.incidentId, incidentId),
+              ne(schema.incidents.status, "resolved"),
+            ),
+          );
+
+        if (otherOpenIncidents.length === 0) {
+          await db
+            .update(schema.components)
+            .set({
+              currentStatus: "operational",
+              statusUpdatedAt,
+            })
+            .where(eq(schema.components.id, ac.componentId));
+        }
+      }
+    }
+  }
+
   return { id: updateId };
 }
 
@@ -216,9 +274,17 @@ export async function deleteIncident(
   teamId: string,
   incidentId: string,
 ) {
+  const affectedComponents = await db
+    .select()
+    .from(schema.incidentComponents)
+    .where(eq(schema.incidentComponents.incidentId, incidentId));
+
   await db
     .delete(schema.incidentUpdates)
     .where(eq(schema.incidentUpdates.incidentId, incidentId));
+  await db
+    .delete(schema.incidentComponents)
+    .where(eq(schema.incidentComponents.incidentId, incidentId));
   await db
     .delete(schema.incidents)
     .where(
@@ -227,4 +293,50 @@ export async function deleteIncident(
         eq(schema.incidents.id, incidentId),
       ),
     );
+
+  if (affectedComponents.length > 0) {
+    const statusUpdatedAt = Math.floor(Date.now() / 1000);
+    for (const ac of affectedComponents) {
+      const otherOpenIncidents = await db
+        .select()
+        .from(schema.incidentComponents)
+        .innerJoin(
+          schema.incidents,
+          eq(schema.incidentComponents.incidentId, schema.incidents.id),
+        )
+        .where(
+          and(
+            eq(schema.incidentComponents.componentId, ac.componentId),
+            ne(schema.incidents.status, "resolved"),
+          ),
+        );
+
+      if (otherOpenIncidents.length === 0) {
+        await db
+          .update(schema.components)
+          .set({
+            currentStatus: "operational",
+            statusUpdatedAt,
+          })
+          .where(eq(schema.components.id, ac.componentId));
+      }
+    }
+  }
+}
+
+export async function getIncidentComponents(db: DB, incidentId: string) {
+  const components = await db
+    .select({
+      componentId: schema.incidentComponents.componentId,
+      componentName: schema.components.name,
+      impactLevel: schema.incidentComponents.impactLevel,
+    })
+    .from(schema.incidentComponents)
+    .innerJoin(
+      schema.components,
+      eq(schema.incidentComponents.componentId, schema.components.id),
+    )
+    .where(eq(schema.incidentComponents.incidentId, incidentId));
+
+  return components;
 }

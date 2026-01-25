@@ -10,10 +10,18 @@ import {
   updateIncidentFn,
   deleteIncidentFn,
 } from "@/server/functions/incidents";
+import { listComponentsFn } from "@/server/functions/components";
 
 type StatusPage = {
   id: string;
   name: string;
+};
+
+type Component = {
+  id: string;
+  name: string;
+  description: string | null;
+  monitorIds: string[];
 };
 
 type IncidentUpdate = {
@@ -43,19 +51,25 @@ const STATUS_OPTIONS = [
 export const Route = createFileRoute("/app/incidents")({
   component: Incidents,
   loader: async () => {
-    const [incidentsRes, pagesRes] = await Promise.all([
+    const [incidentsRes, pagesRes, componentsRes] = await Promise.all([
       listIncidentsFn(),
       listStatusPagesFn(),
+      listComponentsFn(),
     ]);
     return {
       incidents: incidentsRes.incidents,
       statusPages: pagesRes.status_pages,
+      components: componentsRes.components,
     };
   },
 });
 
 export default function Incidents() {
-  const { incidents: initialIncidents, statusPages } = Route.useLoaderData();
+  const {
+    incidents: initialIncidents,
+    statusPages,
+    components,
+  } = Route.useLoaderData();
   const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +78,9 @@ export default function Incidents() {
     useState<(typeof STATUS_OPTIONS)[number]["value"]>("investigating");
   const [statusPageId, setStatusPageId] = useState("");
   const [message, setMessage] = useState("");
+  const [selectedComponents, setSelectedComponents] = useState<
+    Map<string, string>
+  >(new Map());
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -92,12 +109,23 @@ export default function Incidents() {
     event.preventDefault();
     setError(null);
     try {
+      const affectedComponents =
+        selectedComponents.size > 0
+          ? Array.from(selectedComponents.entries()).map(
+              ([componentId, impactLevel]) => ({
+                componentId,
+                impactLevel,
+              }),
+            )
+          : undefined;
+
       await createIncident({
         data: {
           title,
           status,
           statusPageId: statusPageId || undefined,
           message: message || undefined,
+          affectedComponents,
         },
       });
       await refreshIncidents();
@@ -105,6 +133,7 @@ export default function Incidents() {
       setStatus("investigating");
       setStatusPageId("");
       setMessage("");
+      setSelectedComponents(new Map());
       setIsCreateModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
@@ -304,6 +333,76 @@ export default function Incidents() {
             placeholder="We are investigating reports of..."
             rows={3}
           />
+          {components.length > 0 && (
+            <>
+              <label style={{ marginTop: "1rem" }}>
+                Affected components (optional)
+              </label>
+              <div
+                style={{
+                  marginTop: "0.5rem",
+                  maxHeight: "200px",
+                  overflow: "auto",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  padding: "0.5rem",
+                }}
+              >
+                {components.map((component) => {
+                  const isSelected = selectedComponents.has(component.id);
+                  const impactLevel =
+                    selectedComponents.get(component.id) || "degraded";
+                  return (
+                    <div
+                      key={component.id}
+                      style={{
+                        marginBottom: "0.5rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        id={`component-${component.id}`}
+                        checked={isSelected}
+                        onChange={(e) => {
+                          const newMap = new Map(selectedComponents);
+                          if (e.target.checked) {
+                            newMap.set(component.id, "degraded");
+                          } else {
+                            newMap.delete(component.id);
+                          }
+                          setSelectedComponents(newMap);
+                        }}
+                      />
+                      <label
+                        htmlFor={`component-${component.id}`}
+                        style={{ flex: 1, margin: 0 }}
+                      >
+                        {component.name}
+                      </label>
+                      {isSelected && (
+                        <select
+                          value={impactLevel}
+                          onChange={(e) => {
+                            const newMap = new Map(selectedComponents);
+                            newMap.set(component.id, e.target.value);
+                            setSelectedComponents(newMap);
+                          }}
+                          style={{ width: "auto", padding: "0.25rem" }}
+                        >
+                          <option value="degraded">Degraded</option>
+                          <option value="down">Down</option>
+                          <option value="maintenance">Maintenance</option>
+                        </select>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
           <div className="button-row" style={{ marginTop: "1rem" }}>
             <button type="submit">Create Incident</button>
             <button

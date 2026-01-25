@@ -123,6 +123,7 @@ export async function listComponentsForStatusPage(
       id: schema.components.id,
       name: schema.components.name,
       description: schema.components.description,
+      currentStatus: schema.components.currentStatus,
     })
     .from(schema.statusPageComponents)
     .innerJoin(
@@ -147,20 +148,28 @@ export async function rebuildStatusSnapshot(
   const compsWithStatus = [];
 
   for (const c of components) {
-    const monitorRows = await db
-      .select({
-        lastStatus: schema.monitorState.lastStatus,
-      })
-      .from(schema.componentMonitors)
-      .innerJoin(
-        schema.monitorState,
-        eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId),
-      )
-      .where(eq(schema.componentMonitors.componentId, c.id));
-
     let status: "up" | "down" | "unknown" = "unknown";
-    if (monitorRows.length)
-      status = monitorRows.some((r) => r.lastStatus === "down") ? "down" : "up";
+
+    if (c.currentStatus && c.currentStatus !== "operational") {
+      status = "down";
+    } else {
+      const monitorRows = await db
+        .select({
+          lastStatus: schema.monitorState.lastStatus,
+        })
+        .from(schema.componentMonitors)
+        .innerJoin(
+          schema.monitorState,
+          eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId),
+        )
+        .where(eq(schema.componentMonitors.componentId, c.id));
+
+      if (monitorRows.length) {
+        status = monitorRows.some((r) => r.lastStatus === "down")
+          ? "down"
+          : "up";
+      }
+    }
 
     compsWithStatus.push({ ...c, status });
   }

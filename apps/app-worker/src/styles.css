@@ -690,6 +690,21 @@ button.outline {
   color: var(--success);
 }
 
+.status-pill.down {
+  background: rgba(240, 74, 47, 0.12);
+  color: var(--primary-dark);
+}
+
+.status-pill.degraded {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.status-pill.maintenance {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1e40af;
+}
+
 .timeline {
   display: grid;
   gap: 16px;

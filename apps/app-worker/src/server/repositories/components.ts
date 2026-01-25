@@ -145,6 +145,8 @@ export async function getComponentsForStatusPage(db: DB, statusPageId: string) {
       sortOrder: schema.statusPageComponents.sortOrder,
       name: schema.components.name,
       description: schema.components.description,
+      currentStatus: schema.components.currentStatus,
+      statusUpdatedAt: schema.components.statusUpdatedAt,
     })
     .from(schema.statusPageComponents)
     .innerJoin(
@@ -154,4 +156,32 @@ export async function getComponentsForStatusPage(db: DB, statusPageId: string) {
     .where(eq(schema.statusPageComponents.statusPageId, statusPageId))
     .orderBy(schema.statusPageComponents.sortOrder);
   return rows;
+}
+
+export async function updateComponentStatus(
+  db: DB,
+  componentId: string,
+  status: string,
+) {
+  const statusUpdatedAt = Math.floor(Date.now() / 1000);
+  await db
+    .update(schema.components)
+    .set({
+      currentStatus: status,
+      statusUpdatedAt,
+    })
+    .where(eq(schema.components.id, componentId));
+}
+
+export async function getComponentStatus(db: DB, componentId: string) {
+  const component = await db
+    .select({
+      currentStatus: schema.components.currentStatus,
+      statusUpdatedAt: schema.components.statusUpdatedAt,
+    })
+    .from(schema.components)
+    .where(eq(schema.components.id, componentId))
+    .limit(1);
+
+  return component[0] || null;
 }

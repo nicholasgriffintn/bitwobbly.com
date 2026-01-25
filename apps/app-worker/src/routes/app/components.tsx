@@ -23,6 +23,8 @@ type Component = {
   name: string;
   description: string | null;
   monitorIds: string[];
+  currentStatus?: string;
+  statusUpdatedAt?: number | null;
 };
 
 export const Route = createFileRoute("/app/components")({
@@ -168,7 +170,18 @@ export default function Components() {
               <div key={component.id} className="list-item-expanded">
                 <div className="list-row">
                   <div>
-                    <div className="list-title">{component.name}</div>
+                    <div className="list-title">
+                      {component.name}
+                      {component.currentStatus &&
+                        component.currentStatus !== "operational" && (
+                          <span
+                            className={`status-pill ${component.currentStatus}`}
+                            style={{ marginLeft: "0.5rem" }}
+                          >
+                            {component.currentStatus}
+                          </span>
+                        )}
+                    </div>
                     <div className="muted">
                       {component.description || "No description"}
                       {" · "}

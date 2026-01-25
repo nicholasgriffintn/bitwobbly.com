@@ -63,8 +63,8 @@ function PublicStatusPage() {
   const snapshot = Route.useLoaderData();
   const { page, components, incidents } = snapshot;
 
-  const activeIncidents = incidents.filter((i) => i.status !== 'resolved');
-  const pastIncidents = incidents.filter((i) => i.status === 'resolved');
+  const activeIncidents = incidents.filter((i) => i.status !== "resolved");
+  const pastIncidents = incidents.filter((i) => i.status === "resolved");
 
   const statusIcon = (status: "up" | "down" | "unknown") => {
     switch (status) {
@@ -170,10 +170,25 @@ function PublicStatusPage() {
 
           .incident-item {
             padding: 1rem;
-            border-left: 3px solid ${page.brand_color};
             background: #f9fafb;
             border-radius: 4px;
             margin-bottom: 1rem;
+          }
+
+          .incident-item.investigating {
+            border-left: 4px solid #f59e0b;
+          }
+
+          .incident-item.identified {
+            border-left: 4px solid #ef4444;
+          }
+
+          .incident-item.monitoring {
+            border-left: 4px solid #3b82f6;
+          }
+
+          .incident-item.resolved {
+            border-left: 4px solid #10b981;
           }
 
           .incident-title {
@@ -181,6 +196,39 @@ function PublicStatusPage() {
             font-size: 1.125rem;
             margin: 0 0 0.5rem 0;
             color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+          }
+
+          .incident-status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+          }
+
+          .incident-status-badge.investigating {
+            background: #fef3c7;
+            color: #92400e;
+          }
+
+          .incident-status-badge.identified {
+            background: #fee2e2;
+            color: #991b1b;
+          }
+
+          .incident-status-badge.monitoring {
+            background: #dbeafe;
+            color: #1e40af;
+          }
+
+          .incident-status-badge.resolved {
+            background: #d1fae5;
+            color: #065f46;
           }
 
           .incident-meta {
@@ -268,7 +316,7 @@ function PublicStatusPage() {
             text-decoration: underline;
           }
 
-          ${page.custom_css || ''}
+          ${page.custom_css || ""}
         `}
       </style>
 
@@ -283,11 +331,11 @@ function PublicStatusPage() {
         {components.length > 0 && (
           <>
             <div
-              className={`overall-status ${components.some((c) => c.status === 'down') ? 'degraded' : 'operational'}`}
+              className={`overall-status ${components.some((c) => c.status === "down") ? "degraded" : "operational"}`}
             >
-              {components.some((c) => c.status === 'down')
-                ? 'Some systems are experiencing issues'
-                : 'All systems operational'}
+              {components.some((c) => c.status === "down")
+                ? "Some systems are experiencing issues"
+                : "All systems operational"}
             </div>
 
             <div className="status-section">
@@ -315,8 +363,16 @@ function PublicStatusPage() {
           <div className="status-section">
             <h2 className="status-section-title">Active incidents</h2>
             {activeIncidents.map((incident) => (
-              <div key={incident.id} className="incident-item">
-                <h3 className="incident-title">{incident.title}</h3>
+              <div
+                key={incident.id}
+                className={`incident-item ${incident.status}`}
+              >
+                <h3 className="incident-title">
+                  {incident.title}
+                  <span className={`incident-status-badge ${incident.status}`}>
+                    {incident.status}
+                  </span>
+                </h3>
                 <div className="incident-meta">
                   Started: {formatDate(incident.started_at)}
                 </div>
@@ -344,8 +400,16 @@ function PublicStatusPage() {
           <div className="status-section">
             <h2 className="status-section-title">Past incidents</h2>
             {pastIncidents.map((incident) => (
-              <div key={incident.id} className="incident-item">
-                <h3 className="incident-title">{incident.title}</h3>
+              <div
+                key={incident.id}
+                className={`incident-item ${incident.status}`}
+              >
+                <h3 className="incident-title">
+                  {incident.title}
+                  <span className={`incident-status-badge ${incident.status}`}>
+                    {incident.status}
+                  </span>
+                </h3>
                 <div className="incident-meta">
                   Started: {formatDate(incident.started_at)}
                   {incident.resolved_at && (
@@ -376,7 +440,7 @@ function PublicStatusPage() {
           activeIncidents.length === 0 &&
           pastIncidents.length === 0 && (
             <div className="status-section">
-              <p style={{ textAlign: 'center', color: '#6b7280' }}>
+              <p style={{ textAlign: "center", color: "#6b7280" }}>
                 No components or incidents to display
               </p>
             </div>
@@ -385,7 +449,7 @@ function PublicStatusPage() {
         <div className="footer">
           Last updated: {formatDate(snapshot.generated_at)}
           <div className="powered-by">
-            Powered by{' '}
+            Powered by{" "}
             <a
               href="https://bitwobbly.com"
               target="_blank"
