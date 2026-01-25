@@ -23,7 +23,7 @@
     {
       "binding": "DB",
       "database_name": "bitwobbly_db",
-      "database_id": "9bd1c8a6-c792-4ecd-bf3d-d787bf1c9b17",
+      "database_id": "f2424789-6b8b-4b06-aadd-0de982901cab",
       "migrations_dir": "../../packages/shared/drizzle"
     }
   ],

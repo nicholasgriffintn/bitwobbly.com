@@ -11,8 +11,19 @@ CREATE TABLE `components` (
 	`team_id` text NOT NULL,
 	`name` text NOT NULL,
 	`description` text,
+	`current_status` text DEFAULT 'operational' NOT NULL,
+	`status_updated_at` integer,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE TABLE `incident_components` (
+	`incident_id` text NOT NULL,
+	`component_id` text NOT NULL,
+	`impact_level` text NOT NULL,
+	PRIMARY KEY(`incident_id`, `component_id`),
+	FOREIGN KEY (`incident_id`) REFERENCES `incidents`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`component_id`) REFERENCES `components`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `incident_updates` (
@@ -55,7 +66,7 @@ CREATE TABLE `monitors` (
 	`id` text PRIMARY KEY NOT NULL,
 	`team_id` text NOT NULL,
 	`name` text NOT NULL,
-	`url` text NOT NULL,
+	`url` text,
 	`method` text DEFAULT 'GET' NOT NULL,
 	`timeout_ms` integer DEFAULT 8000 NOT NULL,
 	`interval_seconds` integer DEFAULT 60 NOT NULL,
@@ -63,6 +74,9 @@ CREATE TABLE `monitors` (
 	`enabled` integer DEFAULT 1 NOT NULL,
 	`next_run_at` integer DEFAULT 0 NOT NULL,
 	`locked_until` integer DEFAULT 0 NOT NULL,
+	`type` text DEFAULT 'http' NOT NULL,
+	`webhook_token` text,
+	`external_config` text,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
 );
@@ -112,14 +126,42 @@ CREATE TABLE `status_pages` (
 	`slug` text NOT NULL,
 	`name` text NOT NULL,
 	`is_public` integer DEFAULT 1 NOT NULL,
+	`logo_url` text,
+	`brand_color` text DEFAULT '#007bff',
+	`custom_css` text,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE TABLE `team_invites` (
+	`id` text PRIMARY KEY NOT NULL,
+	`team_id` text NOT NULL,
+	`email` text,
+	`invite_code` text NOT NULL,
+	`role` text DEFAULT 'member' NOT NULL,
+	`created_by` text NOT NULL,
+	`created_at` text NOT NULL,
+	`expires_at` text NOT NULL,
+	`used_at` text,
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `team_invites_invite_code_unique` ON `team_invites` (`invite_code`);--> statement-breakpoint
 CREATE TABLE `teams` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
 	`created_at` text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `user_teams` (
+	`user_id` text NOT NULL,
+	`team_id` text NOT NULL,
+	`role` text DEFAULT 'member' NOT NULL,
+	`joined_at` text NOT NULL,
+	PRIMARY KEY(`user_id`, `team_id`),
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `users` (
@@ -127,8 +169,10 @@ CREATE TABLE `users` (
 	`email` text NOT NULL,
 	`password_hash` text NOT NULL,
 	`team_id` text NOT NULL,
+	`current_team_id` text,
 	`created_at` text NOT NULL,
-	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`current_team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `users_email_unique` ON `users` (`email`);
