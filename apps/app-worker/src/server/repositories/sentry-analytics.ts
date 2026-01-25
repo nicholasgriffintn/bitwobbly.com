@@ -47,7 +47,7 @@ export async function getEventVolumeBySDK(
       sdk_version,
       COUNT(*) as event_count,
       SUM(item_length_bytes) as total_bytes
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE
       item_type IN ('event', 'transaction')
       AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
@@ -72,7 +72,7 @@ export async function getClockDriftStats(
       AVG(sent_at_drift_ms / 1000.0) as avg_drift_seconds,
       MAX(sent_at_drift_ms / 1000.0) as max_drift_seconds,
       MIN(sent_at_drift_ms / 1000.0) as min_drift_seconds
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE sent_at IS NOT NULL AND sent_at_drift_ms IS NOT NULL
     GROUP BY sdk_name
     ORDER BY avg_drift_seconds DESC
@@ -96,7 +96,7 @@ export async function getItemTypeDistribution(
       item_type,
       COUNT(*) as count,
       SUM(item_length_bytes) / 1024.0 / 1024.0 as total_mb
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
     GROUP BY item_type
     ORDER BY count DESC
@@ -122,7 +122,7 @@ export async function getErrorRateByRelease(
       event_environment as environment,
       COUNT(*) as error_count,
       COUNT(DISTINCT CASE WHEN event_user_id NOT LIKE '{%' AND event_user_id IS NOT NULL THEN event_user_id ELSE NULL END) as user_count
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
@@ -152,7 +152,7 @@ export async function getTopErrorMessages(
       COUNT(*) as event_count,
       MIN(FROM_UNIXTIME(received_at)) as first_seen,
       MAX(FROM_UNIXTIME(received_at)) as last_seen
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
@@ -184,7 +184,7 @@ export async function getEventVolumeTimeseries(
     SELECT
       ${dateFormat}(FROM_UNIXTIME(received_at)) as timestamp,
       COUNT(*) as event_count
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type IN ('event', 'transaction')
@@ -216,7 +216,7 @@ export async function getEventVolumeStats(
   const query = `
     SELECT
       COUNT(*) as accepted_events
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
@@ -259,7 +259,7 @@ export async function getEventVolumeTimeseriesBreakdown(
     SELECT
       ${dateFormat}(FROM_UNIXTIME(received_at)) as timestamp,
       COUNT(*) as accepted
-    FROM default.sentry_manifests
+    FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
@@ -292,20 +292,28 @@ export async function getSDKDistribution(
   startDate: string,
   endDate: string,
 ): Promise<SDKDistribution[]> {
-  const query = `
-    WITH totals AS (
-      SELECT COUNT(*) as total
-      FROM default.sentry_manifests
-      WHERE
-        sentry_project_id = ${projectId}
-        AND item_type IN ('event', 'transaction')
-        AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
-    )
+  const totalQuery = `
+    SELECT COUNT(*) as total
+    FROM sentry.sentry_manifests
+    WHERE
+      sentry_project_id = ${projectId}
+      AND item_type IN ('event', 'transaction')
+      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+  `;
+
+  const totalResult = await executeR2SQL<{ total: number }>(
+    config,
+    'bitwobbly-sentry-catalog',
+    totalQuery,
+  );
+
+  const total = totalResult.data[0]?.total || 0;
+
+  const distributionQuery = `
     SELECT
-      COALESCE(sdk_name, 'Unknown') as sdk_name,
-      COUNT(*) as event_count,
-      (COUNT(*) * 100.0 / (SELECT total FROM totals)) as percentage
-    FROM default.sentry_manifests
+      sdk_name,
+      COUNT(*) as event_count
+    FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type IN ('event', 'transaction')
@@ -315,10 +323,14 @@ export async function getSDKDistribution(
     LIMIT 10
   `;
 
-  const result = await executeR2SQL<SDKDistribution>(
-    config,
-    "bitwobbly-sentry-catalog",
-    query,
-  );
-  return result.data;
+  const result = await executeR2SQL<{
+    sdk_name: string | null;
+    event_count: number;
+  }>(config, 'bitwobbly-sentry-catalog', distributionQuery);
+
+  return result.data.map((row) => ({
+    sdk_name: row.sdk_name || 'Unknown',
+    event_count: row.event_count,
+    percentage: total > 0 ? (row.event_count * 100.0) / total : 0,
+  }));
 }
