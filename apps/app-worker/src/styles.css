@@ -29,6 +29,8 @@ code {
   --success: #1a8f5f;
   --warning: #b3572a;
   --shadow: 0 20px 60px rgba(18, 10, 6, 0.12);
+  --green: #1a8f5f;
+  --red: #f04a2f;
 }
 
 * {
