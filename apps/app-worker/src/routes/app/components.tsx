@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Modal } from "@/components/Modal";
+import { ComponentMetrics } from "@/components/ComponentMetrics";
 import { listMonitorsFn } from "@/server/functions/monitors";
 import {
   listComponentsFn,
@@ -54,6 +55,9 @@ export default function Components() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingComponentId, setEditingComponentId] = useState<string | null>(
+    null,
+  );
+  const [expandedComponentId, setExpandedComponentId] = useState<string | null>(
     null,
   );
   const [editName, setEditName] = useState("");
@@ -194,6 +198,21 @@ export default function Components() {
                       type="button"
                       className="outline"
                       onClick={() =>
+                        setExpandedComponentId(
+                          expandedComponentId === component.id
+                            ? null
+                            : component.id,
+                        )
+                      }
+                    >
+                      {expandedComponentId === component.id
+                        ? "Hide"
+                        : "Metrics"}
+                    </button>
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={() =>
                         setExpandedId(
                           expandedId === component.id ? null : component.id,
                         )
@@ -217,6 +236,16 @@ export default function Components() {
                     </button>
                   </div>
                 </div>
+
+                {expandedComponentId === component.id && (
+                  <div style={{ marginTop: "1rem" }}>
+                    <ComponentMetrics
+                      componentId={component.id}
+                      componentName={component.name}
+                    />
+                  </div>
+                )}
+
                 {expandedId === component.id && (
                   <div className="nested-list">
                     {monitors.length ? (

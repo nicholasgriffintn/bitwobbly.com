@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { redirect } from "@tanstack/react-router";
+import { eq } from "drizzle-orm";
+import { schema } from "@bitwobbly/shared";
 
 import { getDb } from "../lib/db";
 import {
@@ -19,6 +21,10 @@ import {
   getStatusPageById,
   clearAllStatusPageCaches,
 } from "../repositories/status-pages";
+import {
+  getComponentUptimeMetrics,
+  getComponentMetrics,
+} from "../repositories/metrics";
 import { useAppSession } from "../lib/session";
 
 const authMiddleware = createServerFn().handler(async () => {
@@ -185,4 +191,88 @@ export const getPageComponentsFn = createServerFn({ method: "GET" })
     const db = getDb(vars.DB);
     const components = await getComponentsForStatusPage(db, data.statusPageId);
     return { components };
+  });
+
+const GetComponentUptimeSchema = z.object({
+  componentId: z.string(),
+  period: z.enum(["7d", "30d", "90d"]).default("7d"),
+});
+
+const GetComponentMetricsSchema = z.object({
+  componentId: z.string(),
+  from: z.number(),
+  to: z.number(),
+});
+
+export const getComponentUptimeFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => GetComponentUptimeSchema.parse(data))
+  .handler(async ({ data }) => {
+    await authMiddleware();
+    const vars = env;
+    const db = getDb(vars.DB);
+
+    const component = await db
+      .select()
+      .from(schema.components)
+      .where(eq(schema.components.id, data.componentId))
+      .limit(1);
+
+    if (!component.length) {
+      throw new Error("Component not found");
+    }
+
+    const links = await db
+      .select()
+      .from(schema.componentMonitors)
+      .where(eq(schema.componentMonitors.componentId, data.componentId));
+
+    const monitorIds = links.map((l) => l.monitorId);
+    const periodDays =
+      data.period === "7d" ? 7 : data.period === "30d" ? 30 : 90;
+
+    const uptime = await getComponentUptimeMetrics(
+      vars.CLOUDFLARE_ACCOUNT_ID,
+      vars.CLOUDFLARE_API_TOKEN,
+      monitorIds,
+      periodDays,
+    );
+
+    return uptime;
+  });
+
+export const getComponentMetricsFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => GetComponentMetricsSchema.parse(data))
+  .handler(async ({ data }) => {
+    await authMiddleware();
+    const vars = env;
+    const db = getDb(vars.DB);
+
+    const component = await db
+      .select()
+      .from(schema.components)
+      .where(eq(schema.components.id, data.componentId))
+      .limit(1);
+
+    if (!component.length) {
+      throw new Error("Component not found");
+    }
+
+    const links = await db
+      .select()
+      .from(schema.componentMonitors)
+      .where(eq(schema.componentMonitors.componentId, data.componentId));
+
+    const monitorIds = links.map((l) => l.monitorId);
+
+    const metrics = await getComponentMetrics(
+      vars.CLOUDFLARE_ACCOUNT_ID,
+      vars.CLOUDFLARE_API_TOKEN,
+      data.componentId,
+      component[0].name,
+      monitorIds,
+      data.from,
+      data.to,
+    );
+
+    return metrics;
   });
