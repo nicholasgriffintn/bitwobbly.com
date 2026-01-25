@@ -146,13 +146,15 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 - **Create/Join/Manage teams** -- Need to be able to configure teams from settings.
 - **MFA support** -- No multi-factor authentication options for user accounts.
 - **Rate limiting** -- API endpoints have no rate limiting. Exposed public status page endpoints could be abused.
-- **SMS/Slack/PagerDuty channels** -- Only webhook and email are implemented. Common integrations like Slack, SMS, and PagerDuty are missing.
 - **Manually trigger checks** -- No API endpoint or CLI command to manually trigger monitor checks outside of the scheduler cron.
 
 ### Nice-to-Haves
 
+- **Add private and internal status pages** -- Support for private status pages (protected by basic auth or login) and internal status pages (only visible to logged-in users).
+- **Add other integrations to trigger notifications** -- Support for more integrations that can trigger alarms such as increased views on the status pages or other systems externally.
 - **Monitor response validation** -- Only HTTP status is checked. Body content matching, certificate expiry checks, and DNS monitoring would add value.
 - **API keys** -- No programmatic API access for users (settings page placeholder exists).
+- **Add more notification channels** -- Support for SMS, Slack, PagerDuty, etc. Maybe a bit of AI calling for incident response?
 - **Add Sentry compatible issue tracking**
 
 ```
