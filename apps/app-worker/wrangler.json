@@ -21,21 +21,21 @@
     {
       "binding": "DB",
       "database_name": "bitwobbly_db",
-      "database_id": "REPLACE_ME",
+      "database_id": "9bd1c8a6-c792-4ecd-bf3d-d787bf1c9b17",
       "migrations_dir": "../../packages/shared/drizzle"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "KV",
-      "id": "REPLACE_ME"
+      "id": "7b37c9a568bf44558ba6959148073058"
     }
   ],
   "queues": {
     "producers": [
       {
         "binding": "ALERT_JOBS",
-        "queue": "bitwobbly_alert_jobs"
+        "queue": "bitwobbly-alert_-obs"
       }
     ]
   }

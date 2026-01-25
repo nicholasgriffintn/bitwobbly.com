@@ -8,13 +8,13 @@ Create:
 
 - name: `bitwobbly_db`
 
+Update `database_id` in each `wrangler.jsonc` (app/scheduler/checker/notifier).
+
 Apply migrations:
 
 ```bash
 pnpm -C apps/app-worker db:migrate:remote
 ```
-
-Update `database_id` in each `wrangler.jsonc` (app/scheduler/checker/notifier).
 
 ## 2) KV Namespace
 
@@ -26,33 +26,22 @@ KV is used for public status snapshots: key pattern `status:<slug>`.
 
 ## 3) Queues
 
-Create two queues:
+The queues should be automatically created on the first deployment, but you can also create them manually:
 
-- `bitwobbly_check_jobs`
-- `bitwobbly_alert_jobs`
+- `bitwobbly-check-jobs`
+- `bitwobbly-alert_-obs`
 
 Ensure:
 
-- Scheduler produces to `bitwobbly_check_jobs`
-- Checker consumes `bitwobbly_check_jobs`, produces to `bitwobbly_alert_jobs`
-- Notifier consumes `bitwobbly_alert_jobs`
+- Scheduler produces to `bitwobbly-check-jobs`
+- Checker consumes `bitwobbly-check-jobs`, produces to `bitwobbly-alert_-obs`
+- Notifier consumes `bitwobbly-alert_-obs`
 - App worker has producer binding for `ALERT_JOBS` (manual or future use)
 
 ## 4) Durable Objects
 
 The incident coordinator is implemented and hosted by the **Checker Worker** as a Durable Object class `IncidentCoordinator`.
+
 This DO updates D1 incidents and rebuilds status snapshots into KV.
 
-## 5) Optional: Add a webhook notification channel/policy
-
-Because this starter kit does not yet have UI for notifications, add rows directly in D1.
-
-Example (replace URL and monitor_id):
-
-```sql
-INSERT INTO notification_channels (id, team_id, type, config_json, enabled, created_at)
-VALUES ('chan_webhook_1', 'team_demo', 'webhook', '{"url":"https://example.com/webhook"}', 1, datetime('now'));
-
-INSERT INTO notification_policies (id, team_id, monitor_id, channel_id, threshold_failures, notify_on_recovery, created_at)
-VALUES ('pol_1', 'team_demo', '<MONITOR_ID>', 'chan_webhook_1', 3, 1, datetime('now'));
-```
+This will be automatically created on first deployment.

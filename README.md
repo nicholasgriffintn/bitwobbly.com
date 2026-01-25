@@ -8,9 +8,9 @@ Four Workers collaborate via Cloudflare Queues and Durable Objects:
 
 ```
 Scheduler (cron, every 1 min)
-  → bitwobbly_check_jobs queue
+  → bitwobbly-check-jobs queue
     → Checker Worker (performs HTTP checks, manages incidents via Durable Object)
-      → bitwobbly_alert_jobs queue
+      → bitwobbly-alert_-obs queue
         → Notifier Worker (sends webhooks / emails via Resend)
 
 App Worker (React dashboard + REST API)
@@ -100,7 +100,7 @@ All workers deploy to Cloudflare via Wrangler. See [docs/SETUP.md](docs/SETUP.md
 1. **Create Cloudflare resources:**
    - D1 database: `bitwobbly_db`
    - KV namespace: `bitwobbly_kv`
-   - Queues: `bitwobbly_check_jobs`, `bitwobbly_alert_jobs`
+   - Queues: `bitwobbly-check-jobs`, `bitwobbly-alert_-obs`
 
 2. **Update `wrangler.jsonc`** in each app with your resource IDs (replace `REPLACE_ME` values).
 
