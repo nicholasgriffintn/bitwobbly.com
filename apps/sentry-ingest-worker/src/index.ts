@@ -73,6 +73,7 @@ const handler = {
         project.id,
         sentryProjectId,
         r2Key,
+        now,
       );
 
       await env.SENTRY_PIPELINE.send(manifests);
@@ -80,7 +81,10 @@ const handler = {
       for (const manifest of manifests) {
         if (
           manifest.item_type === "event" ||
-          manifest.item_type === "transaction"
+          manifest.item_type === "transaction" ||
+          manifest.item_type === "session" ||
+          manifest.item_type === "sessions" ||
+          manifest.item_type === "client_report"
         ) {
           await env.SENTRY_EVENTS.send({
             manifest_id: manifest.manifest_id,
@@ -110,8 +114,8 @@ const handler = {
 
 export default withSentry(
   () => ({
-    dsn: 'https://0b3358d7860a4be0909f9cebdff553b7@ingest.bitwobbly.com/5',
-    environment: 'production',
+    dsn: "https://0b3358d7860a4be0909f9cebdff553b7@ingest.bitwobbly.com/5",
+    environment: "production",
     tracesSampleRate: 0.2,
     beforeSend(event) {
       return null;

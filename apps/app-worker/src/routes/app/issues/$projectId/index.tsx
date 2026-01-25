@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -8,6 +8,11 @@ import {
   listSentryEventsFn,
   updateSentryIssueFn,
 } from "@/server/functions/sentry";
+import {
+  getEventVolumeTimeseriesFn,
+  getTopErrorMessagesFn,
+  getErrorRateByReleaseFn,
+} from "@/server/functions/sentry-analytics";
 
 type Issue = {
   id: string;
@@ -15,6 +20,7 @@ type Issue = {
   level: string;
   status: string;
   eventCount: number;
+  userCount: number;
   firstSeenAt: number;
   lastSeenAt: number;
 };
@@ -46,7 +52,9 @@ function ProjectIssues() {
   const { issues: initialIssues, events: initialEvents } =
     Route.useLoaderData();
 
-  const [activeTab, setActiveTab] = useState<"issues" | "events">("issues");
+  const [activeTab, setActiveTab] = useState<"issues" | "events" | "analytics">(
+    "issues",
+  );
   const [issues, setIssues] = useState<Issue[]>(initialIssues);
   const [events] = useState<Event[]>(initialEvents);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,6 +64,67 @@ function ProjectIssues() {
 
   const updateIssue = useServerFn(updateSentryIssueFn);
   const listIssues = useServerFn(listSentryIssuesFn);
+  const getTimeseries = useServerFn(getEventVolumeTimeseriesFn);
+  const getTopErrors = useServerFn(getTopErrorMessagesFn);
+  const getReleaseStats = useServerFn(getErrorRateByReleaseFn);
+
+  const [timeseriesData, setTimeseriesData] = useState<
+    Array<{ timestamp: string; event_count: number }>
+  >([]);
+  const [topErrors, setTopErrors] = useState<
+    Array<{
+      message: string;
+      event_count: number;
+      first_seen: string;
+      last_seen: string;
+    }>
+  >([]);
+  const [releaseStats, setReleaseStats] = useState<
+    Array<{
+      release: string;
+      environment: string;
+      error_count: number;
+      user_count: number;
+    }>
+  >([]);
+
+  useEffect(() => {
+    if (activeTab === "analytics") {
+      loadAnalytics();
+    }
+  }, [activeTab]);
+
+  const loadAnalytics = async () => {
+    const endDate = new Date().toISOString();
+    const startDate = new Date(
+      Date.now() - 7 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    try {
+      const [timeseries, errors, releases] = await Promise.all([
+        getTimeseries({
+          data: {
+            projectId: parseInt(projectId),
+            startDate,
+            endDate,
+            interval: "hour",
+          },
+        }),
+        getTopErrors({
+          data: { projectId: parseInt(projectId), limit: 10 },
+        }),
+        getReleaseStats({
+          data: { projectId: parseInt(projectId), startDate, endDate },
+        }),
+      ]);
+
+      setTimeseriesData(timeseries);
+      setTopErrors(errors);
+      setReleaseStats(releases);
+    } catch (err) {
+      console.error("Failed to load analytics:", err);
+    }
+  };
 
   const handleStatusChange = async (issueId: string, newStatus: string) => {
     try {
@@ -127,6 +196,14 @@ function ProjectIssues() {
               style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
             >
               Events ({events.length})
+            </button>
+            <button
+              type="button"
+              className={activeTab === "analytics" ? "" : "outline"}
+              onClick={() => setActiveTab("analytics")}
+              style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
+            >
+              Analytics
             </button>
           </div>
 
@@ -204,6 +281,13 @@ function ProjectIssues() {
                         {" · "}
                         {issue.eventCount} event
                         {issue.eventCount !== 1 ? "s" : ""}
+                        {issue.userCount > 0 && (
+                          <>
+                            {" · "}
+                            {issue.userCount} user
+                            {issue.userCount !== 1 ? "s" : ""}
+                          </>
+                        )}
                         {" · "}
                         Last seen {formatRelativeTime(issue.lastSeenAt)}
                       </div>
@@ -284,6 +368,126 @@ function ProjectIssues() {
                 </div>
               </div>
             ))
+          ) : activeTab === "analytics" ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.5rem",
+              }}
+            >
+              <div>
+                <h3 style={{ marginBottom: "1rem" }}>
+                  Event Volume (Last 7 Days)
+                </h3>
+                {timeseriesData.length > 0 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.25rem",
+                    }}
+                  >
+                    {timeseriesData.slice(-24).map((point) => (
+                      <div
+                        key={point.timestamp}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <span
+                          className="muted"
+                          style={{
+                            width: "150px",
+                            fontSize: "0.875rem",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {new Date(point.timestamp).toLocaleString()}
+                        </span>
+                        <div
+                          style={{
+                            background: "var(--primary-color)",
+                            height: "20px",
+                            width: `${Math.min((point.event_count / Math.max(...timeseriesData.map((p) => p.event_count))) * 100, 100)}%`,
+                            borderRadius: "2px",
+                          }}
+                        />
+                        <span style={{ fontSize: "0.875rem" }}>
+                          {point.event_count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="muted">Loading chart data...</div>
+                )}
+              </div>
+
+              <div>
+                <h3 style={{ marginBottom: "1rem" }}>Top Error Messages</h3>
+                {topErrors.length > 0 ? (
+                  <div className="list">
+                    {topErrors.map((error, idx) => (
+                      <div key={idx} className="list-item">
+                        <div style={{ flex: 1 }}>
+                          <div className="list-title">{error.message}</div>
+                          <div
+                            className="muted"
+                            style={{ marginTop: "0.25rem" }}
+                          >
+                            {error.event_count} occurrences · First seen{" "}
+                            {formatRelativeTime(
+                              Math.floor(
+                                new Date(error.first_seen).getTime() / 1000,
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="muted">Loading error data...</div>
+                )}
+              </div>
+
+              <div>
+                <h3 style={{ marginBottom: "1rem" }}>Error Rate by Release</h3>
+                {releaseStats.length > 0 ? (
+                  <div className="list">
+                    {releaseStats.map((stat, idx) => (
+                      <div key={idx} className="list-item">
+                        <div style={{ flex: 1 }}>
+                          <div className="list-title">
+                            {stat.release || "Unknown Release"}
+                            {stat.environment && (
+                              <span
+                                className="pill small"
+                                style={{ marginLeft: "0.5rem" }}
+                              >
+                                {stat.environment}
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            className="muted"
+                            style={{ marginTop: "0.25rem" }}
+                          >
+                            {stat.error_count} errors · {stat.user_count} users
+                            affected
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="muted">Loading release data...</div>
+                )}
+              </div>
+            </div>
           ) : (
             <div className="muted">No events found.</div>
           )}

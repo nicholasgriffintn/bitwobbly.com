@@ -22,6 +22,13 @@
       "when": 1769346752108,
       "tag": "0002_nasty_star_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1769351877760,
+      "tag": "0003_flimsy_darkstar",
+      "breakpoints": true
     }
   ]
 }

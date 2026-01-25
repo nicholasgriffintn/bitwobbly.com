@@ -40,6 +40,10 @@
     {
       "binding": "SENTRY_RAW",
       "bucket_name": "bitwobbly-sentry-raw"
+    },
+    {
+      "binding": "SENTRY_CATALOG",
+      "bucket_name": "bitwobbly-sentry-catalog"
     }
   ],
   "queues": {

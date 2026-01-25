@@ -3,12 +3,33 @@ export interface EnvelopeHeader {
   dsn?: string;
   sdk?: { name?: string; version?: string };
   sent_at?: string;
+  trace?: {
+    trace_id?: string;
+    public_key?: string;
+    release?: string;
+    environment?: string;
+    user_segment?: string;
+  };
+}
+
+export interface EnvelopeItemHeader {
+  type: string;
+  length?: number;
+  content_type?: string;
+  filename?: string;
+  attachment_type?: string;
+  item_count?: number;
+  platform?: string;
 }
 
 export interface EnvelopeItem {
   type: string;
   length?: number;
   content_type?: string;
+  filename?: string;
+  attachment_type?: string;
+  item_count?: number;
+  platform?: string;
   payload: Uint8Array;
 }
 
@@ -61,6 +82,10 @@ export function parseEnvelope(data: Uint8Array): ParsedEnvelope {
       type: itemHeader.type,
       length,
       content_type: itemHeader.content_type,
+      filename: itemHeader.filename,
+      attachment_type: itemHeader.attachment_type,
+      item_count: itemHeader.item_count,
+      platform: itemHeader.platform,
       payload,
     });
   }

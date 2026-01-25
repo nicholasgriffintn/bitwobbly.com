@@ -16,6 +16,31 @@ type Event = {
   message: string | null;
   receivedAt: number;
   issueId: string | null;
+  user?: {
+    id?: string;
+    username?: string;
+    email?: string;
+    ip_address?: string;
+  } | null;
+  tags?: Record<string, string> | null;
+  contexts?: {
+    device?: { [key: string]: {} };
+    os?: { [key: string]: {} };
+    runtime?: { [key: string]: {} };
+    browser?: { [key: string]: {} };
+    app?: { [key: string]: {} };
+  } | null;
+  request?: {
+    url?: string;
+    method?: string;
+  } | null;
+  breadcrumbs?: Array<{
+    timestamp?: string;
+    type?: string;
+    category?: string;
+    message?: string;
+    level?: string;
+  }> | null;
 };
 
 export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
@@ -106,31 +131,102 @@ function IssueDetail() {
           {events.length ? (
             events.map((event: Event) => (
               <div key={event.id}>
-                <div className="list-item">
-                  <div style={{ flex: 1 }}>
-                    <div className="list-title">
-                      {event.message || `${event.type} event`}
-                    </div>
-                    <div className="muted" style={{ marginTop: "0.25rem" }}>
-                      {event.level && (
-                        <>
-                          <span className={`status ${event.level}`}>
-                            {event.level}
-                          </span>
-                          {" · "}
-                        </>
+                <div className="list-item-expanded">
+                  <div className="list-row">
+                    <div style={{ flex: 1 }}>
+                      <div className="list-title">
+                        {event.message || `${event.type} event`}
+                      </div>
+                      <div className="muted" style={{ marginTop: "0.25rem" }}>
+                        {event.level && (
+                          <>
+                            <span className={`status ${event.level}`}>
+                              {event.level}
+                            </span>
+                            {" · "}
+                          </>
+                        )}
+                        {formatRelativeTime(event.receivedAt)}
+                        {event.user?.email && (
+                          <>
+                            {" · "}
+                            User: {event.user.email}
+                          </>
+                        )}
+                        {event.request?.url && (
+                          <>
+                            {" · "}
+                            {event.request.method} {event.request.url}
+                          </>
+                        )}
+                      </div>
+                      {event.tags && Object.keys(event.tags).length > 0 && (
+                        <div
+                          style={{
+                            marginTop: "0.5rem",
+                            display: "flex",
+                            gap: "0.25rem",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          {Object.entries(event.tags).map(([key, value]) => (
+                            <span key={key} className="pill small">
+                              {key}: {value}
+                            </span>
+                          ))}
+                        </div>
                       )}
-                      {formatRelativeTime(event.receivedAt)}
+                      {event.contexts && (
+                        <div
+                          className="muted"
+                          style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}
+                        >
+                          {event.contexts.browser && (
+                            <div>
+                              Browser: {JSON.stringify(event.contexts.browser)}
+                            </div>
+                          )}
+                          {event.contexts.os && (
+                            <div>OS: {JSON.stringify(event.contexts.os)}</div>
+                          )}
+                          {event.contexts.device && (
+                            <div>
+                              Device: {JSON.stringify(event.contexts.device)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {event.breadcrumbs && event.breadcrumbs.length > 0 && (
+                        <div style={{ marginTop: "0.75rem" }}>
+                          <strong style={{ fontSize: "0.875rem" }}>
+                            Breadcrumbs:
+                          </strong>
+                          <div style={{ marginTop: "0.25rem" }}>
+                            {event.breadcrumbs.slice(-5).map((crumb, idx) => (
+                              <div
+                                key={idx}
+                                className="muted"
+                                style={{
+                                  fontSize: "0.875rem",
+                                  marginTop: "0.125rem",
+                                }}
+                              >
+                                [{crumb.category}] {crumb.message}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={() => handleViewPayload(event.id)}
+                      style={{ fontSize: "0.875rem" }}
+                    >
+                      View Payload
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="outline"
-                    onClick={() => handleViewPayload(event.id)}
-                    style={{ fontSize: "0.875rem" }}
-                  >
-                    View Payload
-                  </button>
                 </div>
                 {selectedEventId === event.id && (
                   <div

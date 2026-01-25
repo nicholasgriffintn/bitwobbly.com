@@ -72,6 +72,42 @@ export async function insertEvent(
     environment: string | null;
     r2Key: string;
     receivedAt: number;
+    user?: {
+      id?: string;
+      username?: string;
+      email?: string;
+      ip_address?: string;
+    } | null;
+    tags?: Record<string, string> | null;
+    contexts?: {
+      device?: { [key: string]: {} };
+      os?: { [key: string]: {} };
+      runtime?: { [key: string]: {} };
+      browser?: { [key: string]: {} };
+      app?: { [key: string]: {} };
+    } | null;
+    request?: {
+      url?: string;
+      method?: string;
+      headers?: Record<string, string>;
+      data?: {};
+    } | null;
+    exception?: {
+      values?: Array<{
+        type?: string;
+        value?: string;
+        mechanism?: { [key: string]: {} };
+        stacktrace?: { [key: string]: {} };
+      }>;
+    } | null;
+    breadcrumbs?: Array<{
+      timestamp?: string;
+      type?: string;
+      category?: string;
+      message?: string;
+      level?: string;
+      data?: { [key: string]: {} };
+    }> | null;
   },
 ) {
   await db.insert(schema.sentryEvents).values({

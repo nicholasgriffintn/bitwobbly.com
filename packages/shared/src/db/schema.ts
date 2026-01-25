@@ -279,6 +279,75 @@ export const sentryEvents = sqliteTable("sentry_events", {
   r2Key: text("r2_key").notNull(),
   receivedAt: integer("received_at").notNull(),
   createdAt: text("created_at").notNull(),
+  user: text("user", { mode: "json" }).$type<{
+    id?: string;
+    username?: string;
+    email?: string;
+    ip_address?: string;
+  }>(),
+  tags: text("tags", { mode: "json" }).$type<Record<string, string>>(),
+  contexts: text("contexts", { mode: "json" }).$type<{
+    device?: { [key: string]: {} };
+    os?: { [key: string]: {} };
+    runtime?: { [key: string]: {} };
+    browser?: { [key: string]: {} };
+    app?: { [key: string]: {} };
+  }>(),
+  request: text("request", { mode: "json" }).$type<{
+    url?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    data?: {};
+  }>(),
+  exception: text("exception", { mode: "json" }).$type<{
+    values?: Array<{
+      type?: string;
+      value?: string;
+      mechanism?: { [key: string]: {} };
+      stacktrace?: { [key: string]: {} };
+    }>;
+  }>(),
+  breadcrumbs: text("breadcrumbs", { mode: "json" }).$type<
+    Array<{
+      timestamp?: string;
+      type?: string;
+      category?: string;
+      message?: string;
+      level?: string;
+      data?: { [key: string]: {} };
+    }>
+  >(),
+});
+
+export const sentrySessions = sqliteTable("sentry_sessions", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => sentryProjects.id),
+  sessionId: text("session_id").notNull(),
+  distinctId: text("distinct_id"),
+  status: text("status").notNull(),
+  errors: integer("errors").notNull().default(0),
+  started: integer("started").notNull(),
+  duration: integer("duration"),
+  release: text("release"),
+  environment: text("environment"),
+  userAgent: text("user_agent"),
+  receivedAt: integer("received_at").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const sentryClientReports = sqliteTable("sentry_client_reports", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => sentryProjects.id),
+  timestamp: integer("timestamp").notNull(),
+  discardedEvents: text("discarded_events", { mode: "json" }).$type<
+    Array<{ reason: string; category: string; quantity: number }>
+  >(),
+  receivedAt: integer("received_at").notNull(),
+  createdAt: text("created_at").notNull(),
 });
 
 export type Team = typeof teams.$inferSelect;
@@ -317,3 +386,7 @@ export type SentryIssue = typeof sentryIssues.$inferSelect;
 export type NewSentryIssue = typeof sentryIssues.$inferInsert;
 export type SentryEvent = typeof sentryEvents.$inferSelect;
 export type NewSentryEvent = typeof sentryEvents.$inferInsert;
+export type SentrySession = typeof sentrySessions.$inferSelect;
+export type NewSentrySession = typeof sentrySessions.$inferInsert;
+export type SentryClientReport = typeof sentryClientReports.$inferSelect;
+export type NewSentryClientReport = typeof sentryClientReports.$inferInsert;

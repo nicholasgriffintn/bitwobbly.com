@@ -14,18 +14,42 @@ interface SentryEvent {
   message?: string;
   release?: string;
   environment?: string;
+  user?: {
+    id?: string;
+    username?: string;
+    email?: string;
+    ip_address?: string;
+  };
+  tags?: Record<string, string>;
+  contexts?: {
+    device?: { [key: string]: {} };
+    os?: { [key: string]: {} };
+    runtime?: { [key: string]: {} };
+    browser?: { [key: string]: {} };
+    app?: { [key: string]: {} };
+  };
+  request?: {
+    url?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    data?: {};
+  };
   exception?: {
     values?: Array<{
       type?: string;
       value?: string;
-      stacktrace?: {
-        frames?: Array<{
-          filename?: string;
-          function?: string;
-        }>;
-      };
+      mechanism?: { [key: string]: {} };
+      stacktrace?: { [key: string]: {} };
     }>;
   };
+  breadcrumbs?: Array<{
+    timestamp?: string;
+    type?: string;
+    category?: string;
+    message?: string;
+    level?: string;
+    data?: { [key: string]: {} };
+  }>;
 }
 
 const handler = {
@@ -38,23 +62,29 @@ const handler = {
 
     for (const msg of batch.messages) {
       try {
+        console.log(`[SENTRY-PROCESSOR] Processing ${msg.body.item_type}`);
+
         if (
-          msg.body.item_type !== "event" &&
-          msg.body.item_type !== "transaction"
+          msg.body.item_type === "event" ||
+          msg.body.item_type === "transaction"
         ) {
+          await processEvent(msg.body, env, db);
+        } else if (
+          msg.body.item_type === "session" ||
+          msg.body.item_type === "sessions"
+        ) {
+          await processSession(msg.body, env, db);
+        } else if (msg.body.item_type === "client_report") {
+          await processClientReport(msg.body, env, db);
+        } else {
           console.log(
-            `[SENTRY-PROCESSOR] Skipping non-event type: ${msg.body.item_type}`,
+            `[SENTRY-PROCESSOR] Skipping unsupported type: ${msg.body.item_type}`,
           );
-          msg.ack();
-          continue;
         }
 
-        console.log(`[SENTRY-PROCESSOR] Processing event ${msg.body.event_id}`);
-
-        await processEvent(msg.body, env, db);
         msg.ack();
         console.log(
-          `[SENTRY-PROCESSOR] Successfully processed event ${msg.body.event_id}`,
+          `[SENTRY-PROCESSOR] Successfully processed ${msg.body.item_type}`,
         );
       } catch (error) {
         console.error("[SENTRY-PROCESSOR] Processing failed", error);
@@ -65,8 +95,8 @@ const handler = {
 
 export default withSentry(
   () => ({
-    dsn: 'https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6',
-    environment: 'production',
+    dsn: "https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6",
+    environment: "production",
     tracesSampleRate: 0.2,
     beforeSend(event) {
       return null;
@@ -122,6 +152,12 @@ async function processEvent(
     environment: event.environment || null,
     r2Key: job.r2_raw_key,
     receivedAt: job.received_at,
+    user: event.user || null,
+    tags: event.tags || null,
+    contexts: event.contexts || null,
+    request: event.request || null,
+    exception: event.exception || null,
+    breadcrumbs: event.breadcrumbs || null,
   });
 }
 
@@ -178,4 +214,60 @@ function extractEventFromEnvelope(
   }
 
   return null;
+}
+
+async function processSession(
+  job: ProcessJob,
+  env: Env,
+  db: ReturnType<typeof getDb>,
+) {
+  const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
+  if (!obj) {
+    console.error("[SENTRY-PROCESSOR] R2 object not found:", job.r2_raw_key);
+    return;
+  }
+
+  const envelopeBytes = await obj.arrayBuffer();
+  const sessionData = extractEventFromEnvelope(
+    new Uint8Array(envelopeBytes),
+    job.item_index,
+  );
+
+  if (!sessionData) {
+    console.error("[SENTRY-PROCESSOR] Could not extract session from envelope");
+    return;
+  }
+
+  console.log(
+    "[SENTRY-PROCESSOR] Session received, storage not yet implemented",
+  );
+}
+
+async function processClientReport(
+  job: ProcessJob,
+  env: Env,
+  db: ReturnType<typeof getDb>,
+) {
+  const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
+  if (!obj) {
+    console.error("[SENTRY-PROCESSOR] R2 object not found:", job.r2_raw_key);
+    return;
+  }
+
+  const envelopeBytes = await obj.arrayBuffer();
+  const reportData = extractEventFromEnvelope(
+    new Uint8Array(envelopeBytes),
+    job.item_index,
+  );
+
+  if (!reportData) {
+    console.error(
+      "[SENTRY-PROCESSOR] Could not extract client report from envelope",
+    );
+    return;
+  }
+
+  console.log(
+    "[SENTRY-PROCESSOR] Client report received, storage not yet implemented",
+  );
 }
