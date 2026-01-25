@@ -268,6 +268,8 @@ function IssueDetail() {
                           overflow: "auto",
                           maxHeight: "400px",
                           fontSize: "0.875rem",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
                         }}
                       >
                         {eventPayload}
