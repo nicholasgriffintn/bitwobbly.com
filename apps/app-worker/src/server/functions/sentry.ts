@@ -9,6 +9,7 @@ import {
   listSentryProjects,
   getSentryProject,
   getSentryProjectDsn,
+  updateSentryProject,
 } from "../repositories/sentry-projects";
 import {
   listSentryEvents,
@@ -19,6 +20,12 @@ import {
 const CreateProjectSchema = z.object({
   name: z.string().min(1),
   platform: z.string().optional(),
+});
+
+const UpdateProjectSchema = z.object({
+  projectId: z.string(),
+  name: z.string().min(1).optional(),
+  platform: z.string().optional().nullable(),
 });
 
 export const listSentryProjectsFn = createServerFn({ method: "GET" }).handler(
@@ -37,6 +44,17 @@ export const createSentryProjectFn = createServerFn({ method: "POST" })
     const db = getDb(env.DB);
     const result = await createSentryProject(db, teamId, data);
     return { ok: true, ...result };
+  });
+
+export const updateSentryProjectFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => UpdateProjectSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const { projectId, ...updates } = data;
+    const result = await updateSentryProject(db, teamId, projectId, updates);
+    if (!result) throw new Error("Project not found");
+    return { ok: true, project: result };
   });
 
 export const getSentryProjectDsnFn = createServerFn({ method: "GET" })

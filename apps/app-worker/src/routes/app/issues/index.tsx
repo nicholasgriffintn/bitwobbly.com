@@ -7,6 +7,7 @@ import {
   listSentryProjectsFn,
   createSentryProjectFn,
   getSentryProjectDsnFn,
+  updateSentryProjectFn,
 } from "@/server/functions/sentry";
 
 type SentryProject = {
@@ -31,14 +32,17 @@ function IssueTracking() {
   const [projects, setProjects] = useState<SentryProject[]>(initialProjects);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDsnModalOpen, setIsDsnModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [platform, setPlatform] = useState("");
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [dsn, setDsn] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [secretKey, setSecretKey] = useState<string | null>(null);
 
   const createProject = useServerFn(createSentryProjectFn);
+  const updateProject = useServerFn(updateSentryProjectFn);
   const listProjects = useServerFn(listSentryProjectsFn);
   const getProjectDsn = useServerFn(getSentryProjectDsnFn);
 
@@ -75,6 +79,33 @@ function IssueTracking() {
     }
   };
 
+  const showEditModal = (project: SentryProject) => {
+    setEditingProjectId(project.id);
+    setName(project.name);
+    setPlatform(project.platform || "");
+    setIsEditModalOpen(true);
+  };
+
+  const onEdit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editingProjectId) return;
+    setError(null);
+    try {
+      await updateProject({
+        data: {
+          projectId: editingProjectId,
+          name,
+          platform: platform || null,
+        },
+      });
+      await refreshProjects();
+      setIsEditModalOpen(false);
+      setEditingProjectId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const showDsn = async (projectId: string) => {
     setError(null);
     try {
@@ -90,6 +121,13 @@ function IssueTracking() {
 
   const closeCreateModal = () => {
     setIsCreateModalOpen(false);
+    setName("");
+    setPlatform("");
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingProjectId(null);
     setName("");
     setPlatform("");
   };
@@ -143,6 +181,13 @@ function IssueTracking() {
                         View Issues
                       </button>
                     </Link>
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={() => showEditModal(project)}
+                    >
+                      Edit
+                    </button>
                     <button
                       type="button"
                       className="outline"
@@ -201,6 +246,49 @@ function IssueTracking() {
               className="outline"
               onClick={closeCreateModal}
             >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        title="Edit Project"
+      >
+        <form className="form" onSubmit={onEdit}>
+          <label htmlFor="edit-project-name">Project Name</label>
+          <input
+            id="edit-project-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="My Application"
+            required
+          />
+
+          <label htmlFor="edit-project-platform">Platform</label>
+          <select
+            id="edit-project-platform"
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+          >
+            <option value="">Select platform...</option>
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="react">React</option>
+            <option value="vue">Vue</option>
+            <option value="node">Node.js</option>
+            <option value="python">Python</option>
+            <option value="go">Go</option>
+            <option value="ruby">Ruby</option>
+            <option value="php">PHP</option>
+            <option value="java">Java</option>
+          </select>
+
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Save Changes</button>
+            <button type="button" className="outline" onClick={closeEditModal}>
               Cancel
             </button>
           </div>

@@ -3,6 +3,7 @@
   "name": "bitwobbly-scheduler",
   "main": "src/index.ts",
   "compatibility_date": "2025-07-15",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
   "observability": {

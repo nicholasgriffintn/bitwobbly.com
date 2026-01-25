@@ -1,3 +1,5 @@
+import { withSentry } from "@sentry/cloudflare";
+
 import { getDb } from "./lib/db";
 import { parseEnvelope } from "./lib/envelope";
 import { buildManifests } from "./lib/manifest";
@@ -10,7 +12,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, X-Sentry-Auth",
 };
 
-export default {
+const handler = {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -105,6 +107,18 @@ export default {
     }
   },
 };
+
+export default withSentry(
+  () => ({
+    dsn: "https://0b3358d7860a4be0909f9cebdff553b7@ingest.bitwobbly.com/api/5",
+    environment: "production",
+    tracesSampleRate: 1.0,
+    beforeSend(event) {
+      return null;
+    },
+  }),
+  handler,
+);
 
 function extractPublicKey(request: Request): string | null {
   const authHeader = request.headers.get("X-Sentry-Auth");

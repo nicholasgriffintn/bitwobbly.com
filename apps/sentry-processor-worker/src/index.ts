@@ -1,3 +1,5 @@
+import { withSentry } from "@sentry/cloudflare";
+
 import { getDb } from "./lib/db";
 import {
   computeFingerprint,
@@ -26,7 +28,7 @@ interface SentryEvent {
   };
 }
 
-export default {
+const handler = {
   async queue(batch: MessageBatch<ProcessJob>, env: Env): Promise<void> {
     console.log(
       `[SENTRY-PROCESSOR] Received batch with ${batch.messages.length} messages`,
@@ -60,6 +62,18 @@ export default {
     }
   },
 };
+
+export default withSentry(
+  () => ({
+    dsn: "https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/api/6",
+    environment: "production",
+    tracesSampleRate: 1.0,
+    beforeSend(event) {
+      return null;
+    },
+  }),
+  handler,
+);
 
 async function processEvent(
   job: ProcessJob,

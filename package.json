@@ -14,7 +14,8 @@
     "dev:notifier": "pnpm -C apps/notifier-worker dev",
     "lint": "pnpm -r lint",
     "lint:monorepo": "sherif",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "deploy:all": "pnpm run -r deploy"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

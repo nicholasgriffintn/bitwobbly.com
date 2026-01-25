@@ -1,11 +1,12 @@
 import type { AlertJob } from "@bitwobbly/shared";
+import { withSentry } from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
 import { sendAlertEmail } from "./lib/email";
 import { getDb } from "./lib/db";
 import { getNotificationPoliciesForMonitor } from "./repositories/notification-policies";
 
-export default {
+const handler = {
   async queue(batch: MessageBatch<AlertJob>, env: Env): Promise<void> {
     const db = getDb(env.DB);
 
@@ -20,6 +21,15 @@ export default {
     }
   },
 };
+
+export default withSentry(
+  () => ({
+    dsn: "https://9f74b921b8364cf6af59cbe1a3aa0747@ingest.bitwobbly.com/api/3",
+    environment: "production",
+    tracesSampleRate: 1.0,
+  }),
+  handler,
+);
 
 async function handleAlert(
   job: AlertJob,

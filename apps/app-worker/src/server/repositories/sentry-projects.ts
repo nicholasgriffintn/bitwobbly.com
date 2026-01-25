@@ -11,6 +11,7 @@ export async function createSentryProject(
   const maxResult = await db
     .select({ max: schema.sentryProjects.sentryProjectId })
     .from(schema.sentryProjects)
+    .orderBy(desc(schema.sentryProjects.sentryProjectId))
     .limit(1);
   const sentryProjectId = (maxResult[0]?.max ?? 0) + 1;
 
@@ -66,6 +67,31 @@ export async function getSentryProject(
     .limit(1);
 
   return projects[0] || null;
+}
+
+export async function updateSentryProject(
+  db: DB,
+  teamId: string,
+  projectId: string,
+  input: { name?: string; platform?: string | null },
+) {
+  const project = await getSentryProject(db, teamId, projectId);
+  if (!project) return null;
+
+  await db
+    .update(schema.sentryProjects)
+    .set({
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.platform !== undefined && { platform: input.platform }),
+    })
+    .where(
+      and(
+        eq(schema.sentryProjects.id, projectId),
+        eq(schema.sentryProjects.teamId, teamId),
+      ),
+    );
+
+  return getSentryProject(db, teamId, projectId);
 }
 
 export async function getSentryProjectDsn(

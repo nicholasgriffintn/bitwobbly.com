@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@bitwobbly/shared": "workspace:*"
+    "@bitwobbly/shared": "workspace:*",
+    "@sentry/cloudflare": "^10.36.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260123.0",

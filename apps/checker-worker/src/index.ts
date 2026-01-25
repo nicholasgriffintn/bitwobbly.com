@@ -1,5 +1,10 @@
 import type { CheckJob, AlertJob } from "@bitwobbly/shared";
 import { randomId } from "@bitwobbly/shared";
+import {
+  instrumentD1WithSentry,
+  instrumentDurableObjectWithSentry,
+  withSentry,
+} from "@sentry/cloudflare";
 
 import {
   rebuildAllSnapshots,
@@ -24,7 +29,7 @@ type DOState = {
   open_incident_id?: string;
 };
 
-export class IncidentCoordinator implements DurableObject {
+class IncidentCoordinatorBase implements DurableObject {
   private state: DurableObjectState;
   private env: Env;
 
@@ -84,7 +89,7 @@ export class IncidentCoordinator implements DurableObject {
   }
 }
 
-export default {
+const handler = {
   async queue(
     batch: MessageBatch<CheckJob>,
     env: Env,
@@ -123,6 +128,15 @@ export default {
     }
   },
 };
+
+export default withSentry(
+  () => ({
+    dsn: "https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2",
+    environment: "production",
+    tracesSampleRate: 1.0,
+  }),
+  handler,
+);
 
 async function handleCheck(
   job: CheckJob,
@@ -364,3 +378,12 @@ function json(data: unknown): Response {
     headers: { "content-type": "application/json; charset=utf-8" },
   });
 }
+
+export const IncidentCoordinator = instrumentDurableObjectWithSentry(
+  () => ({
+    dsn: "https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2",
+    environment: "production",
+    tracesSampleRate: 1.0,
+  }),
+  IncidentCoordinatorBase,
+);

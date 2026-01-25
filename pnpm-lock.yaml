@@ -80,7 +80,7 @@ importers:
         version: 5.1.2(vite@7.3.1(@types/node@25.0.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0))
       drizzle-orm:
         specifier: ^0.36.4
-        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -102,13 +102,16 @@ importers:
       '@bitwobbly/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@sentry/cloudflare':
+        specifier: ^10.36.0
+        version: 10.36.0(@cloudflare/workers-types@4.20260123.0)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260123.0
         version: 4.20260123.0
       drizzle-orm:
         specifier: ^0.36.4
-        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -121,13 +124,16 @@ importers:
       '@bitwobbly/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@sentry/cloudflare':
+        specifier: ^10.36.0
+        version: 10.36.0(@cloudflare/workers-types@4.20260123.0)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260123.0
         version: 4.20260123.0
       drizzle-orm:
         specifier: ^0.36.4
-        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -140,13 +146,16 @@ importers:
       '@bitwobbly/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@sentry/cloudflare':
+        specifier: ^10.36.0
+        version: 10.36.0(@cloudflare/workers-types@4.20260123.0)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260123.0
         version: 4.20260123.0
       drizzle-orm:
         specifier: ^0.36.4
-        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -159,13 +168,16 @@ importers:
       '@bitwobbly/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@sentry/cloudflare':
+        specifier: ^10.36.0
+        version: 10.36.0(@cloudflare/workers-types@4.20260123.0)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260123.0
         version: 4.20260123.0
       drizzle-orm:
         specifier: ^0.36.4
-        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -178,13 +190,16 @@ importers:
       '@bitwobbly/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@sentry/cloudflare':
+        specifier: ^10.36.0
+        version: 10.36.0(@cloudflare/workers-types@4.20260123.0)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260123.0
         version: 4.20260123.0
       drizzle-orm:
         specifier: ^0.36.4
-        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -196,7 +211,7 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: ^0.36.4
-        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
+        version: 0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260123.0
@@ -977,6 +992,10 @@ packages:
     resolution: {integrity: sha512-hAX0pT/73190NLqBPPWSdBVGtbY6VOhWYK3qqHqtXQ1gK7kS2yz4+ivsN07hpJ6I3aeMtKP6J6npsEKOAzuTLA==}
     engines: {node: '>=20.0'}
 
+  '@opentelemetry/api@1.9.0':
+    resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
+    engines: {node: '>=8.0.0'}
+
   '@poppinss/colors@4.1.6':
     resolution: {integrity: sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg==}
 
@@ -1147,6 +1166,15 @@ packages:
   '@sentry/browser@10.36.0':
     resolution: {integrity: sha512-yHhXbgdGY1s+m8CdILC9U/II7gb6+s99S2Eh8VneEn/JG9wHc+UOzrQCeFN0phFP51QbLkjkiQbbanjT1HP8UQ==}
     engines: {node: '>=18'}
+
+  '@sentry/cloudflare@10.36.0':
+    resolution: {integrity: sha512-OKEsiLFc1HmoLDRgOVNw8DkaAd45gRcB0wW9jL3q8Z2LQUrKtj+1IAsPyuh684R+NhgGFXgsBWUYZ/6raGg7BA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@cloudflare/workers-types': ^4.x
+    peerDependenciesMeta:
+      '@cloudflare/workers-types':
+        optional: true
 
   '@sentry/core@10.36.0':
     resolution: {integrity: sha512-EYJjZvofI+D93eUsPLDIUV0zQocYqiBRyXS6CCV6dHz64P/Hob5NJQOwPa8/v6nD+UvJXvwsFfvXOHhYZhZJOQ==}
@@ -3127,6 +3155,8 @@ snapshots:
 
   '@oozcitak/util@10.0.0': {}
 
+  '@opentelemetry/api@1.9.0': {}
+
   '@poppinss/colors@4.1.6':
     dependencies:
       kleur: 4.1.5
@@ -3255,6 +3285,13 @@ snapshots:
       '@sentry-internal/replay': 10.36.0
       '@sentry-internal/replay-canvas': 10.36.0
       '@sentry/core': 10.36.0
+
+  '@sentry/cloudflare@10.36.0(@cloudflare/workers-types@4.20260123.0)':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@sentry/core': 10.36.0
+    optionalDependencies:
+      '@cloudflare/workers-types': 4.20260123.0
 
   '@sentry/core@10.36.0': {}
 
@@ -3957,9 +3994,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.36.4(@cloudflare/workers-types@4.20260123.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3):
+  drizzle-orm@0.36.4(@cloudflare/workers-types@4.20260123.0)(@opentelemetry/api@1.9.0)(@types/react@19.2.9)(kysely@0.28.10)(react@19.2.3):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260123.0
+      '@opentelemetry/api': 1.9.0
       '@types/react': 19.2.9
       kysely: 0.28.10
       react: 19.2.3
