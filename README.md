@@ -4,7 +4,7 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ## Architecture
 
-Four Workers collaborate via Cloudflare Queues and Durable Objects:
+Multiple Workers collaborate via Cloudflare Queues, Durable Objects, and Pipelines:
 
 ```
 Scheduler (cron, every 1 min)
@@ -14,30 +14,41 @@ Scheduler (cron, every 1 min)
         → Notifier Worker (sends webhooks / emails via Resend)
 
 App Worker (React dashboard + REST API)
-  → Serves the UI, handles auth, CRUD for monitors/status pages/notifications
+  → Serves the UI, handles auth, CRUD for monitors/status pages/notifications/issue tracking
   → Public status page snapshots cached in KV
+
+Sentry Ingest Worker (SDK-compatible issue ingestion)
+  → Receives Sentry SDK envelopes
+  → Stores raw payloads in R2, writes manifests to Pipelines
+  → bitwobbly-sentry-events queue
+    → Sentry Processor Worker (event grouping and fingerprinting)
+      → Groups events into issues, writes to D1
 ```
 
 ### Apps
 
-| App                     | Purpose                                                                                                                                  |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/app-worker`       | React 19 dashboard + API. Manages monitors, status pages, notification channels, and auth.                                               |
-| `apps/scheduler-worker` | Cron-triggered dispatcher. Finds due monitors and enqueues check jobs.                                                                   |
-| `apps/checker-worker`   | Queue consumer. Performs HTTP checks, tracks failures, opens/resolves incidents via Durable Objects, writes metrics to Analytics Engine. |
-| `apps/notifier-worker`  | Queue consumer. Delivers alerts via webhooks and email (Resend API).                                                                     |
+| App                            | Purpose                                                                                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/app-worker`              | React 19 dashboard + API. Manages monitors, status pages, notification channels, issue tracking projects, and auth.                      |
+| `apps/scheduler-worker`        | Cron-triggered dispatcher. Finds due monitors and enqueues check jobs.                                                                   |
+| `apps/checker-worker`          | Queue consumer. Performs HTTP checks, tracks failures, opens/resolves incidents via Durable Objects, writes metrics to Analytics Engine. |
+| `apps/notifier-worker`         | Queue consumer. Delivers alerts via webhooks and email (Resend API).                                                                     |
+| `apps/sentry-ingest-worker`    | Sentry SDK-compatible ingestion endpoint. Parses envelopes, stores raw payloads in R2, publishes to Pipelines and queue.                 |
+| `apps/sentry-processor-worker` | Queue consumer. Extracts events from R2, computes fingerprints, groups into issues, writes to D1.                                        |
 
 ### Packages
 
 | Package           | Purpose                                                              |
 | ----------------- | -------------------------------------------------------------------- |
-| `packages/shared` | Drizzle ORM schema (12 tables), database factory, utility functions. |
+| `packages/shared` | Drizzle ORM schema (16 tables), database factory, utility functions. |
 
 ### External Services
 
 - **Cloudflare D1** -- SQLite database
 - **Cloudflare KV** -- status page snapshot cache
+- **Cloudflare R2** -- raw Sentry envelope storage
 - **Cloudflare Queues** -- job dispatch between workers
+- **Cloudflare Pipelines** -- durable ingestion buffering and SQL transformation
 - **Cloudflare Durable Objects** -- incident coordination state
 - **Cloudflare Analytics Engine** -- latency/uptime metrics
 - **Resend** -- transactional email delivery
@@ -64,6 +75,8 @@ pnpm -C apps/app-worker dev
 pnpm -C apps/scheduler-worker dev
 pnpm -C apps/checker-worker dev
 pnpm -C apps/notifier-worker dev
+pnpm -C apps/sentry-ingest-worker dev
+pnpm -C apps/sentry-processor-worker dev
 ```
 
 The app worker serves the dashboard at `http://localhost:5173`. API routes are under `/api/*`.
@@ -100,7 +113,9 @@ All workers deploy to Cloudflare via Wrangler. See [docs/SETUP.md](docs/SETUP.md
 1. **Create Cloudflare resources:**
    - D1 database: `bitwobbly_db`
    - KV namespace: `bitwobbly_kv`
-   - Queues: `bitwobbly-check-jobs`, `bitwobbly-alert-jobs`
+   - R2 buckets: `bitwobbly-sentry-raw`, `bitwobbly-sentry-catalog`
+   - Queues: `bitwobbly-check-jobs`, `bitwobbly-alert-jobs`, `bitwobbly-sentry-events`
+   - Pipelines: `bitwobbly-sentry-pipeline` (with R2 Data Catalog sink)
 
 2. **Update `wrangler.jsonc`** in each app with your resource IDs (replace `REPLACE_ME` values).
 
@@ -123,6 +138,8 @@ All workers deploy to Cloudflare via Wrangler. See [docs/SETUP.md](docs/SETUP.md
    pnpm -C apps/scheduler-worker run deploy
    pnpm -C apps/checker-worker run deploy
    pnpm -C apps/notifier-worker run deploy
+   pnpm -C apps/sentry-ingest-worker run deploy
+   pnpm -C apps/sentry-processor-worker run deploy
    ```
 
 The app worker is configured to serve from `bitwobbly.com` via custom domain. Update the `routes` in `apps/app-worker/wrangler.jsonc` for your own domain.
@@ -148,7 +165,7 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 - **Rate limiting** -- API endpoints have no rate limiting. Exposed public status page endpoints could be abused.
 - **Manually trigger checks** -- No API endpoint or CLI command to manually trigger monitor checks outside of the scheduler cron.
 - **Build in a pipelines / iceberg integration** -- At the moment, we just stream to pipelines and iceberg, we don't do anything with it.
-- **Configure notifications for issues** -- We don't trigget notifications on issues from the Sentry integration yet.
+- **Configure notifications for issues** -- We don't trigger notifications on issues from the issue tracking integration yet.
 
 ### Nice-to-Haves
 
