@@ -31,6 +31,7 @@ export class IncidentCoordinator implements DurableObject {
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
+    console.log("[CHECKER] IncidentCoordinator initialized");
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -91,15 +92,24 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    console.log(
+      `[CHECKER] Received batch with ${batch.messages.length} messages`,
+    );
     const db = getDb(env.DB);
 
     for (const msg of batch.messages) {
       try {
+        console.log(
+          `[CHECKER] Processing check for monitor ${msg.body.monitor_id} -> ${msg.body.url}`,
+        );
         await handleCheck(msg.body, env, ctx, db);
         msg.ack();
+        console.log(
+          `[CHECKER] Successfully processed check for monitor ${msg.body.monitor_id}`,
+        );
       } catch (e: unknown) {
         const error = e as Error;
-        console.error("check failed", error?.message || e);
+        console.error("[CHECKER] check failed", error?.message || e);
       }
     }
   },
@@ -120,6 +130,8 @@ async function handleCheck(
   let reason: string | undefined;
   let latency_ms: number | null = null;
 
+  console.log(`[CHECKER] Checking ${job.url} with ${timeout}ms timeout`);
+
   try {
     const res = await fetch(job.url, {
       method: "GET",
@@ -129,6 +141,9 @@ async function handleCheck(
     latency_ms = Date.now() - started;
     status = res.ok ? "up" : "down";
     if (!res.ok) reason = `HTTP ${res.status}`;
+    console.log(
+      `[CHECKER] Check result: ${status} (${latency_ms}ms) ${reason || ""}`,
+    );
   } catch (e: unknown) {
     const error = e as Error;
     latency_ms = Date.now() - started;
@@ -137,6 +152,9 @@ async function handleCheck(
       error?.name === "AbortError"
         ? "Timeout"
         : error?.message || "Fetch error";
+    console.log(
+      `[CHECKER] Check failed: ${status} (${latency_ms}ms) - ${reason}`,
+    );
   } finally {
     clearTimeout(t);
   }
@@ -161,6 +179,9 @@ async function handleCheck(
   const threshold = Math.max(1, Math.min(10, job.failure_threshold || 3));
 
   if (status === "down" && nextFailures >= threshold && !prevIncidentOpen) {
+    console.log(
+      `[CHECKER] Opening incident: ${nextFailures} failures >= threshold ${threshold}`,
+    );
     const incidentId = await transitionViaDO(env, job, "down", reason);
     await enqueueAlert(env, {
       alert_id: randomId("al"),
@@ -170,10 +191,12 @@ async function handleCheck(
       reason,
       incident_id: incidentId || undefined,
     });
+    console.log(`[CHECKER] Alert enqueued for incident ${incidentId}`);
     return;
   }
 
   if (status === "up" && prevIncidentOpen) {
+    console.log(`[CHECKER] Resolving incident: monitor recovered`);
     const incidentId = await transitionViaDO(env, job, "up");
     await enqueueAlert(env, {
       alert_id: randomId("al"),
@@ -183,6 +206,7 @@ async function handleCheck(
       reason: "Recovered",
       incident_id: incidentId || undefined,
     });
+    console.log(`[CHECKER] Recovery alert enqueued for incident ${incidentId}`);
     return;
   }
 }

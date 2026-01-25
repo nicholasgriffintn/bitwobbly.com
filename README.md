@@ -68,7 +68,13 @@ pnpm -C apps/notifier-worker dev
 
 The app worker serves the dashboard at `http://localhost:5173`. API routes are under `/api/*`.
 
-Local dev uses Wrangler's simulator for D1, KV, Queues, and Durable Objects. Persistent state is stored in `/.data`.
+Local dev uses Wrangler's simulator for D1, KV, Queues, and Durable Objects. All workers share the same persistent state in `/.data` at the workspace root.
+
+**Note:** Cron triggers don't auto-run locally. To test monitors, use the "Check Now" button in the UI or run:
+
+```bash
+curl "http://localhost:8788/cdn-cgi/handler/scheduled"
+```
 
 ### Environment Variables
 
@@ -140,6 +146,7 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 - **SMS/Slack/PagerDuty channels** -- Only webhook and email are implemented. Common integrations like Slack, SMS, and PagerDuty are missing.
 - **Backup strategy** -- No D1 export/backup automation documented.
 - **Monitoring/observability** -- No structured logging, tracing, or alerting on the workers themselves (beyond Cloudflare's built-in dashboard).
+- **Manually trigger checks** -- No API endpoint or CLI command to manually trigger monitor checks outside of the scheduler cron.
 
 ### Nice-to-Haves
 

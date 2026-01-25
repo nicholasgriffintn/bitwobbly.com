@@ -15,16 +15,16 @@ import { clampInt } from "../lib/utils";
 import { useAppSession } from "../lib/session";
 
 const authMiddleware = createMiddleware({
-  type: 'function'
+  type: 'function',
 }).server(async ({ next }) => {
   const session = await useAppSession();
   if (!session.data.userId) {
-    throw redirect({ to: "/login" });
+    throw redirect({ to: '/login' });
   }
   return next({
     context: {
-      userId: session.data.userId
-    }
+      userId: session.data.userId,
+    },
   });
 });
 
@@ -126,4 +126,26 @@ export const updateMonitorFn = createServerFn({ method: "POST" })
 
     await updateMonitor(db, vars.PUBLIC_TEAM_ID, data.id, updates);
     return { ok: true };
+  });
+
+export const triggerSchedulerFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .handler(async () => {
+    try {
+      console.log('[APP] Triggering scheduler...');
+      const schedulerUrl = 'http://localhost:8788/cdn-cgi/handler/scheduled';
+      const response = await fetch(schedulerUrl, { method: 'POST' });
+
+      if (!response.ok) {
+        throw new Error(`Scheduler returned ${response.status}`);
+      }
+
+      console.log('[APP] Scheduler triggered successfully');
+      return { ok: true, message: 'Scheduler triggered successfully' };
+    } catch (error) {
+      console.error('[APP] Failed to trigger scheduler:', error);
+      throw new Error(
+        'Failed to trigger scheduler. Make sure dev server is running.',
+      );
+    }
   });

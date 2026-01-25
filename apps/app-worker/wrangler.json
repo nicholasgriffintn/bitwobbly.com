@@ -9,35 +9,34 @@
   "routes": [
     {
       "pattern": "bitwobbly.com",
-      "custom_domain": true,
-    },
+      "custom_domain": true
+    }
   ],
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "PUBLIC_TEAM_ID": "team_demo",
-    "ADMIN_USERNAME": "admin",
+    "PUBLIC_TEAM_ID": "team_demo"
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "bitwobbly_db",
       "database_id": "REPLACE_ME",
-      "migrations_dir": "../../packages/shared/drizzle",
-    },
+      "migrations_dir": "../../packages/shared/drizzle"
+    }
   ],
   "kv_namespaces": [
     {
       "binding": "KV",
-      "id": "REPLACE_ME",
-    },
+      "id": "REPLACE_ME"
+    }
   ],
   "queues": {
     "producers": [
       {
         "binding": "ALERT_JOBS",
-        "queue": "bitwobbly_alert_jobs",
-      },
-    ],
-  },
+        "queue": "bitwobbly_alert_jobs"
+      }
+    ]
+  }
 }

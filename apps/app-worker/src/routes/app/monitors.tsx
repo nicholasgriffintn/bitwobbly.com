@@ -9,6 +9,7 @@ import {
   createMonitorFn,
   deleteMonitorFn,
   updateMonitorFn,
+  triggerSchedulerFn,
 } from "@/server/functions/monitors";
 
 type Monitor = {
@@ -56,6 +57,7 @@ function Monitors() {
   const deleteMonitor = useServerFn(deleteMonitorFn);
   const updateMonitor = useServerFn(updateMonitorFn);
   const listMonitors = useServerFn(listMonitorsFn);
+  const triggerScheduler = useServerFn(triggerSchedulerFn);
 
   const refreshMonitors = async () => {
     try {
@@ -154,6 +156,16 @@ function Monitors() {
     }
   };
 
+  const onTriggerScheduler = async () => {
+    setError(null);
+    try {
+      await triggerScheduler();
+      window.setTimeout(refreshMonitors, 2000);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
   return (
     <div className="page">
       <div className="page-header mb-6">
@@ -169,7 +181,25 @@ function Monitors() {
       {error ? <div className="card error">{error}</div> : null}
 
       <div className="card">
-        <div className="card-title">Monitors</div>
+        <div
+          className="card-title"
+          style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+        >
+          Monitors
+          <button
+            type="button"
+            className="outline"
+            onClick={onTriggerScheduler}
+            title="Manually trigger monitor checks (dev mode)"
+            style={{
+              marginLeft: "auto",
+              fontSize: "0.875rem",
+              padding: "0.25rem 0.75rem",
+            }}
+          >
+            Check Now
+          </button>
+        </div>
         <div className="list">
           {monitors.length ? (
             monitors.map((monitor) => (

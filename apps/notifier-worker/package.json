@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --persist-to ../../.data",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json"
+  },
   "dependencies": {
     "@bitwobbly/shared": "workspace:*"
   },
@@ -11,10 +16,5 @@
     "drizzle-orm": "^0.36.4",
     "typescript": "^5.9.3",
     "wrangler": "^4.60.0"
-  },
-  "scripts": {
-    "dev": "wrangler dev --local",
-    "deploy": "wrangler deploy",
-    "typecheck": "tsc -p tsconfig.json"
   }
 }
