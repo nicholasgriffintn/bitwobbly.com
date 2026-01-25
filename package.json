@@ -8,6 +8,10 @@
   ],
   "scripts": {
     "dev": "concurrently -n app,scheduler,checker,notifier \"pnpm -C apps/app-worker dev\" \"pnpm -C apps/scheduler-worker dev\" \"pnpm -C apps/checker-worker dev\" \"pnpm -C apps/notifier-worker dev\"",
+    "dev:app": "pnpm -C apps/app-worker dev",
+    "dev:scheduler": "pnpm -C apps/scheduler-worker dev",
+    "dev:checker": "pnpm -C apps/checker-worker dev",
+    "dev:notifier": "pnpm -C apps/notifier-worker dev",
     "lint": "pnpm -r lint",
     "lint:monorepo": "sherif",
     "typecheck": "pnpm -r typecheck"
