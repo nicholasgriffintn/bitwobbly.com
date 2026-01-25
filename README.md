@@ -148,6 +148,7 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 - **Rate limiting** -- API endpoints have no rate limiting. Exposed public status page endpoints could be abused.
 - **Manually trigger checks** -- No API endpoint or CLI command to manually trigger monitor checks outside of the scheduler cron.
 - **Build in a pipelines / iceberg integration** -- At the moment, we just stream to pipelines and iceberg, we don't do anything with it.
+- **Configure notifications for issues** -- We don't trigget notifications on issues from the Sentry integration yet.
 
 ### Nice-to-Haves
 
