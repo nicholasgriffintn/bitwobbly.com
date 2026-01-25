@@ -1,5 +1,5 @@
 import { nowIso, createDb, schema } from '@bitwobbly/shared';
-import { eq, and, ne, inArray } from 'drizzle-orm';
+import { eq, and, ne, inArray, desc } from 'drizzle-orm';
 
 export async function rebuildAllSnapshots(env: {
   DB: D1Database;
@@ -7,11 +7,12 @@ export async function rebuildAllSnapshots(env: {
   PUBLIC_TEAM_ID: string;
 }) {
   const db = createDb(env.DB);
-  const pages = await db.select({
-    id: schema.statusPages.id,
-    slug: schema.statusPages.slug,
-    name: schema.statusPages.name,
-  })
+  const pages = await db
+    .select({
+      id: schema.statusPages.id,
+      slug: schema.statusPages.slug,
+      name: schema.statusPages.name,
+    })
     .from(schema.statusPages)
     .where(eq(schema.statusPages.teamId, env.PUBLIC_TEAM_ID));
 
@@ -24,52 +25,80 @@ async function rebuildStatusSnapshot(
   env: { DB: D1Database; KV: KVNamespace; PUBLIC_TEAM_ID: string },
   statusPageId: string,
   slug: string,
-  name: string
+  name: string,
 ) {
   const db = createDb(env.DB);
-  
-  const components = await db.select({
-    id: schema.components.id,
-    name: schema.components.name,
-    description: schema.components.description,
-  })
+
+  const components = await db
+    .select({
+      id: schema.components.id,
+      name: schema.components.name,
+      description: schema.components.description,
+    })
     .from(schema.statusPageComponents)
-    .innerJoin(schema.components, eq(schema.components.id, schema.statusPageComponents.componentId))
+    .innerJoin(
+      schema.components,
+      eq(schema.components.id, schema.statusPageComponents.componentId),
+    )
     .where(eq(schema.statusPageComponents.statusPageId, statusPageId))
     .orderBy(schema.statusPageComponents.sortOrder);
 
   const compsWithStatus = [];
   for (const c of components) {
-    const monitorRows = await db.select({
-      lastStatus: schema.monitorState.lastStatus,
-    })
+    const monitorRows = await db
+      .select({
+        lastStatus: schema.monitorState.lastStatus,
+      })
       .from(schema.componentMonitors)
-      .innerJoin(schema.monitorState, eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId))
+      .innerJoin(
+        schema.monitorState,
+        eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId),
+      )
       .where(eq(schema.componentMonitors.componentId, c.id));
 
     let status: 'up' | 'down' | 'unknown' = 'unknown';
     if (monitorRows.length)
-      status = monitorRows.some((r) => r.lastStatus === 'down')
-        ? 'down'
-        : 'up';
+      status = monitorRows.some((r) => r.lastStatus === 'down') ? 'down' : 'up';
 
     compsWithStatus.push({ ...c, status });
   }
 
-  const incidents = await db.select()
+  const openIncidents = await db
+    .select()
     .from(schema.incidents)
     .where(
       and(
         eq(schema.incidents.teamId, env.PUBLIC_TEAM_ID),
         eq(schema.incidents.statusPageId, statusPageId),
-        ne(schema.incidents.status, 'resolved')
-      )
+        ne(schema.incidents.status, 'resolved'),
+      ),
     )
     .orderBy(schema.incidents.startedAt);
 
+  const cutoffTimestamp = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
+  const resolvedIncidents = await db
+    .select()
+    .from(schema.incidents)
+    .where(
+      and(
+        eq(schema.incidents.teamId, env.PUBLIC_TEAM_ID),
+        eq(schema.incidents.statusPageId, statusPageId),
+        eq(schema.incidents.status, 'resolved'),
+      ),
+    )
+    .orderBy(desc(schema.incidents.startedAt))
+    .limit(50);
+
+  const recentResolvedIncidents = resolvedIncidents.filter(
+    (i) => (i.resolvedAt || 0) >= cutoffTimestamp,
+  );
+
+  const incidents = [...openIncidents, ...recentResolvedIncidents];
+
   const incIds = incidents.map((i) => i.id);
   const updates = incIds.length
-    ? await db.select()
+    ? await db
+        .select()
         .from(schema.incidentUpdates)
         .where(inArray(schema.incidentUpdates.incidentId, incIds))
         .orderBy(schema.incidentUpdates.createdAt)
@@ -110,7 +139,7 @@ export async function openIncident(
   env: { DB: D1Database },
   teamId: string,
   monitorId: string,
-  reason?: string
+  reason?: string,
 ) {
   const db = createDb(env.DB);
   const incidentId = `inc_${crypto.randomUUID()}`;
@@ -136,10 +165,11 @@ export async function openIncident(
     createdAt: nowIso(),
   });
 
-  await db.update(schema.monitorState)
-    .set({ 
-      incidentOpen: 1, 
-      updatedAt: nowIso() 
+  await db
+    .update(schema.monitorState)
+    .set({
+      incidentOpen: 1,
+      updatedAt: nowIso(),
     })
     .where(eq(schema.monitorState.monitorId, monitorId));
 
@@ -149,15 +179,16 @@ export async function openIncident(
 export async function resolveIncident(
   env: { DB: D1Database },
   monitorId: string,
-  incidentId: string
+  incidentId: string,
 ) {
   const db = createDb(env.DB);
   const resolvedAt = Math.floor(Date.now() / 1000);
-  
-  await db.update(schema.incidents)
-    .set({ 
-      status: 'resolved', 
-      resolvedAt 
+
+  await db
+    .update(schema.incidents)
+    .set({
+      status: 'resolved',
+      resolvedAt,
     })
     .where(eq(schema.incidents.id, incidentId));
 
@@ -169,10 +200,11 @@ export async function resolveIncident(
     createdAt: nowIso(),
   });
 
-  await db.update(schema.monitorState)
-    .set({ 
-      incidentOpen: 0, 
-      updatedAt: nowIso() 
+  await db
+    .update(schema.monitorState)
+    .set({
+      incidentOpen: 0,
+      updatedAt: nowIso(),
     })
     .where(eq(schema.monitorState.monitorId, monitorId));
 }

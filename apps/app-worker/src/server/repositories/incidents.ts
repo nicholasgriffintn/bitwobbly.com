@@ -44,6 +44,55 @@ export async function listOpenIncidents(
   return incs.map((i) => ({ ...i, updates: byId.get(i.id) || [] }));
 }
 
+export async function listRecentResolvedIncidents(
+  db: DrizzleD1Database,
+  teamId: string,
+  statusPageId: string | null,
+  daysBack: number = 30,
+) {
+  const cutoffTimestamp =
+    Math.floor(Date.now() / 1000) - daysBack * 24 * 60 * 60;
+
+  const whereClause = statusPageId
+    ? and(
+        eq(schema.incidents.teamId, teamId),
+        eq(schema.incidents.statusPageId, statusPageId),
+        eq(schema.incidents.status, 'resolved'),
+      )
+    : and(
+        eq(schema.incidents.teamId, teamId),
+        eq(schema.incidents.status, 'resolved'),
+      );
+
+  const incs = await db
+    .select()
+    .from(schema.incidents)
+    .where(whereClause)
+    .orderBy(desc(schema.incidents.startedAt))
+    .limit(50);
+
+  const recentIncs = incs.filter((i) => (i.resolvedAt || 0) >= cutoffTimestamp);
+
+  if (!recentIncs.length) return [];
+  const incIds = recentIncs.map((i) => i.id);
+  const updates = incIds.length
+    ? await db
+        .select()
+        .from(schema.incidentUpdates)
+        .where(inArray(schema.incidentUpdates.incidentId, incIds))
+        .orderBy(schema.incidentUpdates.createdAt)
+    : [];
+
+  const byId = new Map<string, typeof updates>();
+  for (const u of updates) {
+    const arr = byId.get(u.incidentId) || [];
+    arr.push(u);
+    byId.set(u.incidentId, arr);
+  }
+
+  return recentIncs.map((i) => ({ ...i, updates: byId.get(i.id) || [] }));
+}
+
 export async function listAllIncidents(
   db: DrizzleD1Database,
   teamId: string,

@@ -11,6 +11,10 @@ import {
   addIncidentUpdate,
   deleteIncident,
 } from "../repositories/incidents";
+import {
+  clearStatusPageCache,
+  clearAllStatusPageCaches,
+} from "../repositories/status-pages";
 import { useAppSession } from "../lib/session";
 
 const authMiddleware = createServerFn().handler(async () => {
@@ -62,6 +66,16 @@ export const createIncidentFn = createServerFn({ method: "POST" })
     const vars = env;
     const db = getDb(vars.DB);
     const created = await createIncident(db, vars.PUBLIC_TEAM_ID, data);
+
+    if (data.statusPageId) {
+      await clearStatusPageCache(
+        db,
+        vars.KV,
+        vars.PUBLIC_TEAM_ID,
+        data.statusPageId,
+      );
+    }
+
     return { ok: true, ...created };
   });
 
@@ -80,6 +94,9 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
         status: data.status,
       },
     );
+
+    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+
     return { ok: true, ...result };
   });
 
@@ -90,5 +107,8 @@ export const deleteIncidentFn = createServerFn({ method: "POST" })
     const vars = env;
     const db = getDb(vars.DB);
     await deleteIncident(db, vars.PUBLIC_TEAM_ID, data.id);
+
+    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+
     return { ok: true };
   });

@@ -1,9 +1,9 @@
 import type { KVNamespace } from "@cloudflare/workers-types";
 import { schema, nowIso, randomId } from "@bitwobbly/shared";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-import { listOpenIncidents } from "./incidents.js";
+import { listOpenIncidents, listRecentResolvedIncidents } from "./incidents.js";
 
 export async function listStatusPages(db: DrizzleD1Database, teamId: string) {
   return await db
@@ -171,7 +171,14 @@ export async function rebuildStatusSnapshot(
     compsWithStatus.push({ ...c, status });
   }
 
-  const incidents = await listOpenIncidents(db, teamId, page.id);
+  const openIncidents = await listOpenIncidents(db, teamId, page.id);
+  const pastIncidents = await listRecentResolvedIncidents(
+    db,
+    teamId,
+    page.id,
+    30,
+  );
+  const allIncidents = [...openIncidents, ...pastIncidents];
 
   const snapshot = {
     generated_at: new Date().toISOString(),
@@ -184,7 +191,7 @@ export async function rebuildStatusSnapshot(
       custom_css: page.customCss,
     },
     components: compsWithStatus,
-    incidents: incidents.map((i) => ({
+    incidents: allIncidents.map((i) => ({
       id: i.id,
       title: i.title,
       status: i.status,
@@ -205,4 +212,27 @@ export async function rebuildStatusSnapshot(
     expirationTtl: 60,
   });
   return snapshot;
+}
+
+export async function clearStatusPageCache(
+  db: DrizzleD1Database,
+  kv: KVNamespace,
+  teamId: string,
+  statusPageId: string,
+) {
+  const page = await getStatusPageById(db, teamId, statusPageId);
+  if (page) {
+    await kv.delete(`status:${page.slug}`);
+  }
+}
+
+export async function clearAllStatusPageCaches(
+  db: DrizzleD1Database,
+  kv: KVNamespace,
+  teamId: string,
+) {
+  const pages = await listStatusPages(db, teamId);
+  for (const page of pages) {
+    await kv.delete(`status:${page.slug}`);
+  }
 }

@@ -63,6 +63,9 @@ function PublicStatusPage() {
   const snapshot = Route.useLoaderData();
   const { page, components, incidents } = snapshot;
 
+  const activeIncidents = incidents.filter((i) => i.status !== 'resolved');
+  const pastIncidents = incidents.filter((i) => i.status === 'resolved');
+
   const statusIcon = (status: "up" | "down" | "unknown") => {
     switch (status) {
       case "up":
@@ -265,7 +268,7 @@ function PublicStatusPage() {
             text-decoration: underline;
           }
 
-          ${page.custom_css || ""}
+          ${page.custom_css || ''}
         `}
       </style>
 
@@ -280,11 +283,11 @@ function PublicStatusPage() {
         {components.length > 0 && (
           <>
             <div
-              className={`overall-status ${components.some((c) => c.status === "down") ? "degraded" : "operational"}`}
+              className={`overall-status ${components.some((c) => c.status === 'down') ? 'degraded' : 'operational'}`}
             >
-              {components.some((c) => c.status === "down")
-                ? "Some systems are experiencing issues"
-                : "All systems operational"}
+              {components.some((c) => c.status === 'down')
+                ? 'Some systems are experiencing issues'
+                : 'All systems operational'}
             </div>
 
             <div className="status-section">
@@ -308,10 +311,39 @@ function PublicStatusPage() {
           </>
         )}
 
-        {incidents.length > 0 && (
+        {activeIncidents.length > 0 && (
           <div className="status-section">
             <h2 className="status-section-title">Active incidents</h2>
-            {incidents.map((incident) => (
+            {activeIncidents.map((incident) => (
+              <div key={incident.id} className="incident-item">
+                <h3 className="incident-title">{incident.title}</h3>
+                <div className="incident-meta">
+                  Started: {formatDate(incident.started_at)}
+                </div>
+                {incident.updates.length > 0 && (
+                  <div className="incident-updates">
+                    {incident.updates.map((update) => (
+                      <div key={update.id} className="incident-update">
+                        <div className="update-header">
+                          <span className="update-status">{update.status}</span>
+                          <span className="update-time">
+                            {formatDate(update.created_at)}
+                          </span>
+                        </div>
+                        <div className="update-message">{update.message}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {pastIncidents.length > 0 && (
+          <div className="status-section">
+            <h2 className="status-section-title">Past incidents</h2>
+            {pastIncidents.map((incident) => (
               <div key={incident.id} className="incident-item">
                 <h3 className="incident-title">{incident.title}</h3>
                 <div className="incident-meta">
@@ -340,18 +372,20 @@ function PublicStatusPage() {
           </div>
         )}
 
-        {components.length === 0 && incidents.length === 0 && (
-          <div className="status-section">
-            <p style={{ textAlign: "center", color: "#6b7280" }}>
-              No components or incidents to display
-            </p>
-          </div>
-        )}
+        {components.length === 0 &&
+          activeIncidents.length === 0 &&
+          pastIncidents.length === 0 && (
+            <div className="status-section">
+              <p style={{ textAlign: 'center', color: '#6b7280' }}>
+                No components or incidents to display
+              </p>
+            </div>
+          )}
 
         <div className="footer">
           Last updated: {formatDate(snapshot.generated_at)}
           <div className="powered-by">
-            Powered by{" "}
+            Powered by{' '}
             <a
               href="https://bitwobbly.com"
               target="_blank"

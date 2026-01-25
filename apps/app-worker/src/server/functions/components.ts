@@ -15,7 +15,10 @@ import {
   unlinkComponentFromStatusPage,
   getComponentsForStatusPage,
 } from "../repositories/components";
-import { getStatusPageById } from "../repositories/status-pages";
+import {
+  getStatusPageById,
+  clearAllStatusPageCaches,
+} from '../repositories/status-pages';
 import { useAppSession } from "../lib/session";
 
 const authMiddleware = createServerFn().handler(async () => {
@@ -76,6 +79,9 @@ export const updateComponentFn = createServerFn({ method: "POST" })
     const db = getDb(vars.DB);
     const { id, ...updates } = data;
     await updateComponent(db, vars.PUBLIC_TEAM_ID, id, updates);
+
+    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+
     return { ok: true };
   });
 
@@ -86,6 +92,9 @@ export const deleteComponentFn = createServerFn({ method: "POST" })
     const vars = env;
     const db = getDb(vars.DB);
     await deleteComponent(db, vars.PUBLIC_TEAM_ID, data.id);
+
+    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+
     return { ok: true };
   });
 
@@ -96,6 +105,9 @@ export const linkMonitorFn = createServerFn({ method: "POST" })
     const vars = env;
     const db = getDb(vars.DB);
     await linkMonitorToComponent(db, data.componentId, data.monitorId);
+
+    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+
     return { ok: true };
   });
 
@@ -106,6 +118,9 @@ export const unlinkMonitorFn = createServerFn({ method: "POST" })
     const vars = env;
     const db = getDb(vars.DB);
     await unlinkMonitorFromComponent(db, data.componentId, data.monitorId);
+
+    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+
     return { ok: true };
   });
 
