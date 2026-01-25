@@ -15,6 +15,13 @@
       "when": 1769324875818,
       "tag": "0001_acoustic_gunslinger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1769346752108,
+      "tag": "0002_nasty_star_brand",
+      "breakpoints": true
     }
   ]
 }

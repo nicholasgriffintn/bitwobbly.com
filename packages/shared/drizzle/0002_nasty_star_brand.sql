@@ -1,0 +1,1 @@
+ALTER TABLE `sentry_projects` ADD `component_id` text REFERENCES components(id);

@@ -110,8 +110,8 @@ const handler = {
 
 export default withSentry(
   () => ({
-    dsn: "https://0b3358d7860a4be0909f9cebdff553b7@ingest.bitwobbly.com/api/5",
-    environment: "production",
+    dsn: 'https://0b3358d7860a4be0909f9cebdff553b7@ingest.bitwobbly.com/5',
+    environment: 'production',
     tracesSampleRate: 1.0,
     beforeSend(event) {
       return null;

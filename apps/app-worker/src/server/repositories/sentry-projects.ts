@@ -4,7 +4,7 @@ import { eq, and, desc } from "drizzle-orm";
 export async function createSentryProject(
   db: DB,
   teamId: string,
-  input: { name: string; platform?: string },
+  input: { name: string; platform?: string; componentId?: string },
 ) {
   const id = randomId("spr");
 
@@ -25,6 +25,7 @@ export async function createSentryProject(
     sentryProjectId,
     name: input.name,
     platform: input.platform || null,
+    componentId: input.componentId || null,
     createdAt: nowIso(),
   });
 
@@ -73,7 +74,11 @@ export async function updateSentryProject(
   db: DB,
   teamId: string,
   projectId: string,
-  input: { name?: string; platform?: string | null },
+  input: {
+    name?: string;
+    platform?: string | null;
+    componentId?: string | null;
+  },
 ) {
   const project = await getSentryProject(db, teamId, projectId);
   if (!project) return null;
@@ -83,6 +88,9 @@ export async function updateSentryProject(
     .set({
       ...(input.name !== undefined && { name: input.name }),
       ...(input.platform !== undefined && { platform: input.platform }),
+      ...(input.componentId !== undefined && {
+        componentId: input.componentId,
+      }),
     })
     .where(
       and(
@@ -119,4 +127,36 @@ export async function getSentryProjectDsn(
   const dsn = `https://${keys[0].publicKey}@${ingestHost}/${project.sentryProjectId}`;
 
   return { project, key: keys[0], dsn };
+}
+
+export async function deleteSentryProject(
+  db: DB,
+  teamId: string,
+  projectId: string,
+) {
+  const project = await getSentryProject(db, teamId, projectId);
+  if (!project) return null;
+
+  await db
+    .delete(schema.sentryKeys)
+    .where(eq(schema.sentryKeys.projectId, projectId));
+
+  await db
+    .delete(schema.sentryEvents)
+    .where(eq(schema.sentryEvents.projectId, projectId));
+
+  await db
+    .delete(schema.sentryIssues)
+    .where(eq(schema.sentryIssues.projectId, projectId));
+
+  await db
+    .delete(schema.sentryProjects)
+    .where(
+      and(
+        eq(schema.sentryProjects.id, projectId),
+        eq(schema.sentryProjects.teamId, teamId),
+      ),
+    );
+
+  return project;
 }

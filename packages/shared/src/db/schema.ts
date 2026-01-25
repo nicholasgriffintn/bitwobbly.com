@@ -168,15 +168,15 @@ export const notificationPolicies = sqliteTable("notification_policies", {
   createdAt: text("created_at").notNull(),
 });
 
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  teamId: text('team_id')
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  teamId: text("team_id")
     .notNull()
     .references(() => teams.id),
-  currentTeamId: text('current_team_id').references(() => teams.id),
-  createdAt: text('created_at').notNull(),
+  currentTeamId: text("current_team_id").references(() => teams.id),
+  createdAt: text("created_at").notNull(),
 });
 
 export const sessions = sqliteTable("sessions", {
@@ -188,96 +188,97 @@ export const sessions = sqliteTable("sessions", {
 });
 
 export const userTeams = sqliteTable(
-  'user_teams',
+  "user_teams",
   {
-    userId: text('user_id')
+    userId: text("user_id")
       .notNull()
       .references(() => users.id),
-    teamId: text('team_id')
+    teamId: text("team_id")
       .notNull()
       .references(() => teams.id),
-    role: text('role').notNull().default('member'),
-    joinedAt: text('joined_at').notNull(),
+    role: text("role").notNull().default("member"),
+    joinedAt: text("joined_at").notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.userId, table.teamId] }),
   }),
 );
 
-export const teamInvites = sqliteTable('team_invites', {
-  id: text('id').primaryKey(),
-  teamId: text('team_id')
+export const teamInvites = sqliteTable("team_invites", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id")
     .notNull()
     .references(() => teams.id),
-  email: text('email'),
-  inviteCode: text('invite_code').notNull().unique(),
-  role: text('role').notNull().default('member'),
-  createdBy: text('created_by')
+  email: text("email"),
+  inviteCode: text("invite_code").notNull().unique(),
+  role: text("role").notNull().default("member"),
+  createdBy: text("created_by")
     .notNull()
     .references(() => users.id),
-  createdAt: text('created_at').notNull(),
-  expiresAt: text('expires_at').notNull(),
-  usedAt: text('used_at'),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  usedAt: text("used_at"),
 });
 
-export const sentryProjects = sqliteTable('sentry_projects', {
-  id: text('id').primaryKey(),
-  teamId: text('team_id')
+export const sentryProjects = sqliteTable("sentry_projects", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id")
     .notNull()
     .references(() => teams.id),
-  sentryProjectId: integer('sentry_project_id').notNull().unique(),
-  name: text('name').notNull(),
-  platform: text('platform'),
-  createdAt: text('created_at').notNull(),
+  sentryProjectId: integer("sentry_project_id").notNull().unique(),
+  name: text("name").notNull(),
+  platform: text("platform"),
+  componentId: text("component_id").references(() => components.id),
+  createdAt: text("created_at").notNull(),
 });
 
-export const sentryKeys = sqliteTable('sentry_keys', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id')
+export const sentryKeys = sqliteTable("sentry_keys", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
     .notNull()
     .references(() => sentryProjects.id),
-  publicKey: text('public_key').notNull(),
-  secretKey: text('secret_key'),
-  label: text('label'),
-  status: text('status').notNull().default('active'),
-  rateLimitPerMinute: integer('rate_limit_per_minute').default(1000),
-  createdAt: text('created_at').notNull(),
-  revokedAt: text('revoked_at'),
+  publicKey: text("public_key").notNull(),
+  secretKey: text("secret_key"),
+  label: text("label"),
+  status: text("status").notNull().default("active"),
+  rateLimitPerMinute: integer("rate_limit_per_minute").default(1000),
+  createdAt: text("created_at").notNull(),
+  revokedAt: text("revoked_at"),
 });
 
-export const sentryIssues = sqliteTable('sentry_issues', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id')
+export const sentryIssues = sqliteTable("sentry_issues", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
     .notNull()
     .references(() => sentryProjects.id),
-  fingerprint: text('fingerprint').notNull(),
-  title: text('title').notNull(),
-  culprit: text('culprit'),
-  level: text('level').notNull(),
-  status: text('status').notNull().default('unresolved'),
-  eventCount: integer('event_count').notNull().default(1),
-  userCount: integer('user_count').notNull().default(0),
-  firstSeenAt: integer('first_seen_at').notNull(),
-  lastSeenAt: integer('last_seen_at').notNull(),
-  resolvedAt: integer('resolved_at'),
-  createdAt: text('created_at').notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  title: text("title").notNull(),
+  culprit: text("culprit"),
+  level: text("level").notNull(),
+  status: text("status").notNull().default("unresolved"),
+  eventCount: integer("event_count").notNull().default(1),
+  userCount: integer("user_count").notNull().default(0),
+  firstSeenAt: integer("first_seen_at").notNull(),
+  lastSeenAt: integer("last_seen_at").notNull(),
+  resolvedAt: integer("resolved_at"),
+  createdAt: text("created_at").notNull(),
 });
 
-export const sentryEvents = sqliteTable('sentry_events', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id')
+export const sentryEvents = sqliteTable("sentry_events", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
     .notNull()
     .references(() => sentryProjects.id),
-  type: text('type').notNull(),
-  level: text('level'),
-  message: text('message'),
-  fingerprint: text('fingerprint'),
-  issueId: text('issue_id').references(() => sentryIssues.id),
-  release: text('release'),
-  environment: text('environment'),
-  r2Key: text('r2_key').notNull(),
-  receivedAt: integer('received_at').notNull(),
-  createdAt: text('created_at').notNull(),
+  type: text("type").notNull(),
+  level: text("level"),
+  message: text("message"),
+  fingerprint: text("fingerprint"),
+  issueId: text("issue_id").references(() => sentryIssues.id),
+  release: text("release"),
+  environment: text("environment"),
+  r2Key: text("r2_key").notNull(),
+  receivedAt: integer("received_at").notNull(),
+  createdAt: text("created_at").notNull(),
 });
 
 export type Team = typeof teams.$inferSelect;

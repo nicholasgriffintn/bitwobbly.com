@@ -82,3 +82,25 @@ export async function getSentryIssue(
 
   return issues[0] || null;
 }
+
+export async function updateSentryIssue(
+  db: DB,
+  projectId: string,
+  issueId: string,
+  updates: { status?: string },
+) {
+  const issue = await getSentryIssue(db, projectId, issueId);
+  if (!issue) return null;
+
+  await db
+    .update(schema.sentryIssues)
+    .set(updates)
+    .where(
+      and(
+        eq(schema.sentryIssues.id, issueId),
+        eq(schema.sentryIssues.projectId, projectId),
+      ),
+    );
+
+  return getSentryIssue(db, projectId, issueId);
+}
