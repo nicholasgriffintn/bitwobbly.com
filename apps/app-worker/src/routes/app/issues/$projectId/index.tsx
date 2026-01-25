@@ -396,27 +396,31 @@ function ProjectIssues() {
                   : "No issues found."}
               </div>
             )
-          ) : events.length ? (
-            events.map((event) => (
-              <div key={event.id} className="list-item">
-                <div style={{ flex: 1 }}>
-                  <div className="list-title">
-                    {event.message || `${event.type} event`}
-                  </div>
-                  <div className="muted" style={{ marginTop: "0.25rem" }}>
-                    {event.level && (
-                      <>
-                        <span className={`status ${event.level}`}>
-                          {event.level}
-                        </span>
-                        {" · "}
-                      </>
-                    )}
-                    {formatRelativeTime(event.receivedAt)}
+          ) : activeTab === "events" ? (
+            events.length ? (
+              events.map((event) => (
+                <div key={event.id} className="list-item">
+                  <div style={{ flex: 1 }}>
+                    <div className="list-title">
+                      {event.message || `${event.type} event`}
+                    </div>
+                    <div className="muted" style={{ marginTop: "0.25rem" }}>
+                      {event.level && (
+                        <>
+                          <span className={`status ${event.level}`}>
+                            {event.level}
+                          </span>
+                          {" · "}
+                        </>
+                      )}
+                      {formatRelativeTime(event.receivedAt)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))
+            ) : (
+              <div className="muted">No events found.</div>
+            )
           ) : activeTab === "analytics" ? (
             analyticsError ? (
               <div
@@ -537,9 +541,7 @@ function ProjectIssues() {
                 </div>
               </div>
             )
-          ) : (
-            <div className="muted">No events found.</div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
