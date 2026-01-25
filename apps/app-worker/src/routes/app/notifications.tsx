@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
+import { Modal } from "@/components/Modal";
 import { listMonitorsFn } from "@/server/functions/monitors";
 import {
   listChannelsFn,
@@ -66,6 +67,9 @@ export default function Notifications() {
   const [monitors] = useState<Monitor[]>(initialMonitors);
   const [error, setError] = useState<string | null>(null);
 
+  const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+
   const [channelType, setChannelType] = useState<"webhook" | "email">(
     "webhook",
   );
@@ -124,6 +128,8 @@ export default function Notifications() {
       setEmailTo("");
       setEmailFrom("");
       setEmailSubject("");
+      setChannelType("webhook");
+      setIsChannelModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -143,6 +149,9 @@ export default function Notifications() {
       });
       const res = await listPolicies();
       setPolicies(res.policies);
+      setThreshold("3");
+      setNotifyOnRecovery(true);
+      setIsPolicyModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -190,132 +199,15 @@ export default function Notifications() {
           <h2>Notifications</h2>
           <p>Route incidents to webhooks or email.</p>
         </div>
+        <div className="button-row">
+          <button onClick={() => setIsChannelModalOpen(true)}>
+            Add Channel
+          </button>
+          <button onClick={() => setIsPolicyModalOpen(true)}>Add Policy</button>
+        </div>
       </div>
 
       {error ? <div className="card error">{error}</div> : null}
-
-      <div className="grid two">
-        <div className="card">
-          <div className="card-title">Create notification channel</div>
-          <form className="form" onSubmit={onCreateChannel}>
-            <label htmlFor="channel-type">Channel type</label>
-            <select
-              id="channel-type"
-              value={channelType}
-              onChange={(event) =>
-                setChannelType(event.target.value as "webhook" | "email")
-              }
-            >
-              <option value="webhook">Webhook</option>
-              <option value="email">Email</option>
-            </select>
-
-            <label htmlFor="channel-label">Label (optional)</label>
-            <input
-              id="channel-label"
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              placeholder="Primary incident channel"
-            />
-
-            {channelType === "webhook" ? (
-              <>
-                <label htmlFor="webhook-url">Webhook URL</label>
-                <input
-                  id="webhook-url"
-                  type="url"
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  placeholder="https://example.com/webhook"
-                  required
-                />
-              </>
-            ) : (
-              <>
-                <label htmlFor="email-to">To address</label>
-                <input
-                  id="email-to"
-                  type="email"
-                  value={emailTo}
-                  onChange={(event) => setEmailTo(event.target.value)}
-                  placeholder="alerts@example.com"
-                  required
-                />
-                <label htmlFor="email-from">From address (optional)</label>
-                <input
-                  id="email-from"
-                  type="email"
-                  value={emailFrom}
-                  onChange={(event) => setEmailFrom(event.target.value)}
-                  placeholder="noreply@bitwobbly.com"
-                />
-                <label htmlFor="email-subject">Subject prefix (optional)</label>
-                <input
-                  id="email-subject"
-                  value={emailSubject}
-                  onChange={(event) => setEmailSubject(event.target.value)}
-                  placeholder="[Alert]"
-                />
-              </>
-            )}
-
-            <button type="submit">Save channel</button>
-          </form>
-        </div>
-
-        <div className="card">
-          <div className="card-title">Create policy</div>
-          <form className="form" onSubmit={onCreatePolicy}>
-            <label htmlFor="policy-monitor">Monitor</label>
-            <select
-              id="policy-monitor"
-              value={monitorId}
-              onChange={(event) => setMonitorId(event.target.value)}
-            >
-              <option value="">Select monitor</option>
-              {monitors.map((monitor) => (
-                <option key={monitor.id} value={monitor.id}>
-                  {monitor.name}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="policy-channel">Channel</label>
-            <select
-              id="policy-channel"
-              value={channelId}
-              onChange={(event) => setChannelId(event.target.value)}
-            >
-              <option value="">Select channel</option>
-              {channels.map((channel) => {
-                const display = getChannelDisplay(channel);
-                return (
-                  <option key={channel.id} value={channel.id}>
-                    [{channel.type}] {display.title}
-                  </option>
-                );
-              })}
-            </select>
-            <label htmlFor="policy-threshold">Failure threshold</label>
-            <input
-              id="policy-threshold"
-              type="number"
-              min="1"
-              max="10"
-              value={threshold}
-              onChange={(event) => setThreshold(event.target.value)}
-            />
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={notifyOnRecovery}
-                onChange={(event) => setNotifyOnRecovery(event.target.checked)}
-              />
-              Notify on recovery
-            </label>
-            <button type="submit">Save policy</button>
-          </form>
-        </div>
-      </div>
 
       <div className="grid two">
         <div className="card">
@@ -383,6 +275,153 @@ export default function Notifications() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={isChannelModalOpen}
+        onClose={() => setIsChannelModalOpen(false)}
+        title="Create Notification Channel"
+      >
+        <form className="form" onSubmit={onCreateChannel}>
+          <label htmlFor="channel-type">Channel type</label>
+          <select
+            id="channel-type"
+            value={channelType}
+            onChange={(event) =>
+              setChannelType(event.target.value as "webhook" | "email")
+            }
+          >
+            <option value="webhook">Webhook</option>
+            <option value="email">Email</option>
+          </select>
+
+          <label htmlFor="channel-label">Label (optional)</label>
+          <input
+            id="channel-label"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            placeholder="Primary incident channel"
+          />
+
+          {channelType === "webhook" ? (
+            <>
+              <label htmlFor="webhook-url">Webhook URL</label>
+              <input
+                id="webhook-url"
+                type="url"
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="https://example.com/webhook"
+                required
+              />
+            </>
+          ) : (
+            <>
+              <label htmlFor="email-to">To address</label>
+              <input
+                id="email-to"
+                type="email"
+                value={emailTo}
+                onChange={(event) => setEmailTo(event.target.value)}
+                placeholder="alerts@example.com"
+                required
+              />
+              <label htmlFor="email-from">From address (optional)</label>
+              <input
+                id="email-from"
+                type="email"
+                value={emailFrom}
+                onChange={(event) => setEmailFrom(event.target.value)}
+                placeholder="noreply@bitwobbly.com"
+              />
+              <label htmlFor="email-subject">Subject prefix (optional)</label>
+              <input
+                id="email-subject"
+                value={emailSubject}
+                onChange={(event) => setEmailSubject(event.target.value)}
+                placeholder="[Alert]"
+              />
+            </>
+          )}
+
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Save Channel</button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsChannelModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        title="Create Notification Policy"
+      >
+        <form className="form" onSubmit={onCreatePolicy}>
+          <label htmlFor="policy-monitor">Monitor</label>
+          <select
+            id="policy-monitor"
+            value={monitorId}
+            onChange={(event) => setMonitorId(event.target.value)}
+            required
+          >
+            <option value="">Select monitor</option>
+            {monitors.map((monitor) => (
+              <option key={monitor.id} value={monitor.id}>
+                {monitor.name}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="policy-channel">Channel</label>
+          <select
+            id="policy-channel"
+            value={channelId}
+            onChange={(event) => setChannelId(event.target.value)}
+            required
+          >
+            <option value="">Select channel</option>
+            {channels.map((channel) => {
+              const display = getChannelDisplay(channel);
+              return (
+                <option key={channel.id} value={channel.id}>
+                  [{channel.type}] {display.title}
+                </option>
+              );
+            })}
+          </select>
+          <label htmlFor="policy-threshold">Failure threshold</label>
+          <input
+            id="policy-threshold"
+            type="number"
+            min="1"
+            max="10"
+            value={threshold}
+            onChange={(event) => setThreshold(event.target.value)}
+          />
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={notifyOnRecovery}
+              onChange={(event) => setNotifyOnRecovery(event.target.checked)}
+            />
+            Notify on recovery
+          </label>
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Save Policy</button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsPolicyModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -2,10 +2,12 @@ import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
+import { Modal } from "@/components/Modal";
 import { listMonitorsFn } from "@/server/functions/monitors";
 import {
   listComponentsFn,
   createComponentFn,
+  updateComponentFn,
   deleteComponentFn,
   linkMonitorFn,
   unlinkMonitorFn,
@@ -47,7 +49,16 @@ export default function Components() {
   const [description, setDescription] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingComponentId, setEditingComponentId] = useState<string | null>(
+    null,
+  );
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
   const createComponent = useServerFn(createComponentFn);
+  const updateComponent = useServerFn(updateComponentFn);
   const deleteComponent = useServerFn(deleteComponentFn);
   const listComponents = useServerFn(listComponentsFn);
   const linkMonitor = useServerFn(linkMonitorFn);
@@ -72,6 +83,34 @@ export default function Components() {
       await refreshComponents();
       setName("");
       setDescription("");
+      setIsCreateModalOpen(false);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const startEditing = (component: Component) => {
+    setEditingComponentId(component.id);
+    setEditName(component.name);
+    setEditDescription(component.description || "");
+    setIsEditModalOpen(true);
+  };
+
+  const onUpdate = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editingComponentId) return;
+    setError(null);
+    try {
+      await updateComponent({
+        data: {
+          id: editingComponentId,
+          name: editName,
+          description: editDescription || null,
+        },
+      });
+      await refreshComponents();
+      setEditingComponentId(null);
+      setIsEditModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -114,31 +153,12 @@ export default function Components() {
             Group monitors into logical service components for status pages.
           </p>
         </div>
+        <button onClick={() => setIsCreateModalOpen(true)}>
+          Create Component
+        </button>
       </div>
 
       {error ? <div className="card error">{error}</div> : null}
-
-      <div className="card">
-        <div className="card-title">Create component</div>
-        <form className="form" onSubmit={onCreate}>
-          <label htmlFor="component-name">Name</label>
-          <input
-            id="component-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="API Gateway"
-            required
-          />
-          <label htmlFor="component-description">Description (optional)</label>
-          <input
-            id="component-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Core API services"
-          />
-          <button type="submit">Save component</button>
-        </form>
-      </div>
 
       <div className="card">
         <div className="card-title">Components</div>
@@ -150,10 +170,10 @@ export default function Components() {
                   <div>
                     <div className="list-title">{component.name}</div>
                     <div className="muted">
-                      {component.description || 'No description'}
-                      {' · '}
+                      {component.description || "No description"}
+                      {" · "}
                       {component.monitorIds.length} monitor
-                      {component.monitorIds.length !== 1 ? 's' : ''} linked
+                      {component.monitorIds.length !== 1 ? "s" : ""} linked
                     </div>
                   </div>
                   <div className="button-row">
@@ -166,7 +186,14 @@ export default function Components() {
                         )
                       }
                     >
-                      {expandedId === component.id ? 'Hide' : 'Link'} monitors
+                      {expandedId === component.id ? "Hide" : "Link"} monitors
+                    </button>
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={() => startEditing(component)}
+                    >
+                      Edit
                     </button>
                     <button
                       type="button"
@@ -215,6 +242,74 @@ export default function Components() {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create Component"
+      >
+        <form className="form" onSubmit={onCreate}>
+          <label htmlFor="component-name">Name</label>
+          <input
+            id="component-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="API Gateway"
+            required
+          />
+          <label htmlFor="component-description">Description (optional)</label>
+          <input
+            id="component-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Core API services"
+          />
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Create Component</button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Component"
+      >
+        <form className="form" onSubmit={onUpdate}>
+          <label htmlFor="edit-component-name">Name</label>
+          <input
+            id="edit-component-name"
+            value={editName}
+            onChange={(event) => setEditName(event.target.value)}
+            required
+          />
+          <label htmlFor="edit-component-description">
+            Description (optional)
+          </label>
+          <input
+            id="edit-component-description"
+            value={editDescription}
+            onChange={(event) => setEditDescription(event.target.value)}
+          />
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Save Changes</button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

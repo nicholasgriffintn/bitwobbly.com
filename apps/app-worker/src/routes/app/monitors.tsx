@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { MetricsChart } from "@/components/MetricsChart";
+import { Modal } from "@/components/Modal";
 import {
   listMonitorsFn,
   createMonitorFn,
@@ -42,6 +43,8 @@ function Monitors() {
   const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(
     null,
   );
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMonitorId, setEditingMonitorId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editUrl, setEditUrl] = useState("");
@@ -79,6 +82,10 @@ function Monitors() {
       await refreshMonitors();
       setName("");
       setUrl("");
+      setInterval("60");
+      setTimeout("8000");
+      setThreshold("3");
+      setIsCreateModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -101,10 +108,12 @@ function Monitors() {
     setEditInterval(String(monitor.intervalSeconds));
     setEditTimeout(String(monitor.timeoutMs));
     setEditThreshold(String(monitor.failureThreshold));
+    setIsEditModalOpen(true);
   };
 
   const cancelEditing = () => {
     setEditingMonitorId(null);
+    setIsEditModalOpen(false);
   };
 
   const onUpdate = async (event: FormEvent) => {
@@ -124,6 +133,7 @@ function Monitors() {
       });
       await refreshMonitors();
       setEditingMonitorId(null);
+      setIsEditModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -151,67 +161,12 @@ function Monitors() {
           <h2>Monitors</h2>
           <p>Track availability, latency, and incident thresholds.</p>
         </div>
+        <button onClick={() => setIsCreateModalOpen(true)}>
+          Create Monitor
+        </button>
       </div>
 
       {error ? <div className="card error">{error}</div> : null}
-
-      <div className="card">
-        <div className="card-title">Create monitor</div>
-        <form className="form" onSubmit={onCreate}>
-          <label htmlFor="monitor-name">Name</label>
-          <input
-            id="monitor-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="API gateway"
-            required
-          />
-          <label htmlFor="monitor-url">URL</label>
-          <input
-            id="monitor-url"
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://example.com/health"
-            required
-          />
-          <div className="grid three">
-            <div>
-              <label htmlFor="monitor-interval">Interval (sec)</label>
-              <input
-                id="monitor-interval"
-                type="number"
-                min="30"
-                max="3600"
-                value={interval}
-                onChange={(event) => setInterval(event.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="monitor-timeout">Timeout (ms)</label>
-              <input
-                id="monitor-timeout"
-                type="number"
-                min="1000"
-                max="30000"
-                value={timeout}
-                onChange={(event) => setTimeout(event.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="monitor-threshold">Failure threshold</label>
-              <input
-                id="monitor-threshold"
-                type="number"
-                min="1"
-                max="10"
-                value={threshold}
-                onChange={(event) => setThreshold(event.target.value)}
-              />
-            </div>
-          </div>
-          <button type="submit">Save monitor</button>
-        </form>
-      </div>
 
       <div className="card">
         <div className="card-title">Monitors</div>
@@ -284,88 +239,6 @@ function Monitors() {
                     </div>
                   </div>
 
-                  {editingMonitorId === monitor.id && (
-                    <div className="nested-form">
-                      <form className="form" onSubmit={onUpdate}>
-                        <div className="grid two">
-                          <div>
-                            <label htmlFor={`edit-name-${monitor.id}`}>
-                              Name
-                            </label>
-                            <input
-                              id={`edit-name-${monitor.id}`}
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor={`edit-url-${monitor.id}`}>
-                              URL
-                            </label>
-                            <input
-                              id={`edit-url-${monitor.id}`}
-                              value={editUrl}
-                              onChange={(e) => setEditUrl(e.target.value)}
-                              required
-                            />
-                          </div>
-                        </div>
-                        <div className="grid three">
-                          <div>
-                            <label htmlFor={`edit-interval-${monitor.id}`}>
-                              Interval (sec)
-                            </label>
-                            <input
-                              id={`edit-interval-${monitor.id}`}
-                              type="number"
-                              min="30"
-                              max="3600"
-                              value={editInterval}
-                              onChange={(e) => setEditInterval(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor={`edit-timeout-${monitor.id}`}>
-                              Timeout (ms)
-                            </label>
-                            <input
-                              id={`edit-timeout-${monitor.id}`}
-                              type="number"
-                              min="1000"
-                              max="30000"
-                              value={editTimeout}
-                              onChange={(e) => setEditTimeout(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor={`edit-threshold-${monitor.id}`}>
-                              Failure threshold
-                            </label>
-                            <input
-                              id={`edit-threshold-${monitor.id}`}
-                              type="number"
-                              min="1"
-                              max="10"
-                              value={editThreshold}
-                              onChange={(e) => setEditThreshold(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div className="button-row">
-                          <button type="submit">Save changes</button>
-                          <button
-                            type="button"
-                            className="outline"
-                            onClick={cancelEditing}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
                   {expandedMonitorId === monitor.id && (
                     <div style={{ marginTop: "1rem" }}>
                       <MetricsChart monitorId={monitor.id} />
@@ -379,6 +252,146 @@ function Monitors() {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create Monitor"
+      >
+        <form className="form" onSubmit={onCreate}>
+          <label htmlFor="monitor-name">Name</label>
+          <input
+            id="monitor-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="API gateway"
+            required
+          />
+          <label htmlFor="monitor-url">URL</label>
+          <input
+            id="monitor-url"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            placeholder="https://example.com/health"
+            required
+          />
+          <div className="grid three">
+            <div>
+              <label htmlFor="monitor-interval">Interval (sec)</label>
+              <input
+                id="monitor-interval"
+                type="number"
+                min="30"
+                max="3600"
+                value={interval}
+                onChange={(event) => setInterval(event.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="monitor-timeout">Timeout (ms)</label>
+              <input
+                id="monitor-timeout"
+                type="number"
+                min="1000"
+                max="30000"
+                value={timeout}
+                onChange={(event) => setTimeout(event.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="monitor-threshold">Failure threshold</label>
+              <input
+                id="monitor-threshold"
+                type="number"
+                min="1"
+                max="10"
+                value={threshold}
+                onChange={(event) => setThreshold(event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Create Monitor</button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={cancelEditing}
+        title="Edit Monitor"
+      >
+        <form className="form" onSubmit={onUpdate}>
+          <div className="grid two">
+            <div>
+              <label htmlFor="edit-name">Name</label>
+              <input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-url">URL</label>
+              <input
+                id="edit-url"
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="grid three">
+            <div>
+              <label htmlFor="edit-interval">Interval (sec)</label>
+              <input
+                id="edit-interval"
+                type="number"
+                min="30"
+                max="3600"
+                value={editInterval}
+                onChange={(e) => setEditInterval(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-timeout">Timeout (ms)</label>
+              <input
+                id="edit-timeout"
+                type="number"
+                min="1000"
+                max="30000"
+                value={editTimeout}
+                onChange={(e) => setEditTimeout(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-threshold">Failure threshold</label>
+              <input
+                id="edit-threshold"
+                type="number"
+                min="1"
+                max="10"
+                value={editThreshold}
+                onChange={(e) => setEditThreshold(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Save Changes</button>
+            <button type="button" className="outline" onClick={cancelEditing}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

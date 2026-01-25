@@ -48,6 +48,23 @@ export async function createComponent(
   return { id };
 }
 
+export async function updateComponent(
+  db: DrizzleD1Database,
+  teamId: string,
+  componentId: string,
+  input: { name?: string; description?: string | null },
+) {
+  await db
+    .update(schema.components)
+    .set(input)
+    .where(
+      and(
+        eq(schema.components.teamId, teamId),
+        eq(schema.components.id, componentId),
+      ),
+    );
+}
+
 export async function deleteComponent(
   db: DrizzleD1Database,
   teamId: string,

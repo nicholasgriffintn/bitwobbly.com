@@ -72,6 +72,36 @@ export async function getStatusPageBySlug(
   return rows[0] || null;
 }
 
+export async function updateStatusPage(
+  db: DrizzleD1Database,
+  teamId: string,
+  statusPageId: string,
+  input: {
+    name?: string;
+    slug?: string;
+    logo_url?: string | null;
+    brand_color?: string;
+    custom_css?: string | null;
+  },
+) {
+  const updates: any = {};
+  if (input.name !== undefined) updates.name = input.name;
+  if (input.slug !== undefined) updates.slug = input.slug;
+  if (input.logo_url !== undefined) updates.logoUrl = input.logo_url;
+  if (input.brand_color !== undefined) updates.brandColor = input.brand_color;
+  if (input.custom_css !== undefined) updates.customCss = input.custom_css;
+
+  await db
+    .update(schema.statusPages)
+    .set(updates)
+    .where(
+      and(
+        eq(schema.statusPages.teamId, teamId),
+        eq(schema.statusPages.id, statusPageId),
+      ),
+    );
+}
+
 export async function deleteStatusPage(
   db: DrizzleD1Database,
   teamId: string,

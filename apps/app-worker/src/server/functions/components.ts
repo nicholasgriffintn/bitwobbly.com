@@ -7,6 +7,7 @@ import { getDb } from "../lib/db";
 import {
   listComponents,
   createComponent,
+  updateComponent,
   deleteComponent,
   linkMonitorToComponent,
   unlinkMonitorFromComponent,
@@ -28,6 +29,12 @@ const authMiddleware = createServerFn().handler(async () => {
 const CreateComponentSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+});
+
+const UpdateComponentSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
 });
 
 const LinkMonitorSchema = z.object({
@@ -59,6 +66,17 @@ export const createComponentFn = createServerFn({ method: "POST" })
     const db = getDb(vars.DB);
     const created = await createComponent(db, vars.PUBLIC_TEAM_ID, data);
     return { ok: true, ...created };
+  });
+
+export const updateComponentFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => UpdateComponentSchema.parse(data))
+  .handler(async ({ data }) => {
+    await authMiddleware();
+    const vars = env;
+    const db = getDb(vars.DB);
+    const { id, ...updates } = data;
+    await updateComponent(db, vars.PUBLIC_TEAM_ID, id, updates);
+    return { ok: true };
   });
 
 export const deleteComponentFn = createServerFn({ method: "POST" })

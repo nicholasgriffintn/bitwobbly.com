@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
+import { Modal } from "@/components/Modal";
 import { listStatusPagesFn } from "@/server/functions/status-pages";
 import {
   listIncidentsFn,
@@ -64,7 +65,11 @@ export default function Incidents() {
   const [statusPageId, setStatusPageId] = useState("");
   const [message, setMessage] = useState("");
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updatingIncidentId, setUpdatingIncidentId] = useState<string | null>(
+    null,
+  );
   const [updateMessage, setUpdateMessage] = useState("");
   const [updateStatus, setUpdateStatus] =
     useState<(typeof STATUS_OPTIONS)[number]["value"]>("investigating");
@@ -100,24 +105,37 @@ export default function Incidents() {
       setStatus("investigating");
       setStatusPageId("");
       setMessage("");
+      setIsCreateModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const onUpdate = async (incidentId: string) => {
+  const openUpdateModal = (incident: Incident) => {
+    setUpdatingIncidentId(incident.id);
+    setUpdateStatus(
+      incident.status as (typeof STATUS_OPTIONS)[number]["value"],
+    );
+    setUpdateMessage("");
+    setIsUpdateModalOpen(true);
+  };
+
+  const onUpdate = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!updatingIncidentId) return;
     setError(null);
     try {
       await updateIncident({
         data: {
-          incidentId,
+          incidentId: updatingIncidentId,
           message: updateMessage,
           status: updateStatus,
         },
       });
       await refreshIncidents();
       setUpdateMessage("");
-      setExpandedId(null);
+      setUpdatingIncidentId(null);
+      setIsUpdateModalOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -150,12 +168,89 @@ export default function Incidents() {
           <h2>Incidents</h2>
           <p>Track and communicate service disruptions.</p>
         </div>
+        <button onClick={() => setIsCreateModalOpen(true)}>
+          Report Incident
+        </button>
       </div>
 
       {error ? <div className="card error">{error}</div> : null}
 
       <div className="card">
-        <div className="card-title">Report incident</div>
+        <div className="card-title">Incidents</div>
+        <div className="list">
+          {incidents.length ? (
+            incidents.map((incident) => (
+              <div key={incident.id} className="list-item-expanded">
+                <div className="list-row">
+                  <div>
+                    <div className="list-title">
+                      {incident.title}
+                      <span
+                        className={`status-pill ${incident.status}`}
+                        style={{ marginLeft: "0.5rem" }}
+                      >
+                        {incident.status}
+                      </span>
+                    </div>
+                    <div className="muted">
+                      Started {formatDate(incident.startedAt)}
+                      {incident.resolvedAt &&
+                        ` · Resolved ${formatDate(incident.resolvedAt)}`}
+                      {" · "}
+                      {getStatusPageName(incident.statusPageId)}
+                    </div>
+                  </div>
+                  <div className="button-row">
+                    {incident.status !== "resolved" && (
+                      <button
+                        type="button"
+                        className="outline"
+                        onClick={() => openUpdateModal(incident)}
+                      >
+                        Update
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={() => onDelete(incident.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {incident.updates.length > 0 && (
+                  <div className="timeline">
+                    {incident.updates.map((update) => (
+                      <div key={update.id} className="timeline-item">
+                        <span className={`status-dot ${update.status}`} />
+                        <div>
+                          <div className="timeline-status">{update.status}</div>
+                          <div className="timeline-message">
+                            {update.message}
+                          </div>
+                          <div className="muted">
+                            {new Date(update.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="muted">No incidents recorded.</div>
+          )}
+        </div>
+      </div>
+
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Report Incident"
+      >
         <form className="form" onSubmit={onCreate}>
           <label htmlFor="incident-title">Title</label>
           <input
@@ -174,7 +269,7 @@ export default function Incidents() {
                 onChange={(event) =>
                   setStatus(
                     event.target
-                      .value as (typeof STATUS_OPTIONS)[number]['value'],
+                      .value as (typeof STATUS_OPTIONS)[number]["value"],
                   )
                 }
               >
@@ -209,129 +304,64 @@ export default function Incidents() {
             placeholder="We are investigating reports of..."
             rows={3}
           />
-          <button type="submit">Create incident</button>
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit">Create Incident</button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </form>
-      </div>
+      </Modal>
 
-      <div className="card">
-        <div className="card-title">Incidents</div>
-        <div className="list">
-          {incidents.length ? (
-            incidents.map((incident) => (
-              <div key={incident.id} className="list-item-expanded">
-                <div className="list-row">
-                  <div>
-                    <div className="list-title">
-                      {incident.title}
-                      <span
-                        className={`status-pill ${incident.status}`}
-                        style={{ marginLeft: '0.5rem' }}
-                      >
-                        {incident.status}
-                      </span>
-                    </div>
-                    <div className="muted">
-                      Started {formatDate(incident.startedAt)}
-                      {incident.resolvedAt &&
-                        ` · Resolved ${formatDate(incident.resolvedAt)}`}
-                      {' · '}
-                      {getStatusPageName(incident.statusPageId)}
-                    </div>
-                  </div>
-                  <div className="button-row">
-                    {incident.status !== 'resolved' && (
-                      <button
-                        type="button"
-                        className="outline"
-                        onClick={() => {
-                          setExpandedId(
-                            expandedId === incident.id ? null : incident.id,
-                          );
-                          setUpdateStatus(
-                            incident.status as (typeof STATUS_OPTIONS)[number]['value'],
-                          );
-                        }}
-                      >
-                        {expandedId === incident.id ? 'Cancel' : 'Update'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="outline"
-                      onClick={() => onDelete(incident.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                {expandedId === incident.id && (
-                  <div className="nested-form">
-                    <label htmlFor={`update-status-${incident.id}`}>
-                      New status
-                    </label>
-                    <select
-                      id={`update-status-${incident.id}`}
-                      value={updateStatus}
-                      onChange={(event) =>
-                        setUpdateStatus(
-                          event.target
-                            .value as (typeof STATUS_OPTIONS)[number]['value'],
-                        )
-                      }
-                    >
-                      {STATUS_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <label htmlFor={`update-message-${incident.id}`}>
-                      Update message
-                    </label>
-                    <textarea
-                      id={`update-message-${incident.id}`}
-                      value={updateMessage}
-                      onChange={(event) => setUpdateMessage(event.target.value)}
-                      placeholder="The issue has been identified..."
-                      rows={2}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onUpdate(incident.id)}
-                      disabled={!updateMessage.trim()}
-                    >
-                      Post update
-                    </button>
-                  </div>
-                )}
-
-                {incident.updates.length > 0 && (
-                  <div className="timeline">
-                    {incident.updates.map((update) => (
-                      <div key={update.id} className="timeline-item">
-                        <span className={`status-dot ${update.status}`} />
-                        <div>
-                          <div className="timeline-status">{update.status}</div>
-                          <div className="timeline-message">
-                            {update.message}
-                          </div>
-                          <div className="muted">
-                            {new Date(update.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="muted">No incidents recorded.</div>
-          )}
-        </div>
-      </div>
+      <Modal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        title="Update Incident"
+      >
+        <form className="form" onSubmit={onUpdate}>
+          <label htmlFor="update-status">New status</label>
+          <select
+            id="update-status"
+            value={updateStatus}
+            onChange={(event) =>
+              setUpdateStatus(
+                event.target.value as (typeof STATUS_OPTIONS)[number]["value"],
+              )
+            }
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="update-message">Update message</label>
+          <textarea
+            id="update-message"
+            value={updateMessage}
+            onChange={(event) => setUpdateMessage(event.target.value)}
+            placeholder="The issue has been identified..."
+            rows={3}
+            required
+          />
+          <div className="button-row" style={{ marginTop: "1rem" }}>
+            <button type="submit" disabled={!updateMessage.trim()}>
+              Post Update
+            </button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsUpdateModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
