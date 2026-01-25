@@ -20,7 +20,6 @@ export async function createUser(
   input: {
     email: string;
     password: string;
-    team_id: UUID;
   },
 ): Promise<{ user: User }> {
   const existing = await db
@@ -30,26 +29,35 @@ export async function createUser(
     .limit(1);
 
   if (existing.length > 0) {
-    throw new Error("User with this email already exists");
+    throw new Error('User with this email already exists');
   }
 
-  const passwordHash = await hashPassword(input.password);
-  const userId = randomId("usr");
+  const pwHash = await hashPassword(input.password);
+  const userId = randomId('usr');
   const createdAt = nowIso();
+  const tempTeamId = randomId('team');
+
+  await db.insert(schema.teams).values({
+    id: tempTeamId,
+    name: 'Default Team',
+    createdAt,
+  });
 
   await db.insert(schema.users).values({
     id: userId,
     email: input.email,
-    passwordHash,
-    teamId: input.team_id,
+    passwordHash: pwHash,
+    teamId: tempTeamId,
+    currentTeamId: null,
     createdAt,
   });
 
   const user = {
     id: userId,
     email: input.email,
-    passwordHash,
-    teamId: input.team_id,
+    passwordHash: pwHash,
+    teamId: tempTeamId,
+    currentTeamId: null,
     createdAt,
   };
 

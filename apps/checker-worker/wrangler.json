@@ -11,16 +11,14 @@
     "logs": {
       "enabled": false,
       "head_sampling_rate": 1,
-      "invocation_logs": false,
-    },
+      "invocation_logs": false
+    }
   },
   "dev": {
     "port": 8787,
     "inspector_port": 9231
   },
-  "vars": {
-    "PUBLIC_TEAM_ID": "team_demo"
-  },
+  "vars": {},
   "d1_databases": [
     {
       "binding": "DB",

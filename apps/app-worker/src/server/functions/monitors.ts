@@ -1,7 +1,6 @@
-import { createServerFn, createMiddleware } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { redirect } from "@tanstack/react-router";
 
 import { getDb } from "../lib/db";
 import {
@@ -13,22 +12,8 @@ import {
 } from "../repositories/monitors";
 import { getMonitorMetrics } from "../repositories/metrics";
 import { clampInt } from "../lib/utils";
-import { useAppSession } from "../lib/session";
+import { requireTeam } from "../lib/auth-middleware";
 import { generateWebhookToken, hashWebhookToken } from "@bitwobbly/shared";
-
-const authMiddleware = createMiddleware({
-  type: "function",
-}).server(async ({ next }) => {
-  const session = await useAppSession();
-  if (!session.data.userId) {
-    throw redirect({ to: "/login" });
-  }
-  return next({
-    context: {
-      userId: session.data.userId,
-    },
-  });
-});
 
 const CreateMonitorSchema = z
   .object({
@@ -54,19 +39,20 @@ const CreateMonitorSchema = z
     },
   );
 
-export const listMonitorsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
-  .handler(async () => {
+export const listMonitorsFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    const monitors = await listMonitors(db, vars.PUBLIC_TEAM_ID);
+    const monitors = await listMonitors(db, teamId);
     return { monitors };
-  });
+  },
+);
 
 export const createMonitorFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .inputValidator((data: unknown) => CreateMonitorSchema.parse(data))
   .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
@@ -82,7 +68,7 @@ export const createMonitorFn = createServerFn({ method: "POST" })
       webhookTokenHash = await hashWebhookToken(webhookToken);
     }
 
-    const created = await createMonitor(db, vars.PUBLIC_TEAM_ID, {
+    const created = await createMonitor(db, teamId, {
       ...data,
       interval_seconds,
       timeout_ms,
@@ -100,19 +86,19 @@ export const createMonitorFn = createServerFn({ method: "POST" })
   });
 
 export const deleteMonitorFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    await deleteMonitor(db, vars.PUBLIC_TEAM_ID, data.id);
+    await deleteMonitor(db, teamId, data.id);
     return { ok: true };
   });
 
 export const getMonitorMetricsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .inputValidator((data: { monitorId: string; hours?: number }) => data)
   .handler(async ({ data }) => {
+    await requireTeam();
     const vars = env;
 
     try {
@@ -143,9 +129,9 @@ const UpdateMonitorSchema = z.object({
 });
 
 export const updateMonitorFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .inputValidator((data: unknown) => UpdateMonitorSchema.parse(data))
   .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
@@ -163,13 +149,13 @@ export const updateMonitorFn = createServerFn({ method: "POST" })
     if (data.external_config !== undefined)
       updates.external_config = data.external_config;
 
-    await updateMonitor(db, vars.PUBLIC_TEAM_ID, data.id, updates);
+    await updateMonitor(db, teamId, data.id, updates);
     return { ok: true };
   });
 
-export const triggerSchedulerFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .handler(async () => {
+export const triggerSchedulerFn = createServerFn({ method: "POST" }).handler(
+  async () => {
+    await requireTeam();
     try {
       console.log("[APP] Triggering scheduler...");
       const schedulerUrl = "http://localhost:8788/cdn-cgi/handler/scheduled";
@@ -187,7 +173,8 @@ export const triggerSchedulerFn = createServerFn({ method: "POST" })
         "Failed to trigger scheduler. Make sure dev server is running.",
       );
     }
-  });
+  },
+);
 
 const SetManualStatusSchema = z.object({
   monitorId: z.string(),
@@ -196,15 +183,15 @@ const SetManualStatusSchema = z.object({
 });
 
 export const setManualMonitorStatusFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
   .inputValidator((data: unknown) => SetManualStatusSchema.parse(data))
   .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
     await updateMonitorStatus(
       db,
-      vars.PUBLIC_TEAM_ID,
+      teamId,
       data.monitorId,
       data.status,
       data.message,

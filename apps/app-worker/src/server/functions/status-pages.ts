@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { redirect } from "@tanstack/react-router";
 
 import { getDb } from "../lib/db";
 import {
@@ -13,15 +12,7 @@ import {
   rebuildStatusSnapshot,
   getStatusPageBySlug,
 } from "../repositories/status-pages";
-import { useAppSession } from "../lib/session";
-
-const authMiddleware = createServerFn().handler(async () => {
-  const session = await useAppSession();
-  if (!session.data.userId) {
-    throw redirect({ to: "/login" });
-  }
-  return session.data.userId;
-});
+import { requireTeam } from "../lib/auth-middleware";
 
 const CreateStatusPageSchema = z.object({
   name: z.string(),
@@ -45,10 +36,10 @@ const UpdateStatusPageSchema = z.object({
 
 export const listStatusPagesFn = createServerFn({ method: "GET" }).handler(
   async () => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    const status_pages = await listStatusPages(db, vars.PUBLIC_TEAM_ID);
+    const status_pages = await listStatusPages(db, teamId);
     return { status_pages };
   },
 );
@@ -56,11 +47,11 @@ export const listStatusPagesFn = createServerFn({ method: "GET" }).handler(
 export const createStatusPageFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => CreateStatusPageSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
-    const created = await createStatusPage(db, vars.PUBLIC_TEAM_ID, {
+    const created = await createStatusPage(db, teamId, {
       ...data,
       logo_url: data.logo_url?.trim() || undefined,
       brand_color: data.brand_color?.trim() || "#007bff",
@@ -70,7 +61,6 @@ export const createStatusPageFn = createServerFn({ method: "POST" })
     await rebuildStatusSnapshot(
       db,
       vars.KV,
-      vars.PUBLIC_TEAM_ID,
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
@@ -82,12 +72,12 @@ export const createStatusPageFn = createServerFn({ method: "POST" })
 export const updateStatusPageFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => UpdateStatusPageSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
     const { id, ...updates } = data;
-    const page = await getStatusPageById(db, vars.PUBLIC_TEAM_ID, id);
+    const page = await getStatusPageById(db, teamId, id);
     if (!page) throw new Error("Status page not found");
 
     const processedUpdates: any = {};
@@ -103,13 +93,12 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
       processedUpdates.custom_css = updates.custom_css?.trim() || null;
     }
 
-    await updateStatusPage(db, vars.PUBLIC_TEAM_ID, id, processedUpdates);
+    await updateStatusPage(db, teamId, id, processedUpdates);
 
     const newSlug = updates.slug || page.slug;
     await rebuildStatusSnapshot(
       db,
       vars.KV,
-      vars.PUBLIC_TEAM_ID,
       newSlug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
@@ -125,14 +114,14 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
 export const deleteStatusPageFn = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
-    const page = await getStatusPageById(db, vars.PUBLIC_TEAM_ID, data.id);
+    const page = await getStatusPageById(db, teamId, data.id);
     if (!page) throw new Error("Status page not found");
 
-    await deleteStatusPage(db, vars.PUBLIC_TEAM_ID, data.id);
+    await deleteStatusPage(db, teamId, data.id);
     await vars.KV.delete(`status:${page.slug}`);
 
     return { ok: true };
@@ -141,17 +130,16 @@ export const deleteStatusPageFn = createServerFn({ method: "POST" })
 export const rebuildStatusPageFn = createServerFn({ method: "POST" })
   .inputValidator((data: { slug: string }) => data)
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
-    const page = await getStatusPageBySlug(db, vars.PUBLIC_TEAM_ID, data.slug);
+    const page = await getStatusPageBySlug(db, teamId, data.slug);
     if (!page) throw new Error("Status page not found");
 
     const snapshot = await rebuildStatusSnapshot(
       db,
       vars.KV,
-      vars.PUBLIC_TEAM_ID,
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,

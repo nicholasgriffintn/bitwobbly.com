@@ -63,7 +63,6 @@ export class IncidentCoordinator implements DurableObject {
       await rebuildAllSnapshots({
         DB: this.env.DB,
         KV: this.env.KV,
-        PUBLIC_TEAM_ID: this.env.PUBLIC_TEAM_ID,
       });
 
       return json({ ok: true, incident_id: incidentId, action: "opened" });
@@ -79,7 +78,6 @@ export class IncidentCoordinator implements DurableObject {
     await rebuildAllSnapshots({
       DB: this.env.DB,
       KV: this.env.KV,
-      PUBLIC_TEAM_ID: this.env.PUBLIC_TEAM_ID,
     });
 
     return json({ ok: true, incident_id: incidentId, action: "resolved" });

@@ -178,6 +178,83 @@ select {
 .topbar-title {
   font-family: "Space Grotesk", sans-serif;
   font-size: 22px;
+  color: var(--ink);
+}
+
+.team-selector {
+  position: relative;
+}
+
+.team-selector-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: none;
+  transition: opacity 0.2s ease;
+  color: var(--ink);
+}
+
+.team-selector-trigger:hover {
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
+}
+
+.team-selector-icon {
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.team-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  min-width: 240px;
+  overflow: hidden;
+  animation: slideUp 0.2s ease;
+}
+
+.team-dropdown-item {
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  box-shadow: none;
+  display: block;
+}
+
+.team-dropdown-item:hover {
+  background: var(--bg);
+  transform: none;
+  box-shadow: none;
+}
+
+.team-dropdown-item.active {
+  background: var(--bg-accent);
+}
+
+.team-dropdown-name {
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.team-dropdown-role {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: capitalize;
 }
 
 .pill {

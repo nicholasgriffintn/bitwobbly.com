@@ -23,7 +23,7 @@ export default {
     const maxBatches = 5;
 
     for (let batchIndex = 0; batchIndex < maxBatches; batchIndex += 1) {
-      const due = await getDueMonitors(db, env.PUBLIC_TEAM_ID, nowSec, 200);
+      const due = await getDueMonitors(db, nowSec, 200);
       console.log(
         `[SCHEDULER] Batch ${batchIndex + 1}: Found ${due.length} monitors due for checking`,
       );

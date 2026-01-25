@@ -4,7 +4,6 @@ import type { DrizzleD1Database } from "drizzle-orm/d1";
 
 export async function getDueMonitors(
   db: DrizzleD1Database,
-  teamId: string,
   nowSec: number,
   limit: number,
 ) {
@@ -23,7 +22,6 @@ export async function getDueMonitors(
     .from(schema.monitors)
     .where(
       and(
-        eq(schema.monitors.teamId, teamId),
         eq(schema.monitors.enabled, 1),
         lte(schema.monitors.nextRunAt, nowSec),
         lte(schema.monitors.lockedUntil, nowSec),

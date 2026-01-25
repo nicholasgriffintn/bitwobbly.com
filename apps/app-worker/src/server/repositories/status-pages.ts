@@ -291,13 +291,21 @@ export async function listComponentsForStatusPage(
 export async function rebuildStatusSnapshot(
   db: DB,
   kv: KVNamespace,
-  teamId: string,
   slug: string,
   accountId?: string,
   apiToken?: string,
 ) {
-  const page = await getStatusPageBySlug(db, teamId, slug);
+  // First, find the status page by slug to get its team ID
+  const pageRows = await db
+    .select()
+    .from(schema.statusPages)
+    .where(eq(schema.statusPages.slug, slug))
+    .limit(1);
+
+  const page = pageRows[0];
   if (!page) return null;
+
+  const teamId = page.teamId;
 
   const components = await listComponentsForStatusPage(db, page.id);
   const compsWithStatus = [];

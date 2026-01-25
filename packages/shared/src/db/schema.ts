@@ -168,14 +168,15 @@ export const notificationPolicies = sqliteTable("notification_policies", {
   createdAt: text("created_at").notNull(),
 });
 
-export const users = sqliteTable("users", {
-  id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  teamId: text("team_id")
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  teamId: text('team_id')
     .notNull()
     .references(() => teams.id),
-  createdAt: text("created_at").notNull(),
+  currentTeamId: text('current_team_id').references(() => teams.id),
+  createdAt: text('created_at').notNull(),
 });
 
 export const sessions = sqliteTable("sessions", {
@@ -184,6 +185,39 @@ export const sessions = sqliteTable("sessions", {
     .notNull()
     .references(() => users.id),
   expiresAt: integer("expires_at").notNull(),
+});
+
+export const userTeams = sqliteTable(
+  'user_teams',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => teams.id),
+    role: text('role').notNull().default('member'),
+    joinedAt: text('joined_at').notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.userId, table.teamId] }),
+  }),
+);
+
+export const teamInvites = sqliteTable('team_invites', {
+  id: text('id').primaryKey(),
+  teamId: text('team_id')
+    .notNull()
+    .references(() => teams.id),
+  email: text('email'),
+  inviteCode: text('invite_code').notNull().unique(),
+  role: text('role').notNull().default('member'),
+  createdBy: text('created_by')
+    .notNull()
+    .references(() => users.id),
+  createdAt: text('created_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
 });
 
 export type Team = typeof teams.$inferSelect;
@@ -210,3 +244,7 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+export type UserTeam = typeof userTeams.$inferSelect;
+export type NewUserTeam = typeof userTeams.$inferInsert;
+export type TeamInvite = typeof teamInvites.$inferSelect;
+export type NewTeamInvite = typeof teamInvites.$inferInsert;

@@ -5,6 +5,5 @@ export interface Env {
   KV: KVNamespace;
   ALERT_JOBS: Queue;
   INCIDENT_DO: DurableObjectNamespace;
-  PUBLIC_TEAM_ID: string;
   AE?: AnalyticsEngineDataset;
 }

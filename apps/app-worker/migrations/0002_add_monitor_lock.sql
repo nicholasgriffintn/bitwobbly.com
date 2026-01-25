@@ -1,1 +1,0 @@
-ALTER TABLE monitors ADD COLUMN locked_until INTEGER NOT NULL DEFAULT 0;

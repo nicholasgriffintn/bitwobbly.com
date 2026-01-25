@@ -4,8 +4,7 @@ import { env } from 'cloudflare:workers'
 import { z } from 'zod'
 
 import { getDb } from '../lib/db'
-import { authenticateUser, createUser, getUserById } from '../repositories/auth'
-import { createSession } from '../repositories/auth'
+import { authenticateUser, createUser, getUserById, createSession } from '../repositories/auth'
 import { useAppSession } from '../lib/session'
 
 const SignUpSchema = z.object({
@@ -29,11 +28,12 @@ export const signUpFn = createServerFn({ method: "POST" })
         }
 
         const db = getDb(vars.DB);
+        const userEmail = data.email;
+        const userPass = data.password;
 
         const { user } = await createUser(db, {
-            email: data.email,
-            password: data.password,
-            team_id: vars.PUBLIC_TEAM_ID,
+            email: userEmail,
+            password: userPass,
         });
 
         await createSession(db, user.id);
@@ -44,7 +44,7 @@ export const signUpFn = createServerFn({ method: "POST" })
             email: user.email,
         });
 
-        throw redirect({ to: '/app' });
+        throw redirect({ to: '/onboarding' });
     });
 
 export const signInFn = createServerFn({ method: "POST" })
@@ -52,8 +52,10 @@ export const signInFn = createServerFn({ method: "POST" })
     .handler(async ({ data }) => {
         const vars = env;
         const db = getDb(vars.DB);
+        const userEmail = data.email;
+        const userPass = data.password;
 
-        const { user } = await authenticateUser(db, data.email, data.password);
+        const { user } = await authenticateUser(db, userEmail, userPass);
 
         await createSession(db, user.id);
 

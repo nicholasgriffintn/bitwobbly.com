@@ -1,10 +1,9 @@
-import { nowIso, createDb, schema } from '@bitwobbly/shared';
-import { eq, and, ne, inArray, desc } from 'drizzle-orm';
+import { nowIso, createDb, schema } from "@bitwobbly/shared";
+import { eq, and, ne, inArray, desc } from "drizzle-orm";
 
 export async function rebuildAllSnapshots(env: {
   DB: D1Database;
   KV: KVNamespace;
-  PUBLIC_TEAM_ID: string;
 }) {
   const db = createDb(env.DB);
   const pages = await db
@@ -12,20 +11,21 @@ export async function rebuildAllSnapshots(env: {
       id: schema.statusPages.id,
       slug: schema.statusPages.slug,
       name: schema.statusPages.name,
+      teamId: schema.statusPages.teamId,
     })
-    .from(schema.statusPages)
-    .where(eq(schema.statusPages.teamId, env.PUBLIC_TEAM_ID));
+    .from(schema.statusPages);
 
   for (const p of pages) {
-    await rebuildStatusSnapshot(env, p.id, p.slug, p.name);
+    await rebuildStatusSnapshot(env, p.id, p.slug, p.name, p.teamId);
   }
 }
 
 async function rebuildStatusSnapshot(
-  env: { DB: D1Database; KV: KVNamespace; PUBLIC_TEAM_ID: string },
+  env: { DB: D1Database; KV: KVNamespace },
   statusPageId: string,
   slug: string,
   name: string,
+  teamId: string,
 ) {
   const db = createDb(env.DB);
 
@@ -56,9 +56,9 @@ async function rebuildStatusSnapshot(
       )
       .where(eq(schema.componentMonitors.componentId, c.id));
 
-    let status: 'up' | 'down' | 'unknown' = 'unknown';
+    let status: "up" | "down" | "unknown" = "unknown";
     if (monitorRows.length)
-      status = monitorRows.some((r) => r.lastStatus === 'down') ? 'down' : 'up';
+      status = monitorRows.some((r) => r.lastStatus === "down") ? "down" : "up";
 
     compsWithStatus.push({ ...c, status });
   }
@@ -68,9 +68,9 @@ async function rebuildStatusSnapshot(
     .from(schema.incidents)
     .where(
       and(
-        eq(schema.incidents.teamId, env.PUBLIC_TEAM_ID),
+        eq(schema.incidents.teamId, teamId),
         eq(schema.incidents.statusPageId, statusPageId),
-        ne(schema.incidents.status, 'resolved'),
+        ne(schema.incidents.status, "resolved"),
       ),
     )
     .orderBy(schema.incidents.startedAt);
@@ -81,9 +81,9 @@ async function rebuildStatusSnapshot(
     .from(schema.incidents)
     .where(
       and(
-        eq(schema.incidents.teamId, env.PUBLIC_TEAM_ID),
+        eq(schema.incidents.teamId, teamId),
         eq(schema.incidents.statusPageId, statusPageId),
-        eq(schema.incidents.status, 'resolved'),
+        eq(schema.incidents.status, "resolved"),
       ),
     )
     .orderBy(desc(schema.incidents.startedAt))
@@ -150,8 +150,8 @@ export async function openIncident(
     teamId,
     statusPageId: null,
     monitorId,
-    title: 'Monitor down',
-    status: 'investigating',
+    title: "Monitor down",
+    status: "investigating",
     startedAt,
     resolvedAt: null,
     createdAt: nowIso(),
@@ -160,8 +160,8 @@ export async function openIncident(
   await db.insert(schema.incidentUpdates).values({
     id: `up_${crypto.randomUUID()}`,
     incidentId,
-    message: reason || 'Automated monitoring detected an outage.',
-    status: 'investigating',
+    message: reason || "Automated monitoring detected an outage.",
+    status: "investigating",
     createdAt: nowIso(),
   });
 
@@ -187,7 +187,7 @@ export async function resolveIncident(
   await db
     .update(schema.incidents)
     .set({
-      status: 'resolved',
+      status: "resolved",
       resolvedAt,
     })
     .where(eq(schema.incidents.id, incidentId));
@@ -195,8 +195,8 @@ export async function resolveIncident(
   await db.insert(schema.incidentUpdates).values({
     id: `up_${crypto.randomUUID()}`,
     incidentId,
-    message: 'Service has recovered.',
-    status: 'resolved',
+    message: "Service has recovered.",
+    status: "resolved",
     createdAt: nowIso(),
   });
 

@@ -11,16 +11,14 @@
     "logs": {
       "enabled": false,
       "head_sampling_rate": 1,
-      "invocation_logs": false,
-    },
+      "invocation_logs": false
+    }
   },
   "dev": {
     "port": 8788,
     "inspector_port": 9230
   },
-  "vars": {
-    "PUBLIC_TEAM_ID": "team_demo"
-  },
+  "vars": {},
   "triggers": {
     "crons": ["* * * * *"]
   },

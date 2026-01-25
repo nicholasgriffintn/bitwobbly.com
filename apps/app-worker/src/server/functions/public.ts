@@ -19,7 +19,6 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
     const snapshot = await rebuildStatusSnapshot(
       db,
       vars.KV,
-      vars.PUBLIC_TEAM_ID,
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,

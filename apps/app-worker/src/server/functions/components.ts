@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { redirect } from "@tanstack/react-router";
 import { eq } from "drizzle-orm";
 import { schema } from "@bitwobbly/shared";
 
@@ -25,15 +24,7 @@ import {
   getComponentUptimeMetrics,
   getComponentMetrics,
 } from "../repositories/metrics";
-import { useAppSession } from "../lib/session";
-
-const authMiddleware = createServerFn().handler(async () => {
-  const session = await useAppSession();
-  if (!session.data.userId) {
-    throw redirect({ to: "/login" });
-  }
-  return session.data.userId;
-});
+import { requireTeam } from "../lib/auth-middleware";
 
 const CreateComponentSchema = z.object({
   name: z.string().min(1),
@@ -59,10 +50,10 @@ const LinkToPageSchema = z.object({
 
 export const listComponentsFn = createServerFn({ method: "GET" }).handler(
   async () => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    const components = await listComponents(db, vars.PUBLIC_TEAM_ID);
+    const components = await listComponents(db, teamId);
     return { components };
   },
 );
@@ -70,23 +61,23 @@ export const listComponentsFn = createServerFn({ method: "GET" }).handler(
 export const createComponentFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => CreateComponentSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    const created = await createComponent(db, vars.PUBLIC_TEAM_ID, data);
+    const created = await createComponent(db, teamId, data);
     return { ok: true, ...created };
   });
 
 export const updateComponentFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => UpdateComponentSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
     const { id, ...updates } = data;
-    await updateComponent(db, vars.PUBLIC_TEAM_ID, id, updates);
+    await updateComponent(db, teamId, id, updates);
 
-    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+    await clearAllStatusPageCaches(db, vars.KV, teamId);
 
     return { ok: true };
   });
@@ -94,12 +85,12 @@ export const updateComponentFn = createServerFn({ method: "POST" })
 export const deleteComponentFn = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    await deleteComponent(db, vars.PUBLIC_TEAM_ID, data.id);
+    await deleteComponent(db, teamId, data.id);
 
-    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+    await clearAllStatusPageCaches(db, vars.KV, teamId);
 
     return { ok: true };
   });
@@ -107,12 +98,12 @@ export const deleteComponentFn = createServerFn({ method: "POST" })
 export const linkMonitorFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => LinkMonitorSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
     await linkMonitorToComponent(db, data.componentId, data.monitorId);
 
-    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+    await clearAllStatusPageCaches(db, vars.KV, teamId);
 
     return { ok: true };
   });
@@ -120,12 +111,12 @@ export const linkMonitorFn = createServerFn({ method: "POST" })
 export const unlinkMonitorFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => LinkMonitorSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
     await unlinkMonitorFromComponent(db, data.componentId, data.monitorId);
 
-    await clearAllStatusPageCaches(db, vars.KV, vars.PUBLIC_TEAM_ID);
+    await clearAllStatusPageCaches(db, vars.KV, teamId);
 
     return { ok: true };
   });
@@ -133,15 +124,11 @@ export const unlinkMonitorFn = createServerFn({ method: "POST" })
 export const linkToPageFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => LinkToPageSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
-    const page = await getStatusPageById(
-      db,
-      vars.PUBLIC_TEAM_ID,
-      data.statusPageId,
-    );
+    const page = await getStatusPageById(db, teamId, data.statusPageId);
     if (!page) throw new Error("Status page not found");
 
     await linkComponentToStatusPage(
@@ -161,15 +148,11 @@ export const unlinkFromPageFn = createServerFn({ method: "POST" })
     z.object({ statusPageId: z.string(), componentId: z.string() }).parse(data),
   )
   .handler(async ({ data }) => {
-    await authMiddleware();
+    const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
-    const page = await getStatusPageById(
-      db,
-      vars.PUBLIC_TEAM_ID,
-      data.statusPageId,
-    );
+    const page = await getStatusPageById(db, teamId, data.statusPageId);
     if (!page) throw new Error("Status page not found");
 
     await unlinkComponentFromStatusPage(
@@ -186,7 +169,7 @@ export const unlinkFromPageFn = createServerFn({ method: "POST" })
 export const getPageComponentsFn = createServerFn({ method: "GET" })
   .inputValidator((data: { statusPageId: string }) => data)
   .handler(async ({ data }) => {
-    await authMiddleware();
+    await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
     const components = await getComponentsForStatusPage(db, data.statusPageId);
@@ -207,7 +190,7 @@ const GetComponentMetricsSchema = z.object({
 export const getComponentUptimeFn = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => GetComponentUptimeSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
@@ -243,7 +226,7 @@ export const getComponentUptimeFn = createServerFn({ method: "GET" })
 export const getComponentMetricsFn = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => GetComponentMetricsSchema.parse(data))
   .handler(async ({ data }) => {
-    await authMiddleware();
+    await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
 
