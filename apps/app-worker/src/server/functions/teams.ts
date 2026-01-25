@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { redirect } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
+import { schema } from "@bitwobbly/shared";
+import { eq } from "drizzle-orm";
 
 import { getDb } from "../lib/db";
 import {
@@ -117,8 +119,8 @@ export const getCurrentTeamFn = createServerFn({ method: "GET" }).handler(
 
     const user = await db
       .select()
-      .from(env.DB.users)
-      .where((users: any) => users.id === userId)
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
       .limit(1);
 
     if (!user.length || !user[0].currentTeamId) {

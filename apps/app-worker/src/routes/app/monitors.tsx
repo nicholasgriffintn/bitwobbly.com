@@ -13,17 +13,15 @@ import {
   setManualMonitorStatusFn,
 } from "@/server/functions/monitors";
 
-type MonitorType = "http" | "webhook" | "external" | "manual";
-
 type Monitor = {
   id: string;
   name: string;
-  url: string;
+  url: string | null;
   intervalSeconds: number;
   timeoutMs: number;
   failureThreshold: number;
   enabled: number;
-  type: MonitorType;
+  type: string;
   webhookToken?: string | null;
   externalConfig?: string | null;
   state?: { lastStatus?: string; lastLatencyMs?: number | null } | null;
@@ -47,7 +45,7 @@ function Monitors() {
   const [interval, setInterval] = useState("60");
   const [timeout, setTimeout] = useState("8000");
   const [threshold, setThreshold] = useState("3");
-  const [monitorType, setMonitorType] = useState<MonitorType>("http");
+  const [monitorType, setMonitorType] = useState("http");
   const [externalServiceType, setExternalServiceType] = useState("");
   const [webhookToken, setWebhookToken] = useState<string | null>(null);
   const [createdMonitorId, setCreatedMonitorId] = useState<string | null>(null);
@@ -57,8 +55,7 @@ function Monitors() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMonitorId, setEditingMonitorId] = useState<string | null>(null);
-  const [editingMonitorType, setEditingMonitorType] =
-    useState<MonitorType>("http");
+  const [editingMonitorType, setEditingMonitorType] = useState("http");
   const [editName, setEditName] = useState("");
   const [editUrl, setEditUrl] = useState("");
   const [editInterval, setEditInterval] = useState("");
@@ -69,9 +66,7 @@ function Monitors() {
   const [manualStatusMonitorId, setManualStatusMonitorId] = useState<
     string | null
   >(null);
-  const [manualStatus, setManualStatus] = useState<"up" | "down" | "degraded">(
-    "up",
-  );
+  const [manualStatus, setManualStatus] = useState("up");
   const [manualMessage, setManualMessage] = useState("");
 
   const createMonitor = useServerFn(createMonitorFn);
@@ -86,7 +81,7 @@ function Monitors() {
       const res = await listMonitors();
       setMonitors(res.monitors);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -119,7 +114,7 @@ function Monitors() {
         closeCreateModal();
       }
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -142,7 +137,7 @@ function Monitors() {
       await deleteMonitor({ data: { id } });
       setMonitors((prev) => prev.filter((m) => m.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -196,7 +191,7 @@ function Monitors() {
       setEditingMonitorId(null);
       setIsEditModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -223,7 +218,7 @@ function Monitors() {
       setIsManualStatusModalOpen(false);
       setManualStatusMonitorId(null);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -238,7 +233,7 @@ function Monitors() {
       });
       await refreshMonitors();
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -248,7 +243,7 @@ function Monitors() {
       await triggerScheduler();
       window.setTimeout(refreshMonitors, 2000);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -499,7 +494,7 @@ function Monitors() {
             <select
               id="monitor-type"
               value={monitorType}
-              onChange={(e) => setMonitorType(e.target.value as MonitorType)}
+              onChange={(e) => setMonitorType(e.target.value)}
             >
               <option value="http">HTTP</option>
               <option value="webhook">Webhook</option>
@@ -729,9 +724,7 @@ function Monitors() {
           <select
             id="manual-status"
             value={manualStatus}
-            onChange={(e) =>
-              setManualStatus(e.target.value as "up" | "down" | "degraded")
-            }
+            onChange={(e) => setManualStatus(e.target.value)}
           >
             <option value="up">Up</option>
             <option value="down">Down</option>

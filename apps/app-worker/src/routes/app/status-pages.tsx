@@ -87,7 +87,7 @@ export default function StatusPages() {
       const res = await listStatusPages();
       setPages(res.status_pages);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -96,7 +96,7 @@ export default function StatusPages() {
       const res = await getPageComponents({ data: { statusPageId: pageId } });
       setPageComponents(res.components);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -127,7 +127,7 @@ export default function StatusPages() {
       setCustomCss("");
       setIsCreateModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -160,7 +160,7 @@ export default function StatusPages() {
       setEditingPageId(null);
       setIsEditModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -170,7 +170,7 @@ export default function StatusPages() {
       await deleteStatusPage({ data: { id } });
       setPages((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -190,7 +190,7 @@ export default function StatusPages() {
       }
       await loadPageComponents(pageId);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 

@@ -1,7 +1,14 @@
 import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
 import { eq, inArray, and } from "drizzle-orm";
 
-export async function listMonitors(db: DB, teamId: string) {
+type MonitorWithState = schema.Monitor & {
+  state: schema.MonitorState | null;
+};
+
+export async function listMonitors(
+  db: DB,
+  teamId: string,
+): Promise<MonitorWithState[]> {
   const monitors = await db
     .select()
     .from(schema.monitors)

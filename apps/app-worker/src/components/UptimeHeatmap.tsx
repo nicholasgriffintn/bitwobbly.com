@@ -18,7 +18,7 @@ export function UptimeHeatmap({ data }: UptimeHeatmapProps) {
     }
   };
 
-  const groupedByDay = data.reduce(
+  const groupedByDay = data.reduce<Record<string, MetricDataPoint[]>>(
     (acc, point) => {
       const date = new Date(point.timestamp).toLocaleDateString();
       if (!acc[date]) {
@@ -27,7 +27,7 @@ export function UptimeHeatmap({ data }: UptimeHeatmapProps) {
       acc[date].push(point);
       return acc;
     },
-    {} as Record<string, MetricDataPoint[]>,
+    {},
   );
 
   const dailyStatuses = Object.entries(groupedByDay).map(([date, points]) => {

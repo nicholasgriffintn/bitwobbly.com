@@ -1,17 +1,11 @@
-import {
-  nowIso,
-  randomId,
-  schema,
-  type UUID,
-  type DB,
-} from "@bitwobbly/shared";
+import { nowIso, randomId, schema, type DB } from "@bitwobbly/shared";
 import { eq, and } from "drizzle-orm";
 
 export async function createTeam(
   db: DB,
-  userId: UUID,
+  userId: string,
   teamName: string,
-): Promise<{ teamId: UUID }> {
+): Promise<{ teamId: string }> {
   const teamId = randomId("team");
   const now = nowIso();
 
@@ -38,8 +32,8 @@ export async function createTeam(
 
 export async function addUserToTeam(
   db: DB,
-  userId: UUID,
-  teamId: UUID,
+  userId: string,
+  teamId: string,
   role: string = "member",
 ): Promise<void> {
   const now = nowIso();
@@ -71,7 +65,7 @@ export async function addUserToTeam(
 
 export async function getUserTeams(
   db: DB,
-  userId: UUID,
+  userId: string,
 ): Promise<
   Array<{ id: string; name: string; role: string; joinedAt: string }>
 > {
@@ -91,8 +85,8 @@ export async function getUserTeams(
 
 export async function switchTeam(
   db: DB,
-  userId: UUID,
-  teamId: UUID,
+  userId: string,
+  teamId: string,
 ): Promise<void> {
   const membership = await db
     .select()
@@ -117,7 +111,7 @@ export async function switchTeam(
 
 export async function getTeamById(
   db: DB,
-  teamId: UUID,
+  teamId: string,
 ): Promise<{ id: string; name: string } | null> {
   const teams = await db
     .select()
@@ -130,8 +124,8 @@ export async function getTeamById(
 
 export async function createTeamInvite(
   db: DB,
-  teamId: UUID,
-  createdBy: UUID,
+  teamId: string,
+  createdBy: string,
   email?: string,
   role: string = "member",
   expiresInDays: number = 7,
@@ -160,7 +154,7 @@ export async function createTeamInvite(
 export async function validateTeamInvite(
   db: DB,
   inviteCode: string,
-): Promise<{ teamId: UUID; role: string } | null> {
+): Promise<{ teamId: string; role: string } | null> {
   const invites = await db
     .select()
     .from(schema.teamInvites)

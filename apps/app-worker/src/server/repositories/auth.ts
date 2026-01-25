@@ -1,10 +1,4 @@
-import {
-  nowIso,
-  randomId,
-  schema,
-  type UUID,
-  type DB,
-} from "@bitwobbly/shared";
+import { nowIso, randomId, schema, type DB } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
 
 type User = typeof schema.users.$inferSelect;
@@ -98,7 +92,7 @@ export async function authenticateUser(
 
 export async function getUserById(
   db: DB,
-  userId: UUID,
+  userId: string,
 ): Promise<Omit<User, "passwordHash"> | null> {
   const user = await db
     .select()
@@ -114,7 +108,7 @@ export async function getUserById(
 
 export async function createSession(
   db: DB,
-  userId: UUID,
+  userId: string,
 ): Promise<{ sessionToken: string }> {
   const sessionToken = generateSessionToken();
   const expiresAt = new Date();
@@ -132,7 +126,7 @@ export async function createSession(
 export async function validateSession(
   db: DB,
   sessionToken: string,
-): Promise<{ userId: UUID } | null> {
+): Promise<{ userId: string } | null> {
   const session = await db
     .select()
     .from(schema.sessions)

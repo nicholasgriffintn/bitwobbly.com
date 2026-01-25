@@ -15,7 +15,7 @@ export interface MetricDataPoint {
   timestamp: string;
   uptimePercentage: number;
   latencyMs: number;
-  status: 'operational' | 'degraded' | 'down';
+  status: "operational" | "degraded" | "down";
 }
 
 export interface ComponentMetrics {
@@ -24,5 +24,3 @@ export interface ComponentMetrics {
   uptime: UptimeMetrics;
   dataPoints: MetricDataPoint[];
 }
-
-export type UUID = `${string}-${string}-${string}-${string}-${string}`;

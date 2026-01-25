@@ -117,7 +117,7 @@ export default {
           `[CHECKER] Successfully processed check for monitor ${msg.body.monitor_id}`,
         );
       } catch (e: unknown) {
-        const error = e as Error;
+        const error = e;
         console.error("[CHECKER] check failed", error?.message || e);
       }
     }
@@ -161,7 +161,7 @@ async function handleCheck(
         `[CHECKER] Check result: ${status} (${latency_ms}ms) ${reason || ""}`,
       );
     } catch (e: unknown) {
-      const error = e as Error;
+      const error = e;
       latency_ms = Date.now() - started;
       status = "down";
       reason =
@@ -345,7 +345,7 @@ async function checkExternalService(
 
     return { status, reason, latency_ms };
   } catch (e: unknown) {
-    const error = e as Error;
+    const error = e;
     return {
       status: "down",
       reason:

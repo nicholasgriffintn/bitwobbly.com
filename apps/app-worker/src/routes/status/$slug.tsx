@@ -49,7 +49,7 @@ type StatusSnapshot = {
 
 export const Route = createFileRoute("/status/$slug")({
   component: PublicStatusPage,
-  loader: async ({ params }) => {
+  loader: async ({ params }): Promise<StatusSnapshot> => {
     const snapshot = await getPublicStatusFn({ data: { slug: params.slug } });
     return snapshot as StatusSnapshot;
   },

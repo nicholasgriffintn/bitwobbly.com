@@ -17,13 +17,6 @@ type StatusPage = {
   name: string;
 };
 
-type Component = {
-  id: string;
-  name: string;
-  description: string | null;
-  monitorIds: string[];
-};
-
 type IncidentUpdate = {
   id: string;
   message: string;
@@ -74,8 +67,7 @@ export default function Incidents() {
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
-  const [status, setStatus] =
-    useState<(typeof STATUS_OPTIONS)[number]["value"]>("investigating");
+  const [status, setStatus] = useState("investigating");
   const [statusPageId, setStatusPageId] = useState("");
   const [message, setMessage] = useState("");
   const [selectedComponents, setSelectedComponents] = useState<
@@ -88,8 +80,7 @@ export default function Incidents() {
     null,
   );
   const [updateMessage, setUpdateMessage] = useState("");
-  const [updateStatus, setUpdateStatus] =
-    useState<(typeof STATUS_OPTIONS)[number]["value"]>("investigating");
+  const [updateStatus, setUpdateStatus] = useState("investigating");
 
   const createIncident = useServerFn(createIncidentFn);
   const updateIncident = useServerFn(updateIncidentFn);
@@ -101,7 +92,7 @@ export default function Incidents() {
       const res = await listIncidents();
       setIncidents(res.incidents);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -136,15 +127,13 @@ export default function Incidents() {
       setSelectedComponents(new Map());
       setIsCreateModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
   const openUpdateModal = (incident: Incident) => {
     setUpdatingIncidentId(incident.id);
-    setUpdateStatus(
-      incident.status as (typeof STATUS_OPTIONS)[number]["value"],
-    );
+    setUpdateStatus(incident.status);
     setUpdateMessage("");
     setIsUpdateModalOpen(true);
   };
@@ -166,7 +155,7 @@ export default function Incidents() {
       setUpdatingIncidentId(null);
       setIsUpdateModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -176,7 +165,7 @@ export default function Incidents() {
       await deleteIncident({ data: { id } });
       setIncidents((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -295,12 +284,7 @@ export default function Incidents() {
               <select
                 id="incident-status"
                 value={status}
-                onChange={(event) =>
-                  setStatus(
-                    event.target
-                      .value as (typeof STATUS_OPTIONS)[number]["value"],
-                  )
-                }
+                onChange={(event) => setStatus(event.target.value)}
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -426,11 +410,7 @@ export default function Incidents() {
           <select
             id="update-status"
             value={updateStatus}
-            onChange={(event) =>
-              setUpdateStatus(
-                event.target.value as (typeof STATUS_OPTIONS)[number]["value"],
-              )
-            }
+            onChange={(event) => setUpdateStatus(event.target.value)}
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>

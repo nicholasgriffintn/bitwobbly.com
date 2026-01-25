@@ -75,7 +75,7 @@ export default function Components() {
       const res = await listComponents();
       setComponents(res.components);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -91,7 +91,7 @@ export default function Components() {
       setDescription("");
       setIsCreateModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -118,7 +118,7 @@ export default function Components() {
       setEditingComponentId(null);
       setIsEditModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -128,7 +128,7 @@ export default function Components() {
       await deleteComponent({ data: { id } });
       setComponents((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -146,7 +146,7 @@ export default function Components() {
       }
       await refreshComponents();
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 

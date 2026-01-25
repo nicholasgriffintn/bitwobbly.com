@@ -70,9 +70,7 @@ export default function Notifications() {
   const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
 
-  const [channelType, setChannelType] = useState<"webhook" | "email">(
-    "webhook",
-  );
+  const [channelType, setChannelType] = useState("webhook");
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
   const [emailTo, setEmailTo] = useState("");
@@ -131,7 +129,7 @@ export default function Notifications() {
       setChannelType("webhook");
       setIsChannelModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -153,7 +151,7 @@ export default function Notifications() {
       setNotifyOnRecovery(true);
       setIsPolicyModalOpen(false);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -164,7 +162,7 @@ export default function Notifications() {
       setChannels((prev) => prev.filter((c) => c.id !== id));
       setPolicies((prev) => prev.filter((p) => p.channelId !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -174,7 +172,7 @@ export default function Notifications() {
       await deletePolicy({ data: { id } });
       setPolicies((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -286,9 +284,7 @@ export default function Notifications() {
           <select
             id="channel-type"
             value={channelType}
-            onChange={(event) =>
-              setChannelType(event.target.value as "webhook" | "email")
-            }
+            onChange={(event) => setChannelType(event.target.value)}
           >
             <option value="webhook">Webhook</option>
             <option value="email">Email</option>

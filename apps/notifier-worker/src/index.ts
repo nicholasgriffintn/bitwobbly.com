@@ -14,7 +14,7 @@ export default {
         await handleAlert(msg.body, env, db);
         msg.ack();
       } catch (e: unknown) {
-        const error = e as Error;
+        const error = e;
         console.error("alert delivery failed", error?.message || e);
       }
     }
