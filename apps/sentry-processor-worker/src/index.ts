@@ -7,6 +7,25 @@ import {
 import { upsertIssue, insertEvent } from "./repositories/events";
 import type { Env, ProcessJob } from "./types/env";
 
+interface SentryEvent {
+  level?: string;
+  message?: string;
+  release?: string;
+  environment?: string;
+  exception?: {
+    values?: Array<{
+      type?: string;
+      value?: string;
+      stacktrace?: {
+        frames?: Array<{
+          filename?: string;
+          function?: string;
+        }>;
+      };
+    }>;
+  };
+}
+
 export default {
   async queue(batch: MessageBatch<ProcessJob>, env: Env): Promise<void> {
     console.log(
@@ -67,7 +86,8 @@ async function processEvent(
   const fingerprint = computeFingerprint(event);
   const title = generateTitle(event);
   const culprit = extractCulprit(event);
-  const level = (event as any).level || "error";
+  const level =
+    job.item_type === "transaction" ? "info" : event.level || "error";
 
   const issueId = await upsertIssue(db, job.project_id, {
     fingerprint,
@@ -82,16 +102,19 @@ async function processEvent(
     issueId,
     type: job.item_type,
     level,
-    message: (event as any).message || null,
+    message: event.message || null,
     fingerprint,
-    release: (event as any).release || null,
-    environment: (event as any).environment || null,
+    release: event.release || null,
+    environment: event.environment || null,
     r2Key: job.r2_raw_key,
     receivedAt: job.received_at,
   });
 }
 
-function extractEventFromEnvelope(data: Uint8Array, itemIndex: number): any {
+function extractEventFromEnvelope(
+  data: Uint8Array,
+  itemIndex: number,
+): SentryEvent | null {
   const decoder = new TextDecoder();
   let offset = 0;
 
