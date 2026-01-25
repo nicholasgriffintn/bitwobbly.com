@@ -26,7 +26,7 @@ export default withSentry(
   () => ({
     dsn: 'https://9f74b921b8364cf6af59cbe1a3aa0747@ingest.bitwobbly.com/3',
     environment: 'production',
-    tracesSampleRate: 1.0,
+    tracesSampleRate: 0.2,
   }),
   handler,
 );

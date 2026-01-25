@@ -381,9 +381,9 @@ function json(data: unknown): Response {
 
 export const IncidentCoordinator = instrumentDurableObjectWithSentry(
   () => ({
-    dsn: "https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2",
-    environment: "production",
-    tracesSampleRate: 1.0,
+    dsn: 'https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2',
+    environment: 'production',
+    tracesSampleRate: 0.2,
   }),
   IncidentCoordinatorBase,
 );
