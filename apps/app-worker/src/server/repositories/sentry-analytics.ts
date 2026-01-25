@@ -40,27 +40,61 @@ export async function getEventVolumeBySDK(
   startDate: string,
   endDate: string,
 ): Promise<EventVolumeBySDK[]> {
+  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+
   const query = `
     SELECT
-      DATE(FROM_UNIXTIME(received_at)) as day,
       sdk_name,
       sdk_version,
-      COUNT(*) as event_count,
-      SUM(item_length_bytes) as total_bytes
+      COUNT(*),
+      SUM(item_length_bytes)
     FROM sentry.sentry_manifests
     WHERE
-      item_type IN ('event', 'transaction')
-      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
-    GROUP BY day, sdk_name, sdk_version
-    ORDER BY event_count DESC
+      item_type = 'event'
+      AND received_at >= ${startTimestamp}
+      AND received_at <= ${endTimestamp}
+    GROUP BY sdk_name, sdk_version
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<EventVolumeBySDK>(
+  interface RawResult {
+    sdk_name: string;
+    sdk_version: string;
+    count: number;
+    sum: number;
+  }
+
+  const result = await executeR2SQL<RawResult>(
     config,
     "bitwobbly-sentry-catalog",
     query,
   );
-  return result.data;
+
+  const grouped = new Map<string, EventVolumeBySDK>();
+  for (const row of result.data) {
+    const [sdk_name, sdk_version, count, bytes] = Object.values(row);
+    const day = startDate.split("T")[0];
+    const key = `${day}|${sdk_name}|${sdk_version}`;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        day,
+        sdk_name: sdk_name as string,
+        sdk_version: sdk_version as string,
+        event_count: count as number,
+        total_bytes: bytes as number,
+      });
+    } else {
+      const existing = grouped.get(key)!;
+      existing.event_count += count as number;
+      existing.total_bytes += bytes as number;
+    }
+  }
+
+  return Array.from(grouped.values()).sort(
+    (a, b) => b.event_count - a.event_count,
+  );
 }
 
 export async function getClockDriftStats(
@@ -69,21 +103,39 @@ export async function getClockDriftStats(
   const query = `
     SELECT
       sdk_name,
-      AVG(sent_at_drift_ms / 1000.0) as avg_drift_seconds,
-      MAX(sent_at_drift_ms / 1000.0) as max_drift_seconds,
-      MIN(sent_at_drift_ms / 1000.0) as min_drift_seconds
+      AVG(sent_at_drift_ms),
+      MAX(sent_at_drift_ms),
+      MIN(sent_at_drift_ms)
     FROM sentry.sentry_manifests
     WHERE sent_at IS NOT NULL AND sent_at_drift_ms IS NOT NULL
     GROUP BY sdk_name
-    ORDER BY avg_drift_seconds DESC
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<ClockDriftStats>(
+  interface RawResult {
+    sdk_name: string;
+    avg: number;
+    max: number;
+    min: number;
+  }
+
+  const result = await executeR2SQL<RawResult>(
     config,
     "bitwobbly-sentry-catalog",
     query,
   );
-  return result.data;
+
+  return result.data
+    .map((row) => {
+      const [sdk_name, avg, max, min] = Object.values(row);
+      return {
+        sdk_name: sdk_name as string,
+        avg_drift_seconds: (avg as number) / 1000.0,
+        max_drift_seconds: (max as number) / 1000.0,
+        min_drift_seconds: (min as number) / 1000.0,
+      };
+    })
+    .sort((a, b) => b.avg_drift_seconds - a.avg_drift_seconds);
 }
 
 export async function getItemTypeDistribution(
@@ -91,23 +143,42 @@ export async function getItemTypeDistribution(
   startDate: string,
   endDate: string,
 ): Promise<ItemTypeDistribution[]> {
+  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+
   const query = `
     SELECT
       item_type,
-      COUNT(*) as count,
-      SUM(item_length_bytes) / 1024.0 / 1024.0 as total_mb
+      COUNT(*),
+      SUM(item_length_bytes)
     FROM sentry.sentry_manifests
-    WHERE received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+    WHERE received_at >= ${startTimestamp} AND received_at <= ${endTimestamp}
     GROUP BY item_type
-    ORDER BY count DESC
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<ItemTypeDistribution>(
+  interface RawResult {
+    item_type: string;
+    count: number;
+    sum: number;
+  }
+
+  const result = await executeR2SQL<RawResult>(
     config,
     "bitwobbly-sentry-catalog",
     query,
   );
-  return result.data;
+
+  return result.data
+    .map((row) => {
+      const [item_type, count, sum_bytes] = Object.values(row);
+      return {
+        item_type: item_type as string,
+        count: count as number,
+        total_mb: (sum_bytes as number) / 1024.0 / 1024.0,
+      };
+    })
+    .sort((a, b) => b.count - a.count);
 }
 
 export async function getErrorRateByRelease(
@@ -116,29 +187,66 @@ export async function getErrorRateByRelease(
   startDate: string,
   endDate: string,
 ): Promise<ErrorRateByRelease[]> {
+  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+
   const query = `
     SELECT
-      event_release as release,
-      event_environment as environment,
-      COUNT(*) as error_count,
-      COUNT(DISTINCT CASE WHEN event_user_id NOT LIKE '{%' AND event_user_id IS NOT NULL THEN event_user_id ELSE NULL END) as user_count
+      event_release,
+      event_environment,
+      event_user_id,
+      COUNT(*)
     FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
       AND event_release IS NOT NULL
-      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
-    GROUP BY release, environment
-    ORDER BY error_count DESC
-    LIMIT 50
+      AND received_at >= ${startTimestamp}
+      AND received_at <= ${endTimestamp}
+    GROUP BY event_release, event_environment, event_user_id
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<ErrorRateByRelease>(
+  interface RawResult {
+    event_release: string;
+    event_environment: string;
+    event_user_id: string | null;
+    count: number;
+  }
+
+  const result = await executeR2SQL<RawResult>(
     config,
     "bitwobbly-sentry-catalog",
     query,
   );
-  return result.data;
+
+  const grouped = new Map<string, ErrorRateByRelease>();
+  for (const row of result.data) {
+    const [release, environment, user_id, count] = Object.values(row);
+    const key = `${release}|${environment}`;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        release: release as string,
+        environment: environment as string,
+        error_count: count as number,
+        user_count: 0,
+      });
+    } else {
+      const existing = grouped.get(key)!;
+      existing.error_count += count as number;
+    }
+
+    const validUserId =
+      user_id && typeof user_id === "string" && !user_id.startsWith("{");
+    if (validUserId) {
+      grouped.get(key)!.user_count++;
+    }
+  }
+
+  return Array.from(grouped.values())
+    .sort((a, b) => b.error_count - a.error_count)
+    .slice(0, 50);
 }
 
 export async function getTopErrorMessages(
@@ -148,26 +256,58 @@ export async function getTopErrorMessages(
 ): Promise<TopErrorMessages[]> {
   const query = `
     SELECT
-      event_message as message,
-      COUNT(*) as event_count,
-      MIN(FROM_UNIXTIME(received_at)) as first_seen,
-      MAX(FROM_UNIXTIME(received_at)) as last_seen
+      event_message,
+      received_at,
+      COUNT(*)
     FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
       AND event_message IS NOT NULL
-    GROUP BY message
-    ORDER BY event_count DESC
-    LIMIT ${limit}
+    GROUP BY event_message, received_at
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<TopErrorMessages>(
+  interface RawResult {
+    event_message: string;
+    received_at: number;
+    count: number;
+  }
+
+  const result = await executeR2SQL<RawResult>(
     config,
     "bitwobbly-sentry-catalog",
     query,
   );
-  return result.data;
+
+  const grouped = new Map<string, TopErrorMessages>();
+  for (const row of result.data) {
+    const [message, received_at, count] = Object.values(row);
+    const msgKey = message as string;
+
+    if (!grouped.has(msgKey)) {
+      grouped.set(msgKey, {
+        message: msgKey,
+        event_count: count as number,
+        first_seen: new Date((received_at as number) * 1000).toISOString(),
+        last_seen: new Date((received_at as number) * 1000).toISOString(),
+      });
+    } else {
+      const existing = grouped.get(msgKey)!;
+      existing.event_count += count as number;
+      const currentTimestamp = (received_at as number) * 1000;
+      if (currentTimestamp < new Date(existing.first_seen).getTime()) {
+        existing.first_seen = new Date(currentTimestamp).toISOString();
+      }
+      if (currentTimestamp > new Date(existing.last_seen).getTime()) {
+        existing.last_seen = new Date(currentTimestamp).toISOString();
+      }
+    }
+  }
+
+  return Array.from(grouped.values())
+    .sort((a, b) => b.event_count - a.event_count)
+    .slice(0, limit);
 }
 
 export async function getEventVolumeTimeseries(
@@ -177,27 +317,58 @@ export async function getEventVolumeTimeseries(
   endDate: string,
   interval: "hour" | "day" = "hour",
 ): Promise<{ timestamp: string; event_count: number }[]> {
-  const dateFormat =
-    interval === "hour" ? "DATE_FORMAT('%Y-%m-%d %H:00:00')" : "DATE";
+  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
 
   const query = `
     SELECT
-      ${dateFormat}(FROM_UNIXTIME(received_at)) as timestamp,
-      COUNT(*) as event_count
+      received_at,
+      COUNT(*)
     FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
-      AND item_type IN ('event', 'transaction')
-      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
-    GROUP BY timestamp
-    ORDER BY timestamp ASC
+      AND item_type = 'event'
+      AND received_at >= ${startTimestamp}
+      AND received_at <= ${endTimestamp}
+    GROUP BY received_at
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<{
-    timestamp: string;
-    event_count: number;
-  }>(config, "bitwobbly-sentry-catalog", query);
-  return result.data;
+  interface RawResult {
+    received_at: number;
+    count: number;
+  }
+
+  const result = await executeR2SQL<RawResult>(
+    config,
+    "bitwobbly-sentry-catalog",
+    query,
+  );
+
+  const intervalMs = interval === "hour" ? 3600000 : 86400000;
+  const grouped = new Map<string, number>();
+
+  for (const row of result.data) {
+    const [received_at, count] = Object.values(row);
+    const timestamp = (received_at as number) * 1000;
+    const bucketTimestamp = Math.floor(timestamp / intervalMs) * intervalMs;
+    const bucketKey = new Date(bucketTimestamp).toISOString();
+
+    if (interval === "hour") {
+      const hourBucket = bucketKey.substring(0, 13) + ":00:00.000Z";
+      grouped.set(
+        hourBucket,
+        (grouped.get(hourBucket) || 0) + (count as number),
+      );
+    } else {
+      const dayBucket = bucketKey.substring(0, 10);
+      grouped.set(dayBucket, (grouped.get(dayBucket) || 0) + (count as number));
+    }
+  }
+
+  return Array.from(grouped.entries())
+    .map(([timestamp, event_count]) => ({ timestamp, event_count }))
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
 export interface EventVolumeStats {
@@ -213,22 +384,32 @@ export async function getEventVolumeStats(
   startDate: string,
   endDate: string,
 ): Promise<EventVolumeStats> {
+  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+
   const query = `
     SELECT
-      COUNT(*) as accepted_events
+      COUNT(*)
     FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
-      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+      AND received_at >= ${startTimestamp}
+      AND received_at <= ${endTimestamp}
   `;
 
-  const result = await executeR2SQL<{ accepted_events: number }>(
+  interface RawResult {
+    count: number;
+  }
+
+  const result = await executeR2SQL<RawResult>(
     config,
     "bitwobbly-sentry-catalog",
     query,
   );
 
-  const acceptedEvents = result.data[0]?.accepted_events || 0;
+  const acceptedEvents = result.data[0]
+    ? (Object.values(result.data[0])[0] as number)
+    : 0;
 
   return {
     total_events: acceptedEvents,
@@ -252,32 +433,62 @@ export async function getEventVolumeTimeseriesBreakdown(
   endDate: string,
   interval: "hour" | "day" = "hour",
 ): Promise<EventVolumeTimeseriesBreakdown[]> {
-  const dateFormat =
-    interval === "hour" ? "DATE_FORMAT('%Y-%m-%d %H:00:00')" : "DATE";
+  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
 
   const query = `
     SELECT
-      ${dateFormat}(FROM_UNIXTIME(received_at)) as timestamp,
-      COUNT(*) as accepted
+      received_at,
+      COUNT(*)
     FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
-      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
-    GROUP BY timestamp
-    ORDER BY timestamp ASC
+      AND received_at >= ${startTimestamp}
+      AND received_at <= ${endTimestamp}
+    GROUP BY received_at
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<{
-    timestamp: string;
-    accepted: number;
-  }>(config, "bitwobbly-sentry-catalog", query);
+  interface RawResult {
+    received_at: number;
+    count: number;
+  }
 
-  return result.data.map((row) => ({
-    timestamp: row.timestamp,
-    accepted: row.accepted,
-    filtered: 0,
-    dropped: 0,
-  }));
+  const result = await executeR2SQL<RawResult>(
+    config,
+    "bitwobbly-sentry-catalog",
+    query,
+  );
+
+  const intervalMs = interval === "hour" ? 3600000 : 86400000;
+  const grouped = new Map<string, number>();
+
+  for (const row of result.data) {
+    const [received_at, count] = Object.values(row);
+    const timestamp = (received_at as number) * 1000;
+    const bucketTimestamp = Math.floor(timestamp / intervalMs) * intervalMs;
+    const bucketKey = new Date(bucketTimestamp).toISOString();
+
+    if (interval === "hour") {
+      const hourBucket = bucketKey.substring(0, 13) + ":00:00.000Z";
+      grouped.set(
+        hourBucket,
+        (grouped.get(hourBucket) || 0) + (count as number),
+      );
+    } else {
+      const dayBucket = bucketKey.substring(0, 10);
+      grouped.set(dayBucket, (grouped.get(dayBucket) || 0) + (count as number));
+    }
+  }
+
+  return Array.from(grouped.entries())
+    .map(([timestamp, accepted]) => ({
+      timestamp,
+      accepted,
+      filtered: 0,
+      dropped: 0,
+    }))
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
 export interface SDKDistribution {
@@ -292,45 +503,67 @@ export async function getSDKDistribution(
   startDate: string,
   endDate: string,
 ): Promise<SDKDistribution[]> {
+  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+
   const totalQuery = `
-    SELECT COUNT(*) as total
+    SELECT COUNT(*)
     FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
-      AND item_type IN ('event', 'transaction')
-      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+      AND item_type = 'event'
+      AND received_at >= ${startTimestamp}
+      AND received_at <= ${endTimestamp}
   `;
 
-  const totalResult = await executeR2SQL<{ total: number }>(
+  interface TotalResult {
+    count: number;
+  }
+
+  const totalResult = await executeR2SQL<TotalResult>(
     config,
-    'bitwobbly-sentry-catalog',
+    "bitwobbly-sentry-catalog",
     totalQuery,
   );
 
-  const total = totalResult.data[0]?.total || 0;
+  const total = totalResult.data[0]
+    ? (Object.values(totalResult.data[0])[0] as number)
+    : 0;
 
   const distributionQuery = `
     SELECT
       sdk_name,
-      COUNT(*) as event_count
+      COUNT(*)
     FROM sentry.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
-      AND item_type IN ('event', 'transaction')
-      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+      AND item_type = 'event'
+      AND received_at >= ${startTimestamp}
+      AND received_at <= ${endTimestamp}
     GROUP BY sdk_name
-    ORDER BY event_count DESC
-    LIMIT 10
+    LIMIT 10000
   `;
 
-  const result = await executeR2SQL<{
+  interface DistributionResult {
     sdk_name: string | null;
-    event_count: number;
-  }>(config, 'bitwobbly-sentry-catalog', distributionQuery);
+    count: number;
+  }
 
-  return result.data.map((row) => ({
-    sdk_name: row.sdk_name || 'Unknown',
-    event_count: row.event_count,
-    percentage: total > 0 ? (row.event_count * 100.0) / total : 0,
-  }));
+  const result = await executeR2SQL<DistributionResult>(
+    config,
+    "bitwobbly-sentry-catalog",
+    distributionQuery,
+  );
+
+  return result.data
+    .map((row) => {
+      const [sdk_name, count] = Object.values(row);
+      return {
+        sdk_name: (sdk_name as string | null) || "Unknown",
+        event_count: count as number,
+        percentage: total > 0 ? ((count as number) * 100.0) / total : 0,
+      };
+    })
+    .sort((a, b) => b.event_count - a.event_count)
+    .slice(0, 10);
 }
