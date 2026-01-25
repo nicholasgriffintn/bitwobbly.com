@@ -83,12 +83,16 @@ export function buildManifests(
         const payloadJson = JSON.parse(payloadText);
         eventId = payloadJson.event_id;
 
+        const userId = payloadJson.user?.id;
         eventMetadata = {
           platform: payloadJson.platform,
           level: payloadJson.level,
           release: payloadJson.release,
           environment: payloadJson.environment,
-          user_id: payloadJson.user?.id,
+          user_id:
+            userId != null && typeof userId !== "object"
+              ? String(userId)
+              : undefined,
           transaction: payloadJson.transaction,
           message:
             payloadJson.message ||

@@ -121,7 +121,7 @@ export async function getErrorRateByRelease(
       event_release as release,
       event_environment as environment,
       COUNT(*) as error_count,
-      COUNT(DISTINCT event_user_id) as user_count
+      COUNT(DISTINCT CASE WHEN event_user_id NOT LIKE '{%' AND event_user_id IS NOT NULL THEN event_user_id ELSE NULL END) as user_count
     FROM default.sentry_manifests
     WHERE
       sentry_project_id = ${projectId}
