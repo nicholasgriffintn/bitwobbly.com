@@ -62,7 +62,7 @@ function Overview() {
         </div>
       </div>
 
-      <div className="card mb-1.5">
+      <div className="card mb-3">
         <div className="flex items-center gap-3">
           <span
             className={`status-indicator ${overallStatus} w-3 h-3 rounded-full`}
@@ -91,7 +91,7 @@ function Overview() {
         </div>
       </div>
 
-      <div className="grid metrics mb-1.5">
+      <div className="grid metrics mb-6">
         <div className="card">
           <div className="metric-label">Monitors up</div>
           <div className="metric-value" style={{ color: 'var(--green)' }}>
@@ -125,7 +125,7 @@ function Overview() {
       </div>
 
       {!hasCompletedSetup && (
-        <div className="grid two mb-1.5">
+        <div className="grid two mb-6">
           <div className="card">
             <div className="card-title">Getting started</div>
             <div className="list">

@@ -199,3 +199,126 @@ export async function getEventVolumeTimeseries(
   }>(config, "bitwobbly-sentry-catalog", query);
   return result.data;
 }
+
+export interface EventVolumeStats {
+  total_events: number;
+  accepted_events: number;
+  filtered_events: number;
+  dropped_events: number;
+}
+
+export async function getEventVolumeStats(
+  config: R2SQLConfig,
+  projectId: number,
+  startDate: string,
+  endDate: string,
+): Promise<EventVolumeStats> {
+  const query = `
+    SELECT
+      COUNT(*) as accepted_events
+    FROM default.sentry_manifests
+    WHERE
+      sentry_project_id = ${projectId}
+      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+  `;
+
+  const result = await executeR2SQL<{ accepted_events: number }>(
+    config,
+    "bitwobbly-sentry-catalog",
+    query,
+  );
+
+  const acceptedEvents = result.data[0]?.accepted_events || 0;
+
+  return {
+    total_events: acceptedEvents,
+    accepted_events: acceptedEvents,
+    filtered_events: 0,
+    dropped_events: 0,
+  };
+}
+
+export interface EventVolumeTimeseriesBreakdown {
+  timestamp: string;
+  accepted: number;
+  filtered: number;
+  dropped: number;
+}
+
+export async function getEventVolumeTimeseriesBreakdown(
+  config: R2SQLConfig,
+  projectId: number,
+  startDate: string,
+  endDate: string,
+  interval: "hour" | "day" = "hour",
+): Promise<EventVolumeTimeseriesBreakdown[]> {
+  const dateFormat =
+    interval === "hour" ? "DATE_FORMAT('%Y-%m-%d %H:00:00')" : "DATE";
+
+  const query = `
+    SELECT
+      ${dateFormat}(FROM_UNIXTIME(received_at)) as timestamp,
+      COUNT(*) as accepted
+    FROM default.sentry_manifests
+    WHERE
+      sentry_project_id = ${projectId}
+      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+    GROUP BY timestamp
+    ORDER BY timestamp ASC
+  `;
+
+  const result = await executeR2SQL<{
+    timestamp: string;
+    accepted: number;
+  }>(config, "bitwobbly-sentry-catalog", query);
+
+  return result.data.map((row) => ({
+    timestamp: row.timestamp,
+    accepted: row.accepted,
+    filtered: 0,
+    dropped: 0,
+  }));
+}
+
+export interface SDKDistribution {
+  sdk_name: string;
+  event_count: number;
+  percentage: number;
+}
+
+export async function getSDKDistribution(
+  config: R2SQLConfig,
+  projectId: number,
+  startDate: string,
+  endDate: string,
+): Promise<SDKDistribution[]> {
+  const query = `
+    WITH totals AS (
+      SELECT COUNT(*) as total
+      FROM default.sentry_manifests
+      WHERE
+        sentry_project_id = ${projectId}
+        AND item_type IN ('event', 'transaction')
+        AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+    )
+    SELECT
+      COALESCE(sdk_name, 'Unknown') as sdk_name,
+      COUNT(*) as event_count,
+      (COUNT(*) * 100.0 / (SELECT total FROM totals)) as percentage
+    FROM default.sentry_manifests
+    WHERE
+      sentry_project_id = ${projectId}
+      AND item_type IN ('event', 'transaction')
+      AND received_at BETWEEN UNIX_TIMESTAMP('${startDate}') AND UNIX_TIMESTAMP('${endDate}')
+    GROUP BY sdk_name
+    ORDER BY event_count DESC
+    LIMIT 10
+  `;
+
+  const result = await executeR2SQL<SDKDistribution>(
+    config,
+    "bitwobbly-sentry-catalog",
+    query,
+  );
+  return result.data;
+}
