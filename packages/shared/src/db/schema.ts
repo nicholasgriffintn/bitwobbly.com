@@ -220,6 +220,66 @@ export const teamInvites = sqliteTable('team_invites', {
   usedAt: text('used_at'),
 });
 
+export const sentryProjects = sqliteTable('sentry_projects', {
+  id: text('id').primaryKey(),
+  teamId: text('team_id')
+    .notNull()
+    .references(() => teams.id),
+  sentryProjectId: integer('sentry_project_id').notNull().unique(),
+  name: text('name').notNull(),
+  platform: text('platform'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const sentryKeys = sqliteTable('sentry_keys', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => sentryProjects.id),
+  publicKey: text('public_key').notNull(),
+  secretKey: text('secret_key'),
+  label: text('label'),
+  status: text('status').notNull().default('active'),
+  rateLimitPerMinute: integer('rate_limit_per_minute').default(1000),
+  createdAt: text('created_at').notNull(),
+  revokedAt: text('revoked_at'),
+});
+
+export const sentryIssues = sqliteTable('sentry_issues', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => sentryProjects.id),
+  fingerprint: text('fingerprint').notNull(),
+  title: text('title').notNull(),
+  culprit: text('culprit'),
+  level: text('level').notNull(),
+  status: text('status').notNull().default('unresolved'),
+  eventCount: integer('event_count').notNull().default(1),
+  userCount: integer('user_count').notNull().default(0),
+  firstSeenAt: integer('first_seen_at').notNull(),
+  lastSeenAt: integer('last_seen_at').notNull(),
+  resolvedAt: integer('resolved_at'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const sentryEvents = sqliteTable('sentry_events', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => sentryProjects.id),
+  type: text('type').notNull(),
+  level: text('level'),
+  message: text('message'),
+  fingerprint: text('fingerprint'),
+  issueId: text('issue_id').references(() => sentryIssues.id),
+  release: text('release'),
+  environment: text('environment'),
+  r2Key: text('r2_key').notNull(),
+  receivedAt: integer('received_at').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export type Team = typeof teams.$inferSelect;
 export type NewTeam = typeof teams.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
@@ -248,3 +308,11 @@ export type UserTeam = typeof userTeams.$inferSelect;
 export type NewUserTeam = typeof userTeams.$inferInsert;
 export type TeamInvite = typeof teamInvites.$inferSelect;
 export type NewTeamInvite = typeof teamInvites.$inferInsert;
+export type SentryProject = typeof sentryProjects.$inferSelect;
+export type NewSentryProject = typeof sentryProjects.$inferInsert;
+export type SentryKey = typeof sentryKeys.$inferSelect;
+export type NewSentryKey = typeof sentryKeys.$inferInsert;
+export type SentryIssue = typeof sentryIssues.$inferSelect;
+export type NewSentryIssue = typeof sentryIssues.$inferInsert;
+export type SentryEvent = typeof sentryEvents.$inferSelect;
+export type NewSentryEvent = typeof sentryEvents.$inferInsert;

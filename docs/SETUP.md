@@ -71,3 +71,42 @@ pnpm -C apps/notifier-worker deploy
 Set up any required environment variables in the Cloudflare dashboard for each worker.
 
 Refer to the `.env.example` files in each app for guidance on which variables are needed.
+
+## 9) Setup the sentry issues pipelines
+
+### Create the R2 Buckets
+
+First we need to create the R2 buckets that will be used to store the raw envelopes and the data catalog.
+
+These should be named `bitwobbly-sentry-raw` and `bitwobbly-sentry-catalog`.
+
+You can do this by running the following commands:
+
+```bash
+wrangler r2 bucket create bitwobbly-sentry-raw
+wrangler r2 bucket create bitwobbly-sentry-catalog
+```
+
+### Create the Pipelines Stream
+
+Next we need to create the Pipelines stream that will be used to store the raw envelopes.
+
+This should be named `bitwobbly_sentry_manifests`.
+
+You can do this by running the following command:
+
+```bash
+wrangler pipelines create bitwobbly_sentry_manifests --type unstructured
+```
+
+### Configure the R2 Data Catalog Sink
+
+Next we need to configure the R2 Data Catalog sink that will be used to store the raw envelopes.
+
+This should be named `bitwobbly-sentry-sink`.
+
+You can do this by running the following command:
+
+```bash
+wrangler pipelines sink create bitwobbly-sentry-sink --pipeline bitwobbly-sentry-manifests --type r2-data-catalog --bucket bitwobbly-sentry-catalog --table sentry_manifests
+```

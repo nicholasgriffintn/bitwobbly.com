@@ -1,0 +1,20 @@
+{
+  "name": "@bitwobbly/sentry-processor-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local  --persist-to ../../.data",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bitwobbly/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260123.0",
+    "drizzle-orm": "^0.36.4",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.60.0"
+  }
+}

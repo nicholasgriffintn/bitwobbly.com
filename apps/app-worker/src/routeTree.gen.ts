@@ -21,7 +21,10 @@ import { Route as AppNotificationsRouteImport } from './routes/app/notifications
 import { Route as AppMonitorsRouteImport } from './routes/app/monitors'
 import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
 import { Route as AppComponentsRouteImport } from './routes/app/components'
+import { Route as AppIssuesIndexRouteImport } from './routes/app/issues/index'
 import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.$monitorId'
+import { Route as AppIssuesProjectIdIndexRouteImport } from './routes/app/issues/$projectId/index'
+import { Route as AppIssuesProjectIdIssueIssueIdRouteImport } from './routes/app/issues/$projectId/issue/$issueId'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
@@ -83,11 +86,27 @@ const AppComponentsRoute = AppComponentsRouteImport.update({
   path: '/components',
   getParentRoute: () => AppRoute,
 } as any)
+const AppIssuesIndexRoute = AppIssuesIndexRouteImport.update({
+  id: '/issues/',
+  path: '/issues/',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiWebhooksMonitorIdRoute = ApiWebhooksMonitorIdRouteImport.update({
   id: '/api/webhooks/$monitorId',
   path: '/api/webhooks/$monitorId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIssuesProjectIdIndexRoute = AppIssuesProjectIdIndexRouteImport.update({
+  id: '/issues/$projectId/',
+  path: '/issues/$projectId/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIssuesProjectIdIssueIssueIdRoute =
+  AppIssuesProjectIdIssueIssueIdRouteImport.update({
+    id: '/issues/$projectId/issue/$issueId',
+    path: '/issues/$projectId/issue/$issueId',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +122,9 @@ export interface FileRoutesByFullPath {
   '/status/$slug': typeof StatusSlugRoute
   '/app/': typeof AppIndexRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
+  '/app/issues/': typeof AppIssuesIndexRoute
+  '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
+  '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,6 +139,9 @@ export interface FileRoutesByTo {
   '/status/$slug': typeof StatusSlugRoute
   '/app': typeof AppIndexRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
+  '/app/issues': typeof AppIssuesIndexRoute
+  '/app/issues/$projectId': typeof AppIssuesProjectIdIndexRoute
+  '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,6 +158,9 @@ export interface FileRoutesById {
   '/status/$slug': typeof StatusSlugRoute
   '/app/': typeof AppIndexRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
+  '/app/issues/': typeof AppIssuesIndexRoute
+  '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
+  '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +178,9 @@ export interface FileRouteTypes {
     | '/status/$slug'
     | '/app/'
     | '/api/webhooks/$monitorId'
+    | '/app/issues/'
+    | '/app/issues/$projectId/'
+    | '/app/issues/$projectId/issue/$issueId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -164,6 +195,9 @@ export interface FileRouteTypes {
     | '/status/$slug'
     | '/app'
     | '/api/webhooks/$monitorId'
+    | '/app/issues'
+    | '/app/issues/$projectId'
+    | '/app/issues/$projectId/issue/$issueId'
   id:
     | '__root__'
     | '/'
@@ -179,6 +213,9 @@ export interface FileRouteTypes {
     | '/status/$slug'
     | '/app/'
     | '/api/webhooks/$monitorId'
+    | '/app/issues/'
+    | '/app/issues/$projectId/'
+    | '/app/issues/$projectId/issue/$issueId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,12 +313,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppComponentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/issues/': {
+      id: '/app/issues/'
+      path: '/issues'
+      fullPath: '/app/issues/'
+      preLoaderRoute: typeof AppIssuesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/webhooks/$monitorId': {
       id: '/api/webhooks/$monitorId'
       path: '/api/webhooks/$monitorId'
       fullPath: '/api/webhooks/$monitorId'
       preLoaderRoute: typeof ApiWebhooksMonitorIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/issues/$projectId/': {
+      id: '/app/issues/$projectId/'
+      path: '/issues/$projectId'
+      fullPath: '/app/issues/$projectId/'
+      preLoaderRoute: typeof AppIssuesProjectIdIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/issues/$projectId/issue/$issueId': {
+      id: '/app/issues/$projectId/issue/$issueId'
+      path: '/issues/$projectId/issue/$issueId'
+      fullPath: '/app/issues/$projectId/issue/$issueId'
+      preLoaderRoute: typeof AppIssuesProjectIdIssueIssueIdRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
@@ -294,6 +352,9 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppStatusPagesRoute: typeof AppStatusPagesRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppIssuesIndexRoute: typeof AppIssuesIndexRoute
+  AppIssuesProjectIdIndexRoute: typeof AppIssuesProjectIdIndexRoute
+  AppIssuesProjectIdIssueIssueIdRoute: typeof AppIssuesProjectIdIssueIssueIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -304,6 +365,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppStatusPagesRoute: AppStatusPagesRoute,
   AppIndexRoute: AppIndexRoute,
+  AppIssuesIndexRoute: AppIssuesIndexRoute,
+  AppIssuesProjectIdIndexRoute: AppIssuesProjectIdIndexRoute,
+  AppIssuesProjectIdIssueIssueIdRoute: AppIssuesProjectIdIssueIssueIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
