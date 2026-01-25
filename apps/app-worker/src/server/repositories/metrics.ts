@@ -34,20 +34,25 @@ export async function getMonitorMetrics(
   const endTime = new Date();
   const startTime = new Date(endTime.getTime() - hours * 60 * 60 * 1000);
 
+  const sanitizedMonitorId = monitorId.replace(/'/g, "''");
+  const startTimestamp = startTime.getTime() / 1000;
+  const endTimestamp = endTime.getTime() / 1000;
+  const bucketSize = hours * 60;
+
   const query = `
     SELECT
-      blob1 as monitor_id,
+      blob2 as monitor_id,
       double1 as latency_ms,
-      double2 as timestamp,
-      SUM(CASE WHEN blob2 = 'up' THEN 1 ELSE 0 END) as up_count,
-      SUM(CASE WHEN blob2 = 'down' THEN 1 ELSE 0 END) as down_count
-    FROM analytics_dataset
-    WHERE blob1 = '${monitorId}'
-      AND double2 >= ${startTime.getTime() / 1000}
-      AND double2 <= ${endTime.getTime() / 1000}
+      timestamp as timestamp,
+      SUM(CASE WHEN blob3 = 'up' THEN 1 ELSE 0 END) as up_count,
+      SUM(CASE WHEN blob3 = 'down' THEN 1 ELSE 0 END) as down_count
+    FROM bitwobbly-monitor-analytics
+    WHERE blob2 = '${sanitizedMonitorId}'
+      AND timestamp >= ${startTimestamp}
+      AND timestamp <= ${endTimestamp}
     GROUP BY
-      FLOOR(double2 / (${hours * 60})) * (${hours * 60})
-    ORDER BY double2 DESC
+      FLOOR(timestamp / ${bucketSize}) * ${bucketSize}
+    ORDER BY timestamp DESC
     LIMIT ${hours}
   `;
 

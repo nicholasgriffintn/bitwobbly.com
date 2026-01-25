@@ -57,7 +57,7 @@ export default function Login() {
       });
     } catch (err: any) {
       if (isRedirect(err)) {
-        return;
+        throw err;
       }
       setError(err.message);
     } finally {

@@ -132,7 +132,6 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 ### Blocking Issues
 
 - **Resource ID placeholders** -- All `wrangler.jsonc` files contain `REPLACE_ME` for D1 database IDs and KV namespace IDs. These must be filled before any deployment.
-- **Analytics Engine SQL injection risk** -- The metrics query in `apps/checker-worker/src/repositories/metrics.ts` uses string interpolation (`WHERE blob1 = '${monitorId}'`) rather than parameterised queries. Needs sanitisation or a query builder.
 - **No CI/CD pipeline** -- No GitHub Actions or deployment automation exists. Workers must be deployed manually via Wrangler CLI.
 
 ### Incomplete Features

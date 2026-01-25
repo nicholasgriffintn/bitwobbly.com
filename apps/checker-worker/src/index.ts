@@ -220,9 +220,9 @@ async function writeCheckEvent(
 ) {
   if (!env.AE) return;
   env.AE.writeDataPoint({
-    blobs: [job.team_id, job.monitor_id, status, reason || ""],
+    blobs: [job.team_id, job.monitor_id, status],
     doubles: [latency_ms ?? 0],
-    indexes: ["team_id", "monitor_id", "status", "reason", "latency_ms"],
+    indexes: ["team_id", "monitor_id", "status", "latency_ms"],
   });
 }
 

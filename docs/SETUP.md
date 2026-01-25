@@ -46,6 +46,15 @@ This DO updates D1 incidents and rebuilds status snapshots into KV.
 
 This will be automatically created on first deployment.
 
+## 5) Analytics Engine
+
+- name: `bitwobbly-monitor-analytics`
+
+The Checker Worker writes check results (latency, status) to this dataset.
+The App Worker queries it for monitor metrics and uptime charts.
+
+The dataset will be created automatically on first deployment.
+
 ## 6) Deploy the apps
 
 Deploy each app with:
