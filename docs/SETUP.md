@@ -26,16 +26,16 @@ KV is used for public status snapshots: key pattern `status:<slug>`.
 
 ## 3) Queues
 
-The queues should be automatically created on the first deployment, but you can also create them manually:
+Create two queues:
 
 - `bitwobbly-check-jobs`
-- `bitwobbly-alert_-obs`
+- `bitwobbly-alert-jobs`
 
 Ensure:
 
 - Scheduler produces to `bitwobbly-check-jobs`
-- Checker consumes `bitwobbly-check-jobs`, produces to `bitwobbly-alert_-obs`
-- Notifier consumes `bitwobbly-alert_-obs`
+- Checker consumes `bitwobbly-check-jobs`, produces to `bitwobbly-alert-jobs`
+- Notifier consumes `bitwobbly-alert-jobs`
 - App worker has producer binding for `ALERT_JOBS` (manual or future use)
 
 ## 4) Durable Objects
@@ -45,3 +45,20 @@ The incident coordinator is implemented and hosted by the **Checker Worker** as 
 This DO updates D1 incidents and rebuilds status snapshots into KV.
 
 This will be automatically created on first deployment.
+
+## 6) Deploy the apps
+
+Deploy each app with:
+
+```bash
+pnpm -C apps/app-worker deploy
+pnpm -C apps/scheduler-worker deploy
+pnpm -C apps/checker-worker deploy
+pnpm -C apps/notifier-worker deploy
+```
+
+## 7) Set up environment variables
+
+Set up any required environment variables in the Cloudflare dashboard for each worker.
+
+Refer to the `.env.example` files in each app for guidance on which variables are needed.

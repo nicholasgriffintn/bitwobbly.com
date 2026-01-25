@@ -2,11 +2,12 @@ import {
   nowIso,
   randomId,
   schema,
-  type User,
   type UUID,
+  type DB,
 } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+
+type User = typeof schema.users.$inferSelect;
 
 import {
   hashPassword,
@@ -15,7 +16,7 @@ import {
 } from "../lib/auth";
 
 export async function createUser(
-  db: DrizzleD1Database,
+  db: DB,
   input: {
     email: string;
     password: string;
@@ -56,10 +57,10 @@ export async function createUser(
 }
 
 export async function authenticateUser(
-  db: DrizzleD1Database,
+  db: DB,
   email: string,
   password: string,
-): Promise<{ user: Omit<User, "password_hash"> }> {
+): Promise<{ user: Omit<User, "passwordHash"> }> {
   const user = await db
     .select()
     .from(schema.users)
@@ -81,9 +82,9 @@ export async function authenticateUser(
 }
 
 export async function getUserById(
-  db: DrizzleD1Database,
+  db: DB,
   userId: UUID,
-): Promise<Omit<User, "password_hash"> | null> {
+): Promise<Omit<User, "passwordHash"> | null> {
   const user = await db
     .select()
     .from(schema.users)
@@ -97,7 +98,7 @@ export async function getUserById(
 }
 
 export async function createSession(
-  db: DrizzleD1Database,
+  db: DB,
   userId: UUID,
 ): Promise<{ sessionToken: string }> {
   const sessionToken = generateSessionToken();
@@ -114,7 +115,7 @@ export async function createSession(
 }
 
 export async function validateSession(
-  db: DrizzleD1Database,
+  db: DB,
   sessionToken: string,
 ): Promise<{ userId: UUID } | null> {
   const session = await db
@@ -139,7 +140,7 @@ export async function validateSession(
 }
 
 export async function deleteSession(
-  db: DrizzleD1Database,
+  db: DB,
   sessionToken: string,
 ): Promise<void> {
   await db.delete(schema.sessions).where(eq(schema.sessions.id, sessionToken));

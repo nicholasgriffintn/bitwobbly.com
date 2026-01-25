@@ -1,11 +1,9 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
-import { schema, nowIso, randomId } from "@bitwobbly/shared";
-import { eq, and, desc } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
+import { eq, and } from "drizzle-orm";
 
 import { listOpenIncidents, listRecentResolvedIncidents } from "./incidents.js";
 
-export async function listStatusPages(db: DrizzleD1Database, teamId: string) {
+export async function listStatusPages(db: DB, teamId: string) {
   return await db
     .select()
     .from(schema.statusPages)
@@ -14,7 +12,7 @@ export async function listStatusPages(db: DrizzleD1Database, teamId: string) {
 }
 
 export async function createStatusPage(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   input: {
     name: string;
@@ -39,11 +37,7 @@ export async function createStatusPage(
   return { id };
 }
 
-export async function getStatusPageById(
-  db: DrizzleD1Database,
-  teamId: string,
-  id: string,
-) {
+export async function getStatusPageById(db: DB, teamId: string, id: string) {
   const rows = await db
     .select()
     .from(schema.statusPages)
@@ -55,7 +49,7 @@ export async function getStatusPageById(
 }
 
 export async function getStatusPageBySlug(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   slug: string,
 ) {
@@ -73,7 +67,7 @@ export async function getStatusPageBySlug(
 }
 
 export async function updateStatusPage(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   statusPageId: string,
   input: {
@@ -103,7 +97,7 @@ export async function updateStatusPage(
 }
 
 export async function deleteStatusPage(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   statusPageId: string,
 ) {
@@ -121,7 +115,7 @@ export async function deleteStatusPage(
 }
 
 export async function listComponentsForStatusPage(
-  db: DrizzleD1Database,
+  db: DB,
   statusPageId: string,
 ) {
   const rows = await db
@@ -141,7 +135,7 @@ export async function listComponentsForStatusPage(
 }
 
 export async function rebuildStatusSnapshot(
-  db: DrizzleD1Database,
+  db: DB,
   kv: KVNamespace,
   teamId: string,
   slug: string,
@@ -215,7 +209,7 @@ export async function rebuildStatusSnapshot(
 }
 
 export async function clearStatusPageCache(
-  db: DrizzleD1Database,
+  db: DB,
   kv: KVNamespace,
   teamId: string,
   statusPageId: string,
@@ -227,7 +221,7 @@ export async function clearStatusPageCache(
 }
 
 export async function clearAllStatusPageCaches(
-  db: DrizzleD1Database,
+  db: DB,
   kv: KVNamespace,
   teamId: string,
 ) {

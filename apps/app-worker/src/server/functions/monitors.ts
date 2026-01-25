@@ -15,11 +15,11 @@ import { clampInt } from "../lib/utils";
 import { useAppSession } from "../lib/session";
 
 const authMiddleware = createMiddleware({
-  type: 'function',
+  type: "function",
 }).server(async ({ next }) => {
   const session = await useAppSession();
   if (!session.data.userId) {
-    throw redirect({ to: '/login' });
+    throw redirect({ to: "/login" });
   }
   return next({
     context: {
@@ -38,7 +38,7 @@ const CreateMonitorSchema = z.object({
 
 export const listMonitorsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => {
+  .handler(async () => {
     const vars = env;
     const db = getDb(vars.DB);
     const monitors = await listMonitors(db, vars.PUBLIC_TEAM_ID);
@@ -48,7 +48,7 @@ export const listMonitorsFn = createServerFn({ method: "GET" })
 export const createMonitorFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator((data: unknown) => CreateMonitorSchema.parse(data))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
     const vars = env;
     const db = getDb(vars.DB);
 
@@ -68,7 +68,7 @@ export const createMonitorFn = createServerFn({ method: "POST" })
 export const deleteMonitorFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator((data: { id: string }) => data)
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
     const vars = env;
     const db = getDb(vars.DB);
     await deleteMonitor(db, vars.PUBLIC_TEAM_ID, data.id);
@@ -78,7 +78,7 @@ export const deleteMonitorFn = createServerFn({ method: "POST" })
 export const getMonitorMetricsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .inputValidator((data: { monitorId: string; hours?: number }) => data)
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
     const vars = env;
 
     try {
@@ -109,7 +109,7 @@ const UpdateMonitorSchema = z.object({
 export const updateMonitorFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator((data: unknown) => UpdateMonitorSchema.parse(data))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
     const vars = env;
     const db = getDb(vars.DB);
 
@@ -128,24 +128,24 @@ export const updateMonitorFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const triggerSchedulerFn = createServerFn({ method: 'POST' })
+export const triggerSchedulerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async () => {
     try {
-      console.log('[APP] Triggering scheduler...');
-      const schedulerUrl = 'http://localhost:8788/cdn-cgi/handler/scheduled';
-      const response = await fetch(schedulerUrl, { method: 'POST' });
+      console.log("[APP] Triggering scheduler...");
+      const schedulerUrl = "http://localhost:8788/cdn-cgi/handler/scheduled";
+      const response = await fetch(schedulerUrl, { method: "POST" });
 
       if (!response.ok) {
         throw new Error(`Scheduler returned ${response.status}`);
       }
 
-      console.log('[APP] Scheduler triggered successfully');
-      return { ok: true, message: 'Scheduler triggered successfully' };
+      console.log("[APP] Scheduler triggered successfully");
+      return { ok: true, message: "Scheduler triggered successfully" };
     } catch (error) {
-      console.error('[APP] Failed to trigger scheduler:', error);
+      console.error("[APP] Failed to trigger scheduler:", error);
       throw new Error(
-        'Failed to trigger scheduler. Make sure dev server is running.',
+        "Failed to trigger scheduler. Make sure dev server is running.",
       );
     }
   });

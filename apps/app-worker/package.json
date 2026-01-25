@@ -11,7 +11,7 @@
     "cf-typegen": "wrangler types",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:migrate:local": "wrangler d1 migrations apply bitwobbly_db --local --persist-to ../../.data",
-    "db:migrate:remote": "wrangler d1 migrations apply bitwobbly_db"
+    "db:migrate:remote": "wrangler d1 migrations apply bitwobbly_db --remote"
   },
   "dependencies": {
     "@bitwobbly/shared": "workspace:*",

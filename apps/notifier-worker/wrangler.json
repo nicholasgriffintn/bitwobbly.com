@@ -21,7 +21,7 @@
   "queues": {
     "consumers": [
       {
-        "queue": "bitwobbly-alert_-obs",
+        "queue": "bitwobbly-alert-jobs",
         "max_batch_size": 10,
         "max_batch_timeout": 5
       }

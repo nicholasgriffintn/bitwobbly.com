@@ -1,11 +1,7 @@
-import { schema, nowIso, randomId } from "@bitwobbly/shared";
+import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
 import { eq, and } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function listNotificationChannels(
-  db: DrizzleD1Database,
-  teamId: string,
-) {
+export async function listNotificationChannels(db: DB, teamId: string) {
   return await db
     .select()
     .from(schema.notificationChannels)
@@ -14,7 +10,7 @@ export async function listNotificationChannels(
 }
 
 export async function createWebhookChannel(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   input: { url: string; label?: string; enabled?: number },
 ) {
@@ -36,7 +32,7 @@ export async function createWebhookChannel(
 }
 
 export async function createEmailChannel(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   input: {
     to: string;
@@ -66,7 +62,7 @@ export async function createEmailChannel(
 }
 
 export async function deleteNotificationChannel(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   channelId: string,
 ) {
@@ -89,7 +85,7 @@ export async function deleteNotificationChannel(
 }
 
 export async function notificationChannelExists(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   channelId: string,
 ): Promise<boolean> {

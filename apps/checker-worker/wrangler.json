@@ -35,7 +35,7 @@
     "producers": [
       {
         "binding": "ALERT_JOBS",
-        "queue": "bitwobbly-alert_-obs"
+        "queue": "bitwobbly-alert-jobs"
       }
     ]
   },

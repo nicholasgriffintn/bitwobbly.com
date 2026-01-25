@@ -1,9 +1,8 @@
-import { schema, nowIso, randomId } from "@bitwobbly/shared";
+import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
 import { eq, and, ne, inArray, desc } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
 export async function listOpenIncidents(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   statusPageId: string | null,
 ) {
@@ -45,7 +44,7 @@ export async function listOpenIncidents(
 }
 
 export async function listRecentResolvedIncidents(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   statusPageId: string | null,
   daysBack: number = 30,
@@ -57,11 +56,11 @@ export async function listRecentResolvedIncidents(
     ? and(
         eq(schema.incidents.teamId, teamId),
         eq(schema.incidents.statusPageId, statusPageId),
-        eq(schema.incidents.status, 'resolved'),
+        eq(schema.incidents.status, "resolved"),
       )
     : and(
         eq(schema.incidents.teamId, teamId),
-        eq(schema.incidents.status, 'resolved'),
+        eq(schema.incidents.status, "resolved"),
       );
 
   const incs = await db
@@ -94,7 +93,7 @@ export async function listRecentResolvedIncidents(
 }
 
 export async function listAllIncidents(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   limit: number = 50,
 ) {
@@ -126,7 +125,7 @@ export async function listAllIncidents(
 }
 
 export async function createIncident(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   input: {
     title: string;
@@ -167,7 +166,7 @@ export async function createIncident(
 }
 
 export async function addIncidentUpdate(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   incidentId: string,
   input: { message: string; status: string },
@@ -213,7 +212,7 @@ export async function addIncidentUpdate(
 }
 
 export async function deleteIncident(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   incidentId: string,
 ) {

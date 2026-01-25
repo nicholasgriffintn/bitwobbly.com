@@ -1,8 +1,7 @@
-import { schema, nowIso, randomId } from "@bitwobbly/shared";
+import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
 import { eq, and, inArray } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function listComponents(db: DrizzleD1Database, teamId: string) {
+export async function listComponents(db: DB, teamId: string) {
   const components = await db
     .select()
     .from(schema.components)
@@ -33,7 +32,7 @@ export async function listComponents(db: DrizzleD1Database, teamId: string) {
 }
 
 export async function createComponent(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   input: { name: string; description?: string },
 ) {
@@ -49,7 +48,7 @@ export async function createComponent(
 }
 
 export async function updateComponent(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   componentId: string,
   input: { name?: string; description?: string | null },
@@ -66,7 +65,7 @@ export async function updateComponent(
 }
 
 export async function deleteComponent(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   componentId: string,
 ) {
@@ -87,7 +86,7 @@ export async function deleteComponent(
 }
 
 export async function linkMonitorToComponent(
-  db: DrizzleD1Database,
+  db: DB,
   componentId: string,
   monitorId: string,
 ) {
@@ -98,7 +97,7 @@ export async function linkMonitorToComponent(
 }
 
 export async function unlinkMonitorFromComponent(
-  db: DrizzleD1Database,
+  db: DB,
   componentId: string,
   monitorId: string,
 ) {
@@ -113,7 +112,7 @@ export async function unlinkMonitorFromComponent(
 }
 
 export async function linkComponentToStatusPage(
-  db: DrizzleD1Database,
+  db: DB,
   statusPageId: string,
   componentId: string,
   sortOrder: number = 0,
@@ -125,7 +124,7 @@ export async function linkComponentToStatusPage(
 }
 
 export async function unlinkComponentFromStatusPage(
-  db: DrizzleD1Database,
+  db: DB,
   statusPageId: string,
   componentId: string,
 ) {
@@ -139,10 +138,7 @@ export async function unlinkComponentFromStatusPage(
     );
 }
 
-export async function getComponentsForStatusPage(
-  db: DrizzleD1Database,
-  statusPageId: string,
-) {
+export async function getComponentsForStatusPage(db: DB, statusPageId: string) {
   const rows = await db
     .select({
       componentId: schema.statusPageComponents.componentId,

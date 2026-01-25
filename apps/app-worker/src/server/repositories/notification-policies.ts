@@ -1,11 +1,7 @@
-import { schema, nowIso, randomId } from "@bitwobbly/shared";
+import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
 import { eq, and } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function listNotificationPolicies(
-  db: DrizzleD1Database,
-  teamId: string,
-) {
+export async function listNotificationPolicies(db: DB, teamId: string) {
   return await db
     .select({
       id: schema.notificationPolicies.id,
@@ -33,7 +29,7 @@ export async function listNotificationPolicies(
 }
 
 export async function createNotificationPolicy(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   input: {
     monitor_id: string;
@@ -56,7 +52,7 @@ export async function createNotificationPolicy(
 }
 
 export async function deleteNotificationPolicy(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   policyId: string,
 ) {

@@ -18,7 +18,7 @@ import {
 import {
   getStatusPageById,
   clearAllStatusPageCaches,
-} from '../repositories/status-pages';
+} from "../repositories/status-pages";
 import { useAppSession } from "../lib/session";
 
 const authMiddleware = createServerFn().handler(async () => {

@@ -1,6 +1,5 @@
-import { createDb } from "@bitwobbly/shared";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import { createDb, type DB } from "@bitwobbly/shared";
 
-export function getDb(d1: D1Database): DrizzleD1Database {
+export function getDb(d1: D1Database): DB {
   return createDb(d1);
 }

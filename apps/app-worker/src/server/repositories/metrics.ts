@@ -65,7 +65,7 @@ export async function getMonitorMetrics(
     throw new Error(`Analytics Engine query failed: ${errorText}`);
   }
 
-  const responseJSON = await response.json();
+  const responseJSON = (await response.json()) as { data?: MetricsRow[] };
   const metrics = responseJSON.data || [];
 
   const totalChecks = metrics.reduce(

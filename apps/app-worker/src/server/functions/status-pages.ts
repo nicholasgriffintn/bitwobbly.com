@@ -62,9 +62,9 @@ export const createStatusPageFn = createServerFn({ method: "POST" })
 
     const created = await createStatusPage(db, vars.PUBLIC_TEAM_ID, {
       ...data,
-      logo_url: data.logo_url?.trim() || null,
-      brand_color: data.brand_color?.trim() || "#007bff",
-      custom_css: data.custom_css?.trim() || null,
+      logo_url: data.logo_url?.trim() || undefined,
+      brand_color: data.brand_color?.trim() || '#007bff',
+      custom_css: data.custom_css?.trim() || undefined,
     });
 
     await rebuildStatusSnapshot(db, vars.KV, vars.PUBLIC_TEAM_ID, data.slug);
@@ -98,11 +98,9 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
 
     await updateStatusPage(db, vars.PUBLIC_TEAM_ID, id, processedUpdates);
 
-    // Rebuild snapshot with new slug if changed, otherwise use old slug
     const newSlug = updates.slug || page.slug;
     await rebuildStatusSnapshot(db, vars.KV, vars.PUBLIC_TEAM_ID, newSlug);
 
-    // If slug changed, delete old cached version
     if (updates.slug && updates.slug !== page.slug) {
       await vars.KV.delete(`status:${page.slug}`);
     }

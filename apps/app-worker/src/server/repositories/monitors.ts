@@ -1,8 +1,7 @@
-import { schema, nowIso, randomId } from "@bitwobbly/shared";
+import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
 import { eq, inArray, and } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function listMonitors(db: DrizzleD1Database, teamId: string) {
+export async function listMonitors(db: DB, teamId: string) {
   const monitors = await db
     .select()
     .from(schema.monitors)
@@ -27,7 +26,7 @@ export async function listMonitors(db: DrizzleD1Database, teamId: string) {
 }
 
 export async function createMonitor(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   input: {
     name: string;
@@ -72,11 +71,7 @@ export async function createMonitor(
   return { id };
 }
 
-export async function deleteMonitor(
-  db: DrizzleD1Database,
-  teamId: string,
-  monitorId: string,
-) {
+export async function deleteMonitor(db: DB, teamId: string, monitorId: string) {
   await db
     .delete(schema.monitors)
     .where(
@@ -91,7 +86,7 @@ export async function deleteMonitor(
 }
 
 export async function monitorExists(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   monitorId: string,
 ): Promise<boolean> {
@@ -110,7 +105,7 @@ export async function monitorExists(
 }
 
 export async function getMonitorById(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   monitorId: string,
 ) {
@@ -129,7 +124,7 @@ export async function getMonitorById(
 }
 
 export async function updateMonitor(
-  db: DrizzleD1Database,
+  db: DB,
   teamId: string,
   monitorId: string,
   input: {

@@ -1,7 +1,6 @@
-import { schema, nowIso } from "@bitwobbly/shared";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import { schema, nowIso, type DB } from "@bitwobbly/shared";
 
-export async function ensureDemoTeam(db: DrizzleD1Database, teamId: string) {
+export async function ensureDemoTeam(db: DB, teamId: string) {
   await db
     .insert(schema.teams)
     .values({
