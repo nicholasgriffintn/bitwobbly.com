@@ -109,9 +109,24 @@ function extractEventFromEnvelope(data: Uint8Array, itemIndex: number): any {
     const itemHeader = JSON.parse(itemHeaderJson);
     offset = itemHeaderEnd + 1;
 
-    const length = itemHeader.length ?? 0;
-    const payload = data.slice(offset, offset + length);
-    offset += length + 1;
+    let length: number;
+    let payload: Uint8Array;
+
+    if (itemHeader.length !== undefined) {
+      length = itemHeader.length;
+      payload = data.slice(offset, offset + length);
+      offset += length + 1;
+    } else {
+      const payloadEnd = data.indexOf(0x0a, offset);
+      if (payloadEnd === -1) {
+        payload = data.slice(offset);
+        offset = data.length;
+      } else {
+        payload = data.slice(offset, payloadEnd);
+        offset = payloadEnd + 1;
+      }
+      length = payload.length;
+    }
 
     if (currentItem === itemIndex) {
       try {
