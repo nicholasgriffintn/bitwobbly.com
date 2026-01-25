@@ -146,7 +146,7 @@ function Monitors() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header mb-6">
         <div>
           <h2>Monitors</h2>
           <p>Track availability, latency, and incident thresholds.</p>

@@ -154,7 +154,7 @@ export default function StatusPages() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header mb-6">
         <div>
           <h2>Status pages</h2>
           <p>Publish uptime updates for your customers.</p>
@@ -195,18 +195,18 @@ export default function StatusPages() {
           />
 
           <label htmlFor="brand-color">Brand Color</label>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <input
               id="brand-color"
               type="color"
               value={brandColor}
               onChange={(event) => setBrandColor(event.target.value)}
               style={{
-                height: "2rem",
-                width: "4rem",
-                padding: "0",
-                border: "none",
-                borderRadius: "4px",
+                height: '2rem',
+                width: '4rem',
+                padding: '0',
+                border: 'none',
+                borderRadius: '4px',
               }}
             />
             <input
@@ -225,7 +225,7 @@ export default function StatusPages() {
             onChange={(event) => setCustomCss(event.target.value)}
             placeholder=".status-page { background: #f8f9fa; }"
             rows={4}
-            style={{ fontFamily: "monospace", fontSize: "0.875rem" }}
+            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
           />
 
           <button type="submit">Save status page</button>
@@ -264,7 +264,7 @@ export default function StatusPages() {
                           setExpandedPageId(isExpanded ? null : page.id)
                         }
                       >
-                        {isExpanded ? "Hide" : "Components"}
+                        {isExpanded ? 'Hide' : 'Components'}
                       </button>
                       <button
                         type="button"
@@ -278,7 +278,7 @@ export default function StatusPages() {
 
                   {isExpanded && (
                     <div className="nested-list">
-                      <div className="muted" style={{ marginBottom: "0.5rem" }}>
+                      <div className="muted" style={{ marginBottom: '0.5rem' }}>
                         Link components to display on this status page:
                       </div>
                       {components.length ? (

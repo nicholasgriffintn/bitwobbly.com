@@ -42,7 +42,7 @@ function Overview() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header mb-6">
         <div>
           <h2>System overview</h2>
           <p>Watch the fleet and keep stakeholders informed.</p>
@@ -59,20 +59,11 @@ function Overview() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-          }}
-        >
+      <div className="card mb-1.5">
+        <div className="flex items-center gap-3">
           <span
-            className={`status-indicator ${overallStatus}`}
+            className={`status-indicator ${overallStatus} w-3 h-3 rounded-full`}
             style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '50%',
               backgroundColor:
                 overallStatus === 'operational'
                   ? 'var(--green)'
@@ -82,7 +73,7 @@ function Overview() {
             }}
           />
           <div>
-            <div style={{ fontWeight: 600, fontSize: '1.125rem' }}>
+            <div className="font-semibold text-lg">
               {overallStatus === 'operational'
                 ? 'All systems operational'
                 : overallStatus === 'degraded'
@@ -97,7 +88,7 @@ function Overview() {
         </div>
       </div>
 
-      <div className="grid metrics">
+      <div className="grid metrics mb-1.5">
         <div className="card">
           <div className="metric-label">Monitors up</div>
           <div className="metric-value" style={{ color: 'var(--green)' }}>
@@ -131,7 +122,7 @@ function Overview() {
       </div>
 
       {incidents.length > 0 && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="card mb-1.5">
           <div className="card-title">Active incidents</div>
           <div className="list">
             {incidents.slice(0, 3).map((incident) => (
@@ -162,7 +153,7 @@ function Overview() {
         </div>
       )}
 
-      <div className="grid two">
+      <div className="grid two mb-1.5">
         <div className="card">
           <div className="card-title">Recent monitors</div>
           <div className="list">
@@ -184,12 +175,8 @@ function Overview() {
               <div className="muted">No monitors yet.</div>
             )}
             {monitors.length > 0 && (
-              <Link to="/app/monitors" style={{ marginTop: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="outline"
-                  style={{ width: '100%' }}
-                >
+              <Link to="/app/monitors">
+                <button type="button" className="outline w-full mt-2">
                   View all monitors
                 </button>
               </Link>
@@ -222,12 +209,8 @@ function Overview() {
               <div className="muted">No status pages yet.</div>
             )}
             {pages.length > 0 && (
-              <Link to="/app/status-pages" style={{ marginTop: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="outline"
-                  style={{ width: '100%' }}
-                >
+              <Link to="/app/status-pages">
+                <button type="button" className="outline w-full mt-2">
                   Manage status pages
                 </button>
               </Link>
@@ -236,7 +219,7 @@ function Overview() {
         </div>
       </div>
 
-      <div className="grid two" style={{ marginTop: '1.5rem' }}>
+      <div className="grid two">
         <div className="card">
           <div className="card-title">Quick setup</div>
           <div className="list">

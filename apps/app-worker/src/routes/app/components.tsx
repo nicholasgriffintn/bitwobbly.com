@@ -107,7 +107,7 @@ export default function Components() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header mb-6">
         <div>
           <h2>Components</h2>
           <p>
@@ -150,10 +150,10 @@ export default function Components() {
                   <div>
                     <div className="list-title">{component.name}</div>
                     <div className="muted">
-                      {component.description || "No description"}
-                      {" · "}
+                      {component.description || 'No description'}
+                      {' · '}
                       {component.monitorIds.length} monitor
-                      {component.monitorIds.length !== 1 ? "s" : ""} linked
+                      {component.monitorIds.length !== 1 ? 's' : ''} linked
                     </div>
                   </div>
                   <div className="button-row">
@@ -166,7 +166,7 @@ export default function Components() {
                         )
                       }
                     >
-                      {expandedId === component.id ? "Hide" : "Link"} monitors
+                      {expandedId === component.id ? 'Hide' : 'Link'} monitors
                     </button>
                     <button
                       type="button"

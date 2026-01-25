@@ -185,7 +185,7 @@ export default function Notifications() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header mb-6">
         <div>
           <h2>Notifications</h2>
           <p>Route incidents to webhooks or email.</p>

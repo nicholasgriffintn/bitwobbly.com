@@ -65,13 +65,13 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
     <div className="card">
       <div className="card-title">Historical Performance</div>
 
-      <div className="form" style={{ marginBottom: '1rem' }}>
+      <div className="form mb-4">
         <label htmlFor="hours-range">Time Range</label>
         <select
           id="hours-range"
           value={hours}
           onChange={(e) => setHours(e.target.value)}
-          style={{ width: 'auto', display: 'inline-block' }}
+          className="w-auto inline-block"
         >
           <option value="1">Last 1 hour</option>
           <option value="6">Last 6 hours</option>
@@ -86,9 +86,19 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
 
       {data && (
         <div>
-          <div className="grid three" style={{ marginBottom: '1rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: data.summary.uptime_percentage >= 99 ? '#28a745' : data.summary.uptime_percentage >= 95 ? '#ffc107' : '#dc3545' }}>
+          <div className="grid three mb-4">
+            <div className="text-center">
+              <div
+                className="font-bold text-2xl"
+                style={{
+                  color:
+                    data.summary.uptime_percentage >= 99
+                      ? '#28a745'
+                      : data.summary.uptime_percentage >= 95
+                        ? '#ffc107'
+                        : '#dc3545',
+                }}
+              >
                 {data.summary.uptime_percentage.toFixed(2)}%
               </div>
               <div className="muted">Uptime</div>
@@ -97,8 +107,7 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
                 {data.metrics.length > 0
                   ? `${(data.metrics.reduce((sum, m) => sum + m.latency_ms, 0) / data.metrics.length).toFixed(0)}ms`
-                  : '0ms'
-                }
+                  : '0ms'}
               </div>
               <div className="muted">Avg Latency</div>
             </div>
@@ -132,7 +141,12 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
                         stroke="#e0e0e0"
                         strokeWidth="1"
                       />
-                      <text x="5" y={200 - (percent / 100) * 200 + 15} fontSize="12" fill="#666">
+                      <text
+                        x="5"
+                        y={200 - (percent / 100) * 200 + 15}
+                        fontSize="12"
+                        fill="#666"
+                      >
                         {`${percent}ms`}
                       </text>
                     </g>
@@ -140,9 +154,12 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
 
                   {/* Latency line */}
                   <polyline
-                    points={data.metrics.map((m) =>
-                      `${data.metrics.indexOf(m) * 20 + 10},${200 - Math.min(m.latency_ms / 100 * 200, 200)}`
-                    ).join(' ')}
+                    points={data.metrics
+                      .map(
+                        (m) =>
+                          `${data.metrics.indexOf(m) * 20 + 10},${200 - Math.min((m.latency_ms / 100) * 200, 200)}`,
+                      )
+                      .join(' ')}
                     fill="none"
                     stroke="#007bff"
                     strokeWidth="2"
@@ -153,7 +170,7 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
                     <circle
                       key={`${m.timestamp}-${m.latency_ms}`}
                       cx={data.metrics.indexOf(m) * 20 + 10}
-                      cy={200 - Math.min(m.latency_ms / 100 * 200, 200)}
+                      cy={200 - Math.min((m.latency_ms / 100) * 200, 200)}
                       r="3"
                       fill="#007bff"
                     />

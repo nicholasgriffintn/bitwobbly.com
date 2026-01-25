@@ -145,7 +145,7 @@ export default function Incidents() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header mb-6">
         <div>
           <h2>Incidents</h2>
           <p>Track and communicate service disruptions.</p>
@@ -174,7 +174,7 @@ export default function Incidents() {
                 onChange={(event) =>
                   setStatus(
                     event.target
-                      .value as (typeof STATUS_OPTIONS)[number]["value"],
+                      .value as (typeof STATUS_OPTIONS)[number]['value'],
                   )
                 }
               >
@@ -225,7 +225,7 @@ export default function Incidents() {
                       {incident.title}
                       <span
                         className={`status-pill ${incident.status}`}
-                        style={{ marginLeft: "0.5rem" }}
+                        style={{ marginLeft: '0.5rem' }}
                       >
                         {incident.status}
                       </span>
@@ -234,12 +234,12 @@ export default function Incidents() {
                       Started {formatDate(incident.startedAt)}
                       {incident.resolvedAt &&
                         ` · Resolved ${formatDate(incident.resolvedAt)}`}
-                      {" · "}
+                      {' · '}
                       {getStatusPageName(incident.statusPageId)}
                     </div>
                   </div>
                   <div className="button-row">
-                    {incident.status !== "resolved" && (
+                    {incident.status !== 'resolved' && (
                       <button
                         type="button"
                         className="outline"
@@ -248,11 +248,11 @@ export default function Incidents() {
                             expandedId === incident.id ? null : incident.id,
                           );
                           setUpdateStatus(
-                            incident.status as (typeof STATUS_OPTIONS)[number]["value"],
+                            incident.status as (typeof STATUS_OPTIONS)[number]['value'],
                           );
                         }}
                       >
-                        {expandedId === incident.id ? "Cancel" : "Update"}
+                        {expandedId === incident.id ? 'Cancel' : 'Update'}
                       </button>
                     )}
                     <button
@@ -276,7 +276,7 @@ export default function Incidents() {
                       onChange={(event) =>
                         setUpdateStatus(
                           event.target
-                            .value as (typeof STATUS_OPTIONS)[number]["value"],
+                            .value as (typeof STATUS_OPTIONS)[number]['value'],
                         )
                       }
                     >
