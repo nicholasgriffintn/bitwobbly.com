@@ -30,7 +30,7 @@
   "r2_buckets": [
     {
       "binding": "SENTRY_RAW",
-      "bucket_name": "bitwobbly-sentry-raw"
+      "bucket_name": "bitwobbly-issues-raw"
     }
   ],
   "queues": {

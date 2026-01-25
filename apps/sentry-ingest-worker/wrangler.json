@@ -36,13 +36,13 @@
   "r2_buckets": [
     {
       "binding": "SENTRY_RAW",
-      "bucket_name": "bitwobbly-sentry-raw"
+      "bucket_name": "bitwobbly-issues-raw"
     }
   ],
   "pipelines": [
     {
       "binding": "SENTRY_PIPELINE",
-      "pipeline": "ac646c8e793d4b79bb9844b5e175ebbb"
+      "pipeline": "5752a0f6331943dc80e0ffca8ccd3b6f"
     }
   ],
   "queues": {

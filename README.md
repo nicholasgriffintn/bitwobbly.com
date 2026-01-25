@@ -113,9 +113,9 @@ All workers deploy to Cloudflare via Wrangler. See [docs/SETUP.md](docs/SETUP.md
 1. **Create Cloudflare resources:**
    - D1 database: `bitwobbly_db`
    - KV namespace: `bitwobbly_kv`
-   - R2 buckets: `bitwobbly-sentry-raw`, `bitwobbly-sentry-catalog`
+   - R2 buckets: `bitwobbly-issues-raw`, `bitwobbly-issues-catalog`
    - Queues: `bitwobbly-check-jobs`, `bitwobbly-alert-jobs`, `bitwobbly-sentry-events`
-   - Pipelines: `bitwobbly-sentry-pipeline` (with R2 Data Catalog sink)
+   - Pipelines: `bitwobbly-issues-pipeline` (with R2 Data Catalog sink)
 
 2. **Update `wrangler.jsonc`** in each app with your resource IDs (replace `REPLACE_ME` values).
 

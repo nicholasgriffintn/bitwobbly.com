@@ -84,35 +84,44 @@ This should be named `bitwobbly-sentry-events`.
 
 First we need to create the R2 buckets that will be used to store the raw envelopes and the data catalog.
 
-These should be named `bitwobbly-sentry-raw` and `bitwobbly-sentry-catalog`.
+These should be named `bitwobbly-issues-raw` and `bitwobbly-issues-catalog`.
 
 You can do this by running the following commands:
 
 ```bash
-wrangler r2 bucket create bitwobbly-sentry-raw
-wrangler r2 bucket create bitwobbly-sentry-catalog
+wrangler r2 bucket create bitwobbly-issues-raw
+wrangler r2 bucket create bitwobbly-issues-catalog
 ```
 
 ### Create the Pipelines Stream
 
-Next we need to create the Pipelines stream that will be used to store the raw envelopes.
+Next we need to create the Pipelines stream that will be used to store the Sentry manifest data.
 
-This should be named `bitwobbly_sentry_manifests`.
+This should be named `bitwobbly_issues_manifests` and uses structured data with a schema.
 
-You can do this by running the following command:
+The schema defines all the metadata fields extracted from Sentry envelopes, including:
+
+- Basic identifiers (manifest_id, sentry_project_id, project_id)
+- Timing information (received_at, sent_at, sent_at_drift_ms)
+- SDK metadata (sdk_name, sdk_version)
+- Trace context (trace_id, trace_public_key, trace_release, etc.)
+- Event metadata (event_platform, event_level, event_release, event_user_id, etc.)
+- Item details (item_type, item_index, item_length_bytes, etc.)
+
+You can create the pipeline with the schema by running:
 
 ```bash
-wrangler pipelines create bitwobbly_sentry_manifests --type unstructured
+wrangler pipelines create bitwobbly_issues_manifests --type structured --schema apps/sentry-ingest-worker/sentry-manifest-schema.json
 ```
 
 ### Configure the R2 Data Catalog Sink
 
-Next we need to configure the R2 Data Catalog sink that will be used to store the raw envelopes.
+Next we need to configure the R2 Data Catalog sink that will store the manifest data in a queryable format.
 
-This should be named `bitwobbly-sentry-sink`.
+This should be named `bitwobbly-issues-sink`.
 
-You can do this by running the following command:
+You can do this by running:
 
 ```bash
-wrangler pipelines sink create bitwobbly-sentry-sink --pipeline bitwobbly-sentry-manifests --type r2-data-catalog --bucket bitwobbly-sentry-catalog --table sentry_manifests
+wrangler pipelines sink create bitwobbly-issues-sink --pipeline bitwobbly_issues_manifests --type r2-data-catalog --bucket bitwobbly-issues-catalog --table sentry_manifests
 ```

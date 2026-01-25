@@ -1,0 +1,159 @@
+{
+  "fields": [
+    {
+      "name": "manifest_id",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "sentry_project_id",
+      "type": "int64",
+      "required": true
+    },
+    {
+      "name": "project_id",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "received_at",
+      "type": "int64",
+      "required": true
+    },
+    {
+      "name": "envelope_id",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "item_type",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "event_id",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "r2_raw_key",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "item_index",
+      "type": "int64",
+      "required": true
+    },
+    {
+      "name": "item_length_bytes",
+      "type": "int64",
+      "required": true
+    },
+    {
+      "name": "sdk_name",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "sdk_version",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "sent_at",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "sent_at_drift_ms",
+      "type": "int64",
+      "required": false
+    },
+    {
+      "name": "trace_id",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "trace_public_key",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "trace_release",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "trace_environment",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "trace_user_segment",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "item_content_type",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "item_filename",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "item_attachment_type",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "item_count",
+      "type": "int64",
+      "required": false
+    },
+    {
+      "name": "item_platform",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "event_platform",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "event_level",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "event_release",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "event_environment",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "event_user_id",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "event_transaction",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "event_message",
+      "type": "string",
+      "required": false
+    }
+  ]
+}

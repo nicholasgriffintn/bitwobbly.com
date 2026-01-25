@@ -49,7 +49,7 @@ export async function getEventVolumeBySDK(
       sdk_version,
       COUNT(*),
       SUM(item_length_bytes)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       item_type = 'event'
       AND received_at >= ${startTimestamp}
@@ -67,7 +67,7 @@ export async function getEventVolumeBySDK(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -106,7 +106,7 @@ export async function getClockDriftStats(
       AVG(sent_at_drift_ms),
       MAX(sent_at_drift_ms),
       MIN(sent_at_drift_ms)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE sent_at IS NOT NULL AND sent_at_drift_ms IS NOT NULL
     GROUP BY sdk_name
     LIMIT 10000
@@ -121,7 +121,7 @@ export async function getClockDriftStats(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -151,7 +151,7 @@ export async function getItemTypeDistribution(
       item_type,
       COUNT(*),
       SUM(item_length_bytes)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE received_at >= ${startTimestamp} AND received_at <= ${endTimestamp}
     GROUP BY item_type
     LIMIT 10000
@@ -165,7 +165,7 @@ export async function getItemTypeDistribution(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -196,7 +196,7 @@ export async function getErrorRateByRelease(
       event_environment,
       event_user_id,
       COUNT(*)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
@@ -216,7 +216,7 @@ export async function getErrorRateByRelease(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -259,7 +259,7 @@ export async function getTopErrorMessages(
       event_message,
       received_at,
       COUNT(*)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
@@ -276,7 +276,7 @@ export async function getTopErrorMessages(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -324,7 +324,7 @@ export async function getEventVolumeTimeseries(
     SELECT
       received_at,
       COUNT(*)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
@@ -341,7 +341,7 @@ export async function getEventVolumeTimeseries(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -390,7 +390,7 @@ export async function getEventVolumeStats(
   const query = `
     SELECT
       COUNT(*)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND received_at >= ${startTimestamp}
@@ -403,7 +403,7 @@ export async function getEventVolumeStats(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -440,7 +440,7 @@ export async function getEventVolumeTimeseriesBreakdown(
     SELECT
       received_at,
       COUNT(*)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND received_at >= ${startTimestamp}
@@ -456,7 +456,7 @@ export async function getEventVolumeTimeseriesBreakdown(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     query,
   );
 
@@ -508,7 +508,7 @@ export async function getSDKDistribution(
 
   const totalQuery = `
     SELECT COUNT(*)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
@@ -522,7 +522,7 @@ export async function getSDKDistribution(
 
   const totalResult = await executeR2SQL<TotalResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     totalQuery,
   );
 
@@ -534,7 +534,7 @@ export async function getSDKDistribution(
     SELECT
       sdk_name,
       COUNT(*)
-    FROM sentry.sentry_manifests
+    FROM default.issue_manifests
     WHERE
       sentry_project_id = ${projectId}
       AND item_type = 'event'
@@ -551,7 +551,7 @@ export async function getSDKDistribution(
 
   const result = await executeR2SQL<DistributionResult>(
     config,
-    "bitwobbly-sentry-catalog",
+    'bitwobbly-issues-catalog',
     distributionQuery,
   );
 
