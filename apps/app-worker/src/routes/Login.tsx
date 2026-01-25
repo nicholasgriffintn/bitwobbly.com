@@ -25,6 +25,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -39,11 +40,15 @@ export default function Login() {
       setError("Password must be at least 8 characters.");
       return;
     }
+    if (isSignUp && !inviteCode.trim()) {
+      setError("Invite code is required.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
       if (isSignUp) {
-        await signUp(email.trim(), password);
+        await signUp(email.trim(), password, inviteCode.trim());
       } else {
         await signIn(email.trim(), password);
       }
@@ -93,6 +98,20 @@ export default function Login() {
             autoComplete={isSignUp ? "new-password" : "current-password"}
             required
           />
+          {isSignUp && (
+            <>
+              <label htmlFor="inviteCode">Invite code</label>
+              <input
+                id="inviteCode"
+                type="text"
+                value={inviteCode}
+                onChange={(event) => setInviteCode(event.target.value)}
+                placeholder="Enter your invite code"
+                autoComplete="off"
+                required
+              />
+            </>
+          )}
           {error ? <div className="form-error">{error}</div> : null}
           <button type="submit" disabled={loading || submitting}>
             {submitting

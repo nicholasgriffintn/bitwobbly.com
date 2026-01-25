@@ -497,11 +497,6 @@ button.outline {
     gap: 12px;
   }
 
-  .brand {
-    gap: 0;
-    flex-shrink: 0;
-  }
-
   .brand-subtitle {
     display: none;
   }

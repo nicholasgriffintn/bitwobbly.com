@@ -10,7 +10,11 @@ import { signInFn, signUpFn, signOutFn } from "../server/functions/auth";
 
 export type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    inviteCode: string,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
 };
@@ -34,19 +38,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      await signUpFn({ data: { email, password } });
-    } catch (err: any) {
-      if (err?.isRedirect) {
+  const signUp = useCallback(
+    async (email: string, password: string, inviteCode: string) => {
+      setLoading(true);
+      try {
+        await signUpFn({ data: { email, password, inviteCode } });
+      } catch (err: any) {
+        if (err?.isRedirect) {
+          throw err;
+        }
         throw err;
+      } finally {
+        setLoading(false);
       }
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const signOut = useCallback(async () => {
     try {

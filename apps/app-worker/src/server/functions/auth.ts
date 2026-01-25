@@ -9,9 +9,10 @@ import { createSession } from '../repositories/auth'
 import { useAppSession } from '../lib/session'
 
 const SignUpSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
-})
+  email: z.string().email(),
+  password: z.string().min(8),
+  inviteCode: z.string().min(1),
+});
 
 const SignInSchema = z.object({
     email: z.string().email(),
@@ -22,6 +23,11 @@ export const signUpFn = createServerFn({ method: "POST" })
     .inputValidator((data: unknown) => SignUpSchema.parse(data))
     .handler(async ({ data }) => {
         const vars = env;
+
+        if (data.inviteCode !== vars.INVITE_CODE) {
+          throw new Error('Invalid invite code');
+        }
+
         const db = getDb(vars.DB);
 
         const { user } = await createUser(db, {
