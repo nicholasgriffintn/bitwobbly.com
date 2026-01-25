@@ -1,21 +1,21 @@
-import { useState } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
-import { listMonitorsFn } from '@/server/functions/monitors';
-import { listStatusPagesFn } from '@/server/functions/status-pages';
+import { listMonitorsFn } from "@/server/functions/monitors";
+import { listStatusPagesFn } from "@/server/functions/status-pages";
 
-export const Route = createFileRoute('/app/')({
+export const Route = createFileRoute("/app/")({
   component: Overview,
   loader: async () => {
     const [monitorsRes, pagesRes] = await Promise.all([
       listMonitorsFn(),
-      listStatusPagesFn()
+      listStatusPagesFn(),
     ]);
     return {
       monitors: monitorsRes.monitors,
-      status_pages: pagesRes.status_pages
+      status_pages: pagesRes.status_pages,
     };
-  }
+  },
 });
 
 function Overview() {
@@ -23,9 +23,9 @@ function Overview() {
 
   const [error] = useState<string | null>(null);
 
-  const upCount = monitors.filter((m) => m.state?.last_status === 'up').length;
+  const upCount = monitors.filter((m) => m.state?.last_status === "up").length;
   const downCount = monitors.filter(
-    (m) => m.state?.last_status === 'down',
+    (m) => m.state?.last_status === "down",
   ).length;
   const unknownCount = monitors.length - upCount - downCount;
 
@@ -37,10 +37,14 @@ function Overview() {
           <p>Watch the fleet and keep stakeholders informed.</p>
         </div>
         <div className="button-row">
-          <button type="button" className="outline">
-            Add monitor
-          </button>
-          <button type="button">Create status page</button>
+          <Link to="/app/monitors">
+            <button type="button" className="outline">
+              Add monitor
+            </button>
+          </Link>
+          <Link to="/app/status-pages">
+            <button type="button">Create status page</button>
+          </Link>
         </div>
       </div>
 
@@ -77,9 +81,9 @@ function Overview() {
                     <div className="muted">{monitor.url}</div>
                   </div>
                   <span
-                    className={`status ${monitor.state?.last_status || 'unknown'}`}
+                    className={`status ${monitor.state?.last_status || "unknown"}`}
                   >
-                    {monitor.state?.last_status || 'unknown'}
+                    {monitor.state?.last_status || "unknown"}
                   </span>
                 </div>
               ))

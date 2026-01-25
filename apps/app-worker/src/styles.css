@@ -1,24 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
-
 
 body {
   @apply m-0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 :root {
   color-scheme: light;
-  font-family: 'Archivo', sans-serif;
+  font-family: "Archivo", sans-serif;
   --bg: #f3f0eb;
   --bg-accent: #eadfd3;
   --ink: #111111;
@@ -39,7 +38,12 @@ code {
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(1200px 600px at 10% -20%, #ffffff 0%, #f6efe7 45%, #ecdcc9 100%);
+  background: radial-gradient(
+    1200px 600px at 10% -20%,
+    #ffffff 0%,
+    #f6efe7 45%,
+    #ecdcc9 100%
+  );
   color: var(--ink);
 }
 
@@ -75,6 +79,7 @@ select {
   flex-direction: column;
   gap: 28px;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 0;
 }
 
 .brand {
@@ -86,7 +91,7 @@ select {
 }
 
 .brand-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 20px;
   letter-spacing: 0.02em;
 }
@@ -137,6 +142,14 @@ select {
   padding: 10px 14px;
   border-radius: 999px;
   cursor: pointer;
+  transition: border-color 0.2s ease;
+  box-shadow: none;
+}
+
+.ghost:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: none;
+  box-shadow: none;
 }
 
 .content {
@@ -161,7 +174,7 @@ select {
 }
 
 .topbar-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 22px;
 }
 
@@ -204,7 +217,7 @@ select {
 
 .page-header h2 {
   margin: 0;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 32px;
 }
 
@@ -221,7 +234,9 @@ button {
   border-radius: 12px;
   cursor: pointer;
   font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   box-shadow: 0 12px 20px rgba(240, 74, 47, 0.25);
 }
 
@@ -289,7 +304,7 @@ button.outline {
 }
 
 .metric-value {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 28px;
   margin-top: 8px;
 }
@@ -384,7 +399,7 @@ button.outline {
 }
 
 .auth-card h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   margin: 0;
   font-size: 28px;
 }
@@ -435,6 +450,27 @@ button.outline {
   color: var(--muted);
 }
 
+.auth-toggle {
+  text-align: center;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--primary);
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.link-button:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+  transform: none;
+  box-shadow: none;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -450,17 +486,41 @@ button.outline {
 @media (max-width: 980px) {
   .shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .sidebar {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    padding: 16px 20px;
+    gap: 12px;
+  }
+
+  .brand {
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .brand-subtitle {
+    display: none;
   }
 
   .nav {
     grid-auto-flow: column;
     overflow-x: auto;
+    gap: 8px;
+  }
+
+  .nav a {
+    padding: 8px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .ghost {
+    padding: 8px 14px;
+    font-size: 14px;
   }
 
   .content {
