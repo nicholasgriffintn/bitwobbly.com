@@ -14,6 +14,7 @@ import {
   unlinkComponentFromStatusPage,
   getComponentsForStatusPage,
 } from "../repositories/components";
+import { getStatusPageById } from "../repositories/status-pages";
 import { useAppSession } from "../lib/session";
 
 const authMiddleware = createServerFn().handler(async () => {
@@ -96,12 +97,23 @@ export const linkToPageFn = createServerFn({ method: "POST" })
     await authMiddleware();
     const vars = env;
     const db = getDb(vars.DB);
+
+    const page = await getStatusPageById(
+      db,
+      vars.PUBLIC_TEAM_ID,
+      data.statusPageId,
+    );
+    if (!page) throw new Error("Status page not found");
+
     await linkComponentToStatusPage(
       db,
       data.statusPageId,
       data.componentId,
       data.sortOrder || 0,
     );
+
+    await vars.KV.delete(`status:${page.slug}`);
+
     return { ok: true };
   });
 
@@ -113,11 +125,22 @@ export const unlinkFromPageFn = createServerFn({ method: "POST" })
     await authMiddleware();
     const vars = env;
     const db = getDb(vars.DB);
+
+    const page = await getStatusPageById(
+      db,
+      vars.PUBLIC_TEAM_ID,
+      data.statusPageId,
+    );
+    if (!page) throw new Error("Status page not found");
+
     await unlinkComponentFromStatusPage(
       db,
       data.statusPageId,
       data.componentId,
     );
+
+    await vars.KV.delete(`status:${page.slug}`);
+
     return { ok: true };
   });
 
