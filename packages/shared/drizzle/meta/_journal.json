@@ -8,6 +8,13 @@
       "when": 1769285805666,
       "tag": "0000_pale_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769303169960,
+      "tag": "0001_funny_photon",
+      "breakpoints": true
     }
   ]
 }

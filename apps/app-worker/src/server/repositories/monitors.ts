@@ -127,3 +127,39 @@ export async function getMonitorById(
 
   return monitors[0] || null;
 }
+
+export async function updateMonitor(
+  db: DrizzleD1Database,
+  teamId: string,
+  monitorId: string,
+  input: {
+    name?: string;
+    url?: string;
+    interval_seconds?: number;
+    timeout_ms?: number;
+    failure_threshold?: number;
+    enabled?: number;
+  },
+) {
+  const updates: Record<string, unknown> = {};
+  if (input.name !== undefined) updates.name = input.name;
+  if (input.url !== undefined) updates.url = input.url;
+  if (input.interval_seconds !== undefined)
+    updates.intervalSeconds = input.interval_seconds;
+  if (input.timeout_ms !== undefined) updates.timeoutMs = input.timeout_ms;
+  if (input.failure_threshold !== undefined)
+    updates.failureThreshold = input.failure_threshold;
+  if (input.enabled !== undefined) updates.enabled = input.enabled;
+
+  if (Object.keys(updates).length === 0) return;
+
+  await db
+    .update(schema.monitors)
+    .set(updates)
+    .where(
+      and(
+        eq(schema.monitors.teamId, teamId),
+        eq(schema.monitors.id, monitorId),
+      ),
+    );
+}

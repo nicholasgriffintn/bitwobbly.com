@@ -49,6 +49,9 @@ export const statusPages = sqliteTable("status_pages", {
   slug: text("slug").notNull(),
   name: text("name").notNull(),
   isPublic: integer("is_public").notNull().default(1),
+  logoUrl: text("logo_url"),
+  brandColor: text("brand_color").default("#007bff"),
+  customCss: text("custom_css"),
   createdAt: text("created_at").notNull(),
 });
 

@@ -1,18 +1,18 @@
-import { useState, type FormEvent } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
-import { useServerFn } from '@tanstack/react-start';
+import { useState, type FormEvent } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 
-import { listMonitorsFn } from '@/server/functions/monitors';
+import { listMonitorsFn } from "@/server/functions/monitors";
 import {
   listChannelsFn,
   createChannelFn,
-  deleteChannelFn
-} from '@/server/functions/notification-channels';
+  deleteChannelFn,
+} from "@/server/functions/notification-channels";
 import {
   listPoliciesFn,
   createPolicyFn,
-  deletePolicyFn
-} from '@/server/functions/notification-policies';
+  deletePolicyFn,
+} from "@/server/functions/notification-policies";
 
 type Monitor = {
   id: string;
@@ -21,57 +21,63 @@ type Monitor = {
 
 type Channel = {
   id: string;
-  type: 'webhook';
-  config_json: string;
+  type: string;
+  configJson: string;
   enabled: number;
-  created_at: string;
+  createdAt: string;
 };
 
 type Policy = {
   id: string;
-  monitor_id: string;
-  monitor_name: string;
-  channel_id: string;
-  channel_type: string;
-  channel_config: string;
-  threshold_failures: number;
-  notify_on_recovery: number;
-  created_at: string;
+  monitorId: string;
+  monitorName: string;
+  channelId: string;
+  channelType: string;
+  channelConfig: string;
+  thresholdFailures: number;
+  notifyOnRecovery: number;
+  createdAt: string;
 };
 
-type ChannelConfig = {
-  url: string;
-  label?: string;
-};
-
-export const Route = createFileRoute('/app/notifications')({
+export const Route = createFileRoute("/app/notifications")({
   component: Notifications,
   loader: async () => {
     const [channelsRes, policiesRes, monitorsRes] = await Promise.all([
       listChannelsFn(),
       listPoliciesFn(),
-      listMonitorsFn()
+      listMonitorsFn(),
     ]);
     return {
       channels: channelsRes.channels,
       policies: policiesRes.policies,
-      monitors: monitorsRes.monitors
+      monitors: monitorsRes.monitors,
     };
-  }
+  },
 });
 
 export default function Notifications() {
-  const { channels: initialChannels, policies: initialPolicies, monitors: initialMonitors } = Route.useLoaderData();
+  const {
+    channels: initialChannels,
+    policies: initialPolicies,
+    monitors: initialMonitors,
+  } = Route.useLoaderData();
   const [channels, setChannels] = useState<Channel[]>(initialChannels);
   const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
-  const [monitors, setMonitors] = useState<Monitor[]>(initialMonitors);
+  const [monitors] = useState<Monitor[]>(initialMonitors);
   const [error, setError] = useState<string | null>(null);
 
-  const [url, setUrl] = useState('');
-  const [label, setLabel] = useState('');
-  const [monitorId, setMonitorId] = useState(initialMonitors?.[0]?.id || '');
-  const [channelId, setChannelId] = useState(initialChannels?.[0]?.id || '');
-  const [threshold, setThreshold] = useState('3');
+  const [channelType, setChannelType] = useState<"webhook" | "email">(
+    "webhook",
+  );
+  const [url, setUrl] = useState("");
+  const [label, setLabel] = useState("");
+  const [emailTo, setEmailTo] = useState("");
+  const [emailFrom, setEmailFrom] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+
+  const [monitorId, setMonitorId] = useState(initialMonitors?.[0]?.id || "");
+  const [channelId, setChannelId] = useState(initialChannels?.[0]?.id || "");
+  const [threshold, setThreshold] = useState("3");
   const [notifyOnRecovery, setNotifyOnRecovery] = useState(true);
 
   const createChannel = useServerFn(createChannelFn);
@@ -86,24 +92,40 @@ export default function Notifications() {
     event.preventDefault();
     setError(null);
     try {
-      await createChannel({
-        data: {
-          type: 'webhook',
-          url,
-          label,
-          enabled: 1
-        }
-      });
+      if (channelType === "webhook") {
+        await createChannel({
+          data: {
+            type: "webhook",
+            url,
+            label,
+            enabled: 1,
+          },
+        });
+      } else {
+        await createChannel({
+          data: {
+            type: "email",
+            to: emailTo,
+            from: emailFrom || undefined,
+            subject: emailSubject || undefined,
+            label,
+            enabled: 1,
+          },
+        });
+      }
       const res = await listChannels();
       const nextChannels = res.channels;
       setChannels(nextChannels);
       if (!channelId && nextChannels.length) {
         setChannelId(nextChannels[0].id);
       }
-      setUrl('');
-      setLabel('');
+      setUrl("");
+      setLabel("");
+      setEmailTo("");
+      setEmailFrom("");
+      setEmailSubject("");
     } catch (err) {
-      setError(err.message);
+      setError((err as Error).message);
     }
   };
 
@@ -117,12 +139,12 @@ export default function Notifications() {
           channel_id: channelId,
           threshold_failures: Number(threshold),
           notify_on_recovery: notifyOnRecovery ? 1 : 0,
-        }
+        },
       });
       const res = await listPolicies();
       setPolicies(res.policies);
     } catch (err) {
-      setError(err.message);
+      setError((err as Error).message);
     }
   };
 
@@ -131,9 +153,9 @@ export default function Notifications() {
     try {
       await deleteChannel({ data: { id } });
       setChannels((prev) => prev.filter((c) => c.id !== id));
-      setPolicies((prev) => prev.filter((p) => p.channel_id !== id));
+      setPolicies((prev) => prev.filter((p) => p.channelId !== id));
     } catch (err) {
-      setError(err.message);
+      setError((err as Error).message);
     }
   };
 
@@ -143,8 +165,22 @@ export default function Notifications() {
       await deletePolicy({ data: { id } });
       setPolicies((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError(err.message);
+      setError((err as Error).message);
     }
+  };
+
+  const getChannelDisplay = (channel: Channel) => {
+    const config = JSON.parse(channel.configJson);
+    if (channel.type === "email") {
+      return {
+        title: config.label || "Email channel",
+        subtitle: config.to,
+      };
+    }
+    return {
+      title: config.label || "Webhook channel",
+      subtitle: config.url,
+    };
   };
 
   return (
@@ -152,7 +188,7 @@ export default function Notifications() {
       <div className="page-header">
         <div>
           <h2>Notifications</h2>
-          <p>Route incidents to webhooks while we build more channels.</p>
+          <p>Route incidents to webhooks or email.</p>
         </div>
       </div>
 
@@ -160,23 +196,69 @@ export default function Notifications() {
 
       <div className="grid two">
         <div className="card">
-          <div className="card-title">Create webhook channel</div>
+          <div className="card-title">Create notification channel</div>
           <form className="form" onSubmit={onCreateChannel}>
-            <label htmlFor="webhook-label">Label (optional)</label>
+            <label htmlFor="channel-type">Channel type</label>
+            <select
+              id="channel-type"
+              value={channelType}
+              onChange={(event) =>
+                setChannelType(event.target.value as "webhook" | "email")
+              }
+            >
+              <option value="webhook">Webhook</option>
+              <option value="email">Email</option>
+            </select>
+
+            <label htmlFor="channel-label">Label (optional)</label>
             <input
-              id="webhook-label"
+              id="channel-label"
               value={label}
               onChange={(event) => setLabel(event.target.value)}
-              placeholder="Primary incident webhook"
+              placeholder="Primary incident channel"
             />
-            <label htmlFor="webhook-url">Webhook URL</label>
-            <input
-              id="webhook-url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://example.com/webhook"
-              required
-            />
+
+            {channelType === "webhook" ? (
+              <>
+                <label htmlFor="webhook-url">Webhook URL</label>
+                <input
+                  id="webhook-url"
+                  type="url"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://example.com/webhook"
+                  required
+                />
+              </>
+            ) : (
+              <>
+                <label htmlFor="email-to">To address</label>
+                <input
+                  id="email-to"
+                  type="email"
+                  value={emailTo}
+                  onChange={(event) => setEmailTo(event.target.value)}
+                  placeholder="alerts@example.com"
+                  required
+                />
+                <label htmlFor="email-from">From address (optional)</label>
+                <input
+                  id="email-from"
+                  type="email"
+                  value={emailFrom}
+                  onChange={(event) => setEmailFrom(event.target.value)}
+                  placeholder="noreply@bitwobbly.com"
+                />
+                <label htmlFor="email-subject">Subject prefix (optional)</label>
+                <input
+                  id="email-subject"
+                  value={emailSubject}
+                  onChange={(event) => setEmailSubject(event.target.value)}
+                  placeholder="[Alert]"
+                />
+              </>
+            )}
+
             <button type="submit">Save channel</button>
           </form>
         </div>
@@ -205,10 +287,10 @@ export default function Notifications() {
             >
               <option value="">Select channel</option>
               {channels.map((channel) => {
-                const config = JSON.parse(channel.config_json);
+                const display = getChannelDisplay(channel);
                 return (
                   <option key={channel.id} value={channel.id}>
-                    {config.label || config.url}
+                    [{channel.type}] {display.title}
                   </option>
                 );
               })}
@@ -216,6 +298,9 @@ export default function Notifications() {
             <label htmlFor="policy-threshold">Failure threshold</label>
             <input
               id="policy-threshold"
+              type="number"
+              min="1"
+              max="10"
               value={threshold}
               onChange={(event) => setThreshold(event.target.value)}
             />
@@ -234,18 +319,19 @@ export default function Notifications() {
 
       <div className="grid two">
         <div className="card">
-          <div className="card-title">Webhook channels</div>
+          <div className="card-title">Channels</div>
           <div className="list">
             {channels.length ? (
               channels.map((channel) => {
-                const config = JSON.parse(channel.config_json);
+                const display = getChannelDisplay(channel);
                 return (
                   <div key={channel.id} className="list-row">
                     <div>
                       <div className="list-title">
-                        {config.label || 'Webhook channel'}
+                        <span className="pill small">{channel.type}</span>{" "}
+                        {display.title}
                       </div>
-                      <div className="muted">{config.url}</div>
+                      <div className="muted">{display.subtitle}</div>
                     </div>
                     <button
                       type="button"
@@ -258,7 +344,7 @@ export default function Notifications() {
                 );
               })
             ) : (
-              <div className="muted">No webhook channels yet.</div>
+              <div className="muted">No notification channels yet.</div>
             )}
           </div>
         </div>
@@ -268,16 +354,17 @@ export default function Notifications() {
           <div className="list">
             {policies.length ? (
               policies.map((policy) => {
-                const config = JSON.parse(
-                  policy.channel_config,
-                );
+                const config = JSON.parse(policy.channelConfig);
+                const channelLabel =
+                  config.label || config.url || config.to || "Channel";
                 return (
                   <div key={policy.id} className="list-row">
                     <div>
-                      <div className="list-title">{policy.monitor_name}</div>
+                      <div className="list-title">{policy.monitorName}</div>
                       <div className="muted">
-                        {config.label || config.url} ·{' '}
-                        {policy.threshold_failures} fails
+                        [{policy.channelType}] {channelLabel} ·{" "}
+                        {policy.thresholdFailures} fails
+                        {policy.notifyOnRecovery ? " · recovery" : ""}
                       </div>
                     </div>
                     <button

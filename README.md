@@ -78,12 +78,12 @@ For email notifications locally, add `RESEND_API_KEY` to `apps/notifier-worker/.
 
 ### Scripts
 
-| Command                                    | Scope  | Description                                  |
-| ------------------------------------------ | ------ | -------------------------------------------- |
-| `pnpm install`                             | Root   | Install all workspace dependencies           |
-| `pnpm lint`                                | All    | Run linting across all packages              |
-| `pnpm lint:monorepo`                       | Root   | Check monorepo constraints (sherif)          |
-| `pnpm typecheck`                           | All    | TypeScript type checking across all packages |
+| Command              | Scope | Description                                  |
+| -------------------- | ----- | -------------------------------------------- |
+| `pnpm install`       | Root  | Install all workspace dependencies           |
+| `pnpm lint`          | All   | Run linting across all packages              |
+| `pnpm lint:monorepo` | Root  | Check monorepo constraints (sherif)          |
+| `pnpm typecheck`     | All   | TypeScript type checking across all packages |
 
 ## Deployment
 
@@ -131,15 +131,11 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 
 ### Incomplete Features
 
-- **Notification channel UI** -- Channels and policies can only be created via direct D1 SQL inserts. The dashboard needs CRUD forms for webhooks and email channels.
-- **Component management** -- The schema supports components (logical service groupings for status pages) but no API endpoints or UI exist for managing them.
-- **Incident update UI** -- Incidents are created automatically but there's no interface for posting manual incident updates or changing incident status.
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
-- **Status page customisation UI** -- Schema supports `logo_url`, `brand_color`, and `custom_css` fields. The API accepts them but the frontend editing experience is unverified.
 
 ### Missing Integrations
 
-- **Multi-tenant auth** -- Currently single-team (`team_demo`) with fixed admin credentials. No user invite flow or team management.
+- **Multi-tenant auth** -- Currently single-team (`team_demo`) with invite code. No user invite flow or team management UI, also need to ability to remove users from the demo team.
 - **Rate limiting** -- API endpoints have no rate limiting. Exposed public status page endpoints could be abused.
 - **SMS/Slack/PagerDuty channels** -- Only webhook and email are implemented. Common integrations like Slack, SMS, and PagerDuty are missing.
 - **Backup strategy** -- No D1 export/backup automation documented.
@@ -151,3 +147,4 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 - **Monitor response validation** -- Only HTTP status is checked. Body content matching, certificate expiry checks, and DNS monitoring would add value.
 - **Historical uptime reporting** -- Analytics Engine data exists but the dashboard doesn't surface historical uptime percentages or SLA calculations.
 - **Public status page theming** -- Schema fields exist but no theme editor or preview in the dashboard.
+- **API keys** -- No programmatic API access for users (settings page placeholder exists).

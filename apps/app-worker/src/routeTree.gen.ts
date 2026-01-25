@@ -17,6 +17,8 @@ import { Route as AppStatusPagesRouteImport } from './routes/app/status-pages'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
 import { Route as AppMonitorsRouteImport } from './routes/app/monitors'
+import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
+import { Route as AppComponentsRouteImport } from './routes/app/components'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -58,11 +60,23 @@ const AppMonitorsRoute = AppMonitorsRouteImport.update({
   path: '/monitors',
   getParentRoute: () => AppRoute,
 } as any)
+const AppIncidentsRoute = AppIncidentsRouteImport.update({
+  id: '/incidents',
+  path: '/incidents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppComponentsRoute = AppComponentsRouteImport.update({
+  id: '/components',
+  path: '/components',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/components': typeof AppComponentsRoute
+  '/app/incidents': typeof AppIncidentsRoute
   '/app/monitors': typeof AppMonitorsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -72,6 +86,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/app/components': typeof AppComponentsRoute
+  '/app/incidents': typeof AppIncidentsRoute
   '/app/monitors': typeof AppMonitorsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -83,6 +99,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/components': typeof AppComponentsRoute
+  '/app/incidents': typeof AppIncidentsRoute
   '/app/monitors': typeof AppMonitorsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -95,6 +113,8 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/components'
+    | '/app/incidents'
     | '/app/monitors'
     | '/app/notifications'
     | '/app/settings'
@@ -104,6 +124,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/app/components'
+    | '/app/incidents'
     | '/app/monitors'
     | '/app/notifications'
     | '/app/settings'
@@ -114,6 +136,8 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/components'
+    | '/app/incidents'
     | '/app/monitors'
     | '/app/notifications'
     | '/app/settings'
@@ -185,10 +209,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMonitorsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/incidents': {
+      id: '/app/incidents'
+      path: '/incidents'
+      fullPath: '/app/incidents'
+      preLoaderRoute: typeof AppIncidentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/components': {
+      id: '/app/components'
+      path: '/components'
+      fullPath: '/app/components'
+      preLoaderRoute: typeof AppComponentsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppComponentsRoute: typeof AppComponentsRoute
+  AppIncidentsRoute: typeof AppIncidentsRoute
   AppMonitorsRoute: typeof AppMonitorsRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -197,6 +237,8 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppComponentsRoute: AppComponentsRoute,
+  AppIncidentsRoute: AppIncidentsRoute,
   AppMonitorsRoute: AppMonitorsRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppSettingsRoute: AppSettingsRoute,
