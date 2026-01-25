@@ -214,14 +214,14 @@ async function handleCheck(
 async function writeCheckEvent(
   env: Env,
   job: CheckJob,
-  status: 'up' | 'down',
+  status: "up" | "down",
   latency_ms: number | null,
 ) {
   if (!env.AE) return;
   env.AE.writeDataPoint({
     blobs: [job.team_id, job.monitor_id, status],
     doubles: [latency_ms ?? 0],
-    indexes: ['team_id', 'monitor_id', 'status', 'latency_ms'],
+    indexes: [job.team_id],
   });
 }
 
