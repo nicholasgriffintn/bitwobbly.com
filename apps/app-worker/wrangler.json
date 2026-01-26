@@ -22,7 +22,7 @@
     }
   },
   "vars": {
-    "AUTH_PROVIDER": "custom"
+    "AUTH_PROVIDER": "custom",
   },
   "d1_databases": [
     {

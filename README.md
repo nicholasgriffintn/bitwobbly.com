@@ -2,6 +2,32 @@
 
 Open-source website monitoring and public status pages, built entirely on Cloudflare Workers.
 
+> Please Note: This project is in early development and not yet production-ready. Use at your own risk. The plan to get this into production can be seen below.
+
+## Plan of Completion
+
+### Incomplete Features
+
+- **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
+- **Analytics Engine / Iceberg integration** -- The Checker Worker writes check results (latency, status) to the Analytics Engine dataset. The App Worker queries it for monitor metrics and uptime charts. This is not fully implemented / relised yet to produce graphs that are useful to users, it's just a base level at the moment. The queries need to be removed. This is likely more of a problem for the histories on the status pages.
+- **Cognito doesn't work yet** -- Getting the error "[unenv] fs.readFile is not implemented yet!" when signing up (presumably this happens with sign in too). I have also not verified the Cognito setup yet because of this.
+- **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Only required for custom auth.
+- **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Only required for custom auth.
+- **MFA support** -- No multi-factor authentication options for user accounts. Only required for custom auth.
+
+### Missing Integrations
+
+- **Configure notifications for issues** -- We don't trigger notifications on issues from the issue tracking integration yet.
+
+### Nice-to-Haves
+
+- **Add private and internal status pages** -- Support for private status pages (protected by basic auth or login) and internal status pages (only visible to logged-in users).
+- **Add other integrations to trigger notifications** -- Support for more integrations that can trigger alarms such as increased views on the status pages or other systems externally.
+- **Monitor response validation** -- Only HTTP status is checked. Body content matching, certificate expiry checks, and DNS monitoring would add value.
+- **API keys** -- No programmatic API access for users (settings page placeholder exists).
+- **Add more notification channels** -- Support for SMS, Slack, PagerDuty, etc. Maybe a bit of AI calling for incident response?
+
+
 ## Architecture
 
 Multiple Workers collaborate via Cloudflare Queues, Durable Objects, and Pipelines:
@@ -143,25 +169,3 @@ All workers deploy to Cloudflare via Wrangler. See [docs/SETUP.md](docs/SETUP.md
    ```
 
 The app worker is configured to serve from `bitwobbly.com` via custom domain. Update the `routes` in `apps/app-worker/wrangler.jsonc` for your own domain.
-
-## Plan of Completion
-
-### Incomplete Features
-
-- **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
-- **Analytics Engine / Iceberg integration** -- The Checker Worker writes check results (latency, status) to the Analytics Engine dataset. The App Worker queries it for monitor metrics and uptime charts. This is not fully implemented / relised yet to produce graphs that are useful to users, it's just a base level at the moment. The queries need to be removed. This is likely more of a problem for the histories on the status pages.
-- **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately.
-- **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password.
-
-### Missing Integrations
-
-- **MFA support** -- No multi-factor authentication options for user accounts.
-- **Configure notifications for issues** -- We don't trigger notifications on issues from the issue tracking integration yet.
-
-### Nice-to-Haves
-
-- **Add private and internal status pages** -- Support for private status pages (protected by basic auth or login) and internal status pages (only visible to logged-in users).
-- **Add other integrations to trigger notifications** -- Support for more integrations that can trigger alarms such as increased views on the status pages or other systems externally.
-- **Monitor response validation** -- Only HTTP status is checked. Body content matching, certificate expiry checks, and DNS monitoring would add value.
-- **API keys** -- No programmatic API access for users (settings page placeholder exists).
-- **Add more notification channels** -- Support for SMS, Slack, PagerDuty, etc. Maybe a bit of AI calling for incident response?

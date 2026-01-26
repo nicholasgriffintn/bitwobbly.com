@@ -27,8 +27,16 @@ export const signUpFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => SignUpSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || "custom",
+      provider: env.AUTH_PROVIDER || 'custom',
       db: getDb(env.DB),
+      cognito:
+        env.AUTH_PROVIDER === 'cognito'
+          ? {
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+            }
+          : undefined,
     });
 
     const response = await signUpHandler(adapter, {
@@ -48,8 +56,16 @@ export const signInFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => SignInSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || "custom",
+      provider: env.AUTH_PROVIDER || 'custom',
       db: getDb(env.DB),
+      cognito:
+        env.AUTH_PROVIDER === 'cognito'
+          ? {
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+            }
+          : undefined,
     });
 
     const response = await signInHandler(adapter, {
@@ -74,8 +90,16 @@ export const signOutFn = createServerFn({ method: "POST" }).handler(
 export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
   async () => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || "custom",
+      provider: env.AUTH_PROVIDER || 'custom',
       db: getDb(env.DB),
+      cognito:
+        env.AUTH_PROVIDER === 'cognito'
+          ? {
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+            }
+          : undefined,
     });
 
     const user = await getCurrentUserHandler(adapter);
