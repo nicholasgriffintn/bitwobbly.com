@@ -65,6 +65,9 @@ export interface CognitoConfig {
   region: string;
   userPoolId: string;
   clientId: string;
+  clientSecret?: string;
+  accessKeyId: string;
+  secretAccessKey: string;
 }
 
 export interface AuthConfig {

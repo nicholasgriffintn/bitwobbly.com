@@ -17,7 +17,10 @@ export function createAuthAdapter(config: AuthConfig): AuthAdapter {
       region: config.cognito.region,
       userPoolId: config.cognito.userPoolId,
       clientId: config.cognito.clientId,
+      clientSecret: config.cognito.clientSecret,
       db: config.db,
+      accessKeyId: config.cognito.accessKeyId,
+      secretAccessKey: config.cognito.secretAccessKey,
     });
   }
 

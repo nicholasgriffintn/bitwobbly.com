@@ -35,11 +35,14 @@ export const signUpFn = createServerFn({ method: "POST" })
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
               clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
             }
           : undefined,
     });
 
-    const response = await signUpHandler(adapter, {
+    const response = await signUpHandler(adapter, env.INVITE_CODE!, {
       email: data.email,
       password: data.password,
       inviteCode: data.inviteCode,
@@ -64,6 +67,9 @@ export const signInFn = createServerFn({ method: "POST" })
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
               clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
             }
           : undefined,
     });
@@ -98,6 +104,9 @@ export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
               clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
             }
           : undefined,
     });

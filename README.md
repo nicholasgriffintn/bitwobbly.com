@@ -10,10 +10,9 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
 - **Analytics Engine / Iceberg integration** -- The Checker Worker writes check results (latency, status) to the Analytics Engine dataset. The App Worker queries it for monitor metrics and uptime charts. This is not fully implemented / relised yet to produce graphs that are useful to users, it's just a base level at the moment. The queries need to be removed. This is likely more of a problem for the histories on the status pages.
-- **Cognito doesn't work yet** -- Getting the error "[unenv] fs.readFile is not implemented yet!" when signing up (presumably this happens with sign in too). I have also not verified the Cognito setup yet because of this.
-- **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Only required for custom auth.
-- **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Only required for custom auth.
-- **MFA support** -- No multi-factor authentication options for user accounts. Only required for custom auth.
+- **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Only required for custom auth in auth package, frontend for both is needed.
+- **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Both cognito and custom auth are affected. Frontend has been started, not completed.
+- **MFA support** -- No multi-factor authentication options for user accounts. Only required for custom auth in auth package, frontend for both is needed.
 
 ### Missing Integrations
 

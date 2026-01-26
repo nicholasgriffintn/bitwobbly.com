@@ -3,14 +3,15 @@ import { useAppSession } from "./session";
 
 export async function signUpHandler(
   adapter: AuthAdapter,
+  requiredInviteCode: string,
   data: {
     email: string;
     password: string;
     inviteCode: string;
   },
 ) {
-  if (data.inviteCode !== data.inviteCode) {
-    throw new Error("Invalid invite code");
+  if (data.inviteCode !== requiredInviteCode) {
+    throw new Error('Invalid invite code');
   }
 
   const { user } = await adapter.signUp(data);

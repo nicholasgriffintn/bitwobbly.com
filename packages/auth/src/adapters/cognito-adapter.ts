@@ -1,14 +1,7 @@
-import {
-  CognitoIdentityProviderClient,
-  SignUpCommand,
-  InitiateAuthCommand,
-  RespondToAuthChallengeCommand,
-  ResendConfirmationCodeCommand,
-  ConfirmSignUpCommand,
-  type AuthFlowType,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { nowIso, randomId, schema, type DB } from "@bitwobbly/shared";
-import { eq } from "drizzle-orm";
+// NOTE: Details on api can be found here: https://docs.aws.amazon.com/cli/latest/reference/cognito-idp/
+import { AwsClient } from 'aws4fetch';
+import { nowIso, randomId, schema, type DB } from '@bitwobbly/shared';
+import { eq } from 'drizzle-orm';
 
 import type {
   AuthAdapter,
@@ -18,18 +11,60 @@ import type {
   MFASetupResult,
   MFAChallengeInput,
   CognitoConfig,
-} from "../types";
+} from '../types';
 import { getVerifier } from './lib/cognito/jwt';
 
+type AuthenticationResultResponse = {
+  AvailableChallenges?: string[];
+  ChallengeName?: string;
+  ChallengeParameters?: Record<string, string>;
+  Session?: string;
+  AuthenticationResult?: {
+    AccessToken: string;
+    ExpiresIn: number;
+    IdToken: string;
+    NewDeviceMetadata?: {
+      DeviceKey: string;
+      DeviceGroupKey: string;
+    };
+    RefreshToken: string;
+    TokenType: string;
+  };
+};
+
+type SignUpResponse = {
+  UserSub: string;
+  UserConfirmed: boolean;
+  Session: string;
+  CodeDeliveryDetails?: {
+    AttributeName: string;
+    DeliveryMedium: string;
+    Destination: string;
+  };
+};
+
 export class CognitoAuthAdapter implements AuthAdapter {
-  private client: CognitoIdentityProviderClient;
+  private client: AwsClient;
   private verifier: ReturnType<typeof getVerifier>;
   private clientId: string;
+  private hmacKey?: string;
   private db: DB;
 
   constructor(config: CognitoConfig & { db: DB }) {
-    this.client = new CognitoIdentityProviderClient({ region: config.region });
+    if (!config.region || !config.userPoolId || !config.clientId) {
+      throw new Error(
+        'Cognito configuration is incomplete. Please provide region, userPoolId, and clientId.',
+      );
+    }
+
+    this.client = new AwsClient({
+      service: 'cognito-idp',
+      region: config.region,
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    });
     this.clientId = config.clientId;
+    this.hmacKey = config.clientSecret;
     this.db = config.db;
     this.verifier = getVerifier({
       awsRegion: config.region,
@@ -37,6 +72,25 @@ export class CognitoAuthAdapter implements AuthAdapter {
       tokenType: 'access',
       appClientId: config.clientId,
     });
+  }
+
+  private async computeHash(username: string): Promise<string | null> {
+    if (!this.hmacKey) return null;
+
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(this.hmacKey),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const signature = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(username + this.clientId),
+    );
+    return btoa(String.fromCharCode(...new Uint8Array(signature)));
   }
 
   async signUp(input: SignUpInput): Promise<{ user: AuthUser }> {
@@ -50,16 +104,34 @@ export class CognitoAuthAdapter implements AuthAdapter {
       throw new Error('User with this email already exists');
     }
 
-    const signUpResult = await this.client.send(
-      new SignUpCommand({
+    const hash = await this.computeHash(input.email);
+
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const signUpResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.SignUp',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
         ClientId: this.clientId,
         Username: input.email,
         Password: input.password,
         UserAttributes: [{ Name: 'email', Value: input.email }],
+        SecretHash: hash,
       }),
-    );
+    });
 
-    const cognitoSub = signUpResult.UserSub;
+    if (!signUpResult.ok) {
+      const errorData = await signUpResult.json();
+      console.error('Cognito SignUp Error:', errorData);
+      throw new Error(`Failed to create user in Cognito`);
+    }
+
+    const signUpData = (await signUpResult.json()) as SignUpResponse;
+
+    const cognitoSub = signUpData.UserSub;
     if (!cognitoSub) {
       throw new Error('Failed to create user in Cognito');
     }
@@ -81,7 +153,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
       authProvider: 'cognito',
       cognitoSub,
       mfaEnabled: 0,
-      emailVerified: signUpResult.UserConfirmed ? 1 : 0,
+      emailVerified: signUpData.UserConfirmed ? 1 : 0,
       createdAt,
     });
 
@@ -101,7 +173,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
         authProvider: 'cognito',
         cognitoSub,
         mfaEnabled: false,
-        emailVerified: signUpResult.UserConfirmed || false,
+        emailVerified: signUpData.UserConfirmed || false,
         createdAt,
       },
     };
@@ -111,24 +183,45 @@ export class CognitoAuthAdapter implements AuthAdapter {
     input: SignInInput,
   ): Promise<{ user: AuthUser; requiresMFA?: boolean; session?: string }> {
     try {
-      const authResult = await this.client.send(
-        new InitiateAuthCommand({
-          ClientId: this.clientId,
-          AuthFlow: 'USER_PASSWORD_AUTH' as AuthFlowType,
-          AuthParameters: { USERNAME: input.email, PASSWORD: input.password },
-        }),
-      );
+      const hash = await this.computeHash(input.email);
 
-      if (authResult.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
+      const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+      const authResult = await this.client.fetch(awsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-amz-json-1.1',
+          'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+          'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        },
+        body: JSON.stringify({
+          ClientId: this.clientId,
+          AuthFlow: 'USER_PASSWORD_AUTH',
+          AuthParameters: {
+            USERNAME: input.email,
+            PASSWORD: input.password,
+            SECRET_HASH: hash || '',
+          },
+        }),
+      });
+
+      if (!authResult.ok) {
+        const errorData = await authResult.json();
+        console.error('Cognito SignIn Error:', errorData);
+        throw new Error('Invalid email or password');
+      }
+
+      const authData =
+        (await authResult.json()) as AuthenticationResultResponse;
+
+      if (authData.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
         return {
           user: {} as AuthUser,
           requiresMFA: true,
-          session: authResult.Session,
+          session: authData.Session,
         };
       }
 
-      const accessToken = authResult.AuthenticationResult?.AccessToken;
-
+      const accessToken = authData.AuthenticationResult?.AccessToken;
       if (!accessToken) {
         throw new Error('Failed to authenticate with Cognito');
       }
@@ -290,21 +383,42 @@ export class CognitoAuthAdapter implements AuthAdapter {
   }
 
   async verifyMFA(input: MFAChallengeInput): Promise<{ user: AuthUser }> {
-    const authResult = await this.client.send(
-      new RespondToAuthChallengeCommand({
+    const hash = await this.computeHash(input.email);
+
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const authResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target':
+          'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
         ClientId: this.clientId,
         ChallengeName: 'SOFTWARE_TOKEN_MFA',
         Session: input.session,
         ChallengeResponses: {
           USERNAME: input.email,
           SOFTWARE_TOKEN_MFA_CODE: input.code,
+          SECRET_HASH: hash || '',
         },
       }),
-    );
+    });
 
-    const accessToken = authResult.AuthenticationResult?.AccessToken;
+    if (!authResult.ok) {
+      const errorData = await authResult.json();
+      console.error('Cognito MFA Verification Error:', errorData);
+      throw new Error('MFA verification failed');
+    }
 
-    if (!accessToken) throw new Error('MFA verification failed');
+    const authData = (await authResult.json()) as AuthenticationResultResponse;
+
+    const accessToken = authData.AuthenticationResult?.AccessToken;
+
+    if (!accessToken) {
+      throw new Error('MFA verification failed');
+    }
 
     const auth = await this.verifier.verify(accessToken);
 
@@ -347,22 +461,57 @@ export class CognitoAuthAdapter implements AuthAdapter {
   }
 
   async sendVerificationEmail(email: string): Promise<void> {
-    await this.client.send(
-      new ResendConfirmationCodeCommand({
+    const hash = await this.computeHash(email);
+
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const signUpResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target':
+          'AWSCognitoIdentityProviderService.ResendConfirmationCode',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
         ClientId: this.clientId,
         Username: email,
+        SecretHash: hash || '',
       }),
-    );
+    });
+
+    if (!signUpResult.ok) {
+      const errorData = await signUpResult.json();
+      console.error('Cognito Resend Confirmation Code Error:', errorData);
+      throw new Error(`Failed to resend verification email`);
+    }
+
+    return;
   }
 
   async verifyEmail(code: string, email: string): Promise<void> {
-    await this.client.send(
-      new ConfirmSignUpCommand({
+    const hash = await this.computeHash(email);
+
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const confirmResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.ConfirmSignUp',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
         ClientId: this.clientId,
         Username: email,
         ConfirmationCode: code,
+        SecretHash: hash || '',
       }),
-    );
+    });
+
+    if (!confirmResult.ok) {
+      const errorData = await confirmResult.json();
+      console.error('Cognito Confirm SignUp Error:', errorData);
+      throw new Error(`Failed to verify email`);
+    }
 
     await this.db
       .update(schema.users)
