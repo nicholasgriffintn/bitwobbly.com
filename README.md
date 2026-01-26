@@ -149,14 +149,13 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 ### Incomplete Features
 
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
-- **Analytics Engine integration** -- The Checker Worker writes check results (latency, status) to the Analytics Engine dataset. The App Worker queries it for monitor metrics and uptime charts. This is not fully implemented / relised yet to produce graphs that are useful to users, it's just a base level at the moment. The queries need to be removed. This is likely more of a problem for the histories on the status pages.
+- **Analytics Engine / Iceberg integration** -- The Checker Worker writes check results (latency, status) to the Analytics Engine dataset. The App Worker queries it for monitor metrics and uptime charts. This is not fully implemented / relised yet to produce graphs that are useful to users, it's just a base level at the moment. The queries need to be removed. This is likely more of a problem for the histories on the status pages.
 - **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately.
 - **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password.
 
 ### Missing Integrations
 
 - **MFA support** -- No multi-factor authentication options for user accounts.
-- **Build in a pipelines / iceberg integration** -- At the moment, we just stream to pipelines and iceberg, we don't do anything with it.
 - **Configure notifications for issues** -- We don't trigger notifications on issues from the issue tracking integration yet.
 
 ### Nice-to-Haves
