@@ -8,7 +8,7 @@
     "./schema": "./src/db/schema.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.36.4"
+    "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260123.0",
