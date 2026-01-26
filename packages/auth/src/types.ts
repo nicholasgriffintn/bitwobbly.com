@@ -68,7 +68,7 @@ export interface CognitoConfig {
 }
 
 export interface AuthConfig {
-  provider: "custom" | "cognito";
+  provider: string;
   db: DB;
   cognito?: CognitoConfig;
 }

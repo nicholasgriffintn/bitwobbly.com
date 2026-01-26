@@ -26,7 +26,7 @@ export function MFASetup({ onComplete }: { onComplete?: () => void }) {
   if (qrCode && secret) {
     return (
       <div className="mfa-setup">
-        <h3>Scan QR Code</h3>
+        <h2>Scan The QR Code Below</h2>
         <img src={qrCode} alt="MFA QR Code" />
         <p>Or enter this code manually: {secret}</p>
         <button onClick={onComplete}>Done</button>
@@ -36,8 +36,6 @@ export function MFASetup({ onComplete }: { onComplete?: () => void }) {
 
   return (
     <div className="mfa-setup">
-      <h3>Enable Two-Factor Authentication</h3>
-      <p>Protect your account with an additional layer of security.</p>
       {error && <div className="form-error">{error}</div>}
       <button onClick={handleSetup} disabled={loading}>
         {loading ? 'Setting up...' : 'Enable MFA'}

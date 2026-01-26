@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useAuth } from '@bitwobbly/auth/react';
+import { useState } from "react";
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { LoginForm, SignUpForm } from '@bitwobbly/auth/components';
 
 import Brand from "@/components/Brand";
 import { getCurrentUserFn } from "@/server/functions/auth";
@@ -16,40 +16,11 @@ export const Route = createFileRoute("/login")({
 });
 
 export default function Login() {
-  const { signIn, signUp, loading } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const navigate = useNavigate();
 
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!email.trim() || !password) {
-      setError("Enter email and password to continue.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    if (isSignUp && !inviteCode.trim()) {
-      setError("Invite code is required.");
-      return;
-    }
-    setError(null);
-    try {
-      if (isSignUp) {
-        await signUp(email.trim(), password, inviteCode.trim());
-      } else {
-        await signIn(email.trim(), password);
-      }
-    } catch (err) {
-      if (err && typeof err === 'object' && 'isRedirect' in err) {
-        throw err;
-      }
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    }
+  const handleSuccess = async () => {
+    await navigate({ to: '/app' });
   };
 
   return (
@@ -62,65 +33,24 @@ export default function Login() {
             ? 'Start monitoring your services with real-time alerts and beautiful status pages.'
             : 'Welcome back! Sign in to access your monitoring dashboard.'}
         </p>
-        <form onSubmit={onSubmit} className="auth-form">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            autoComplete={isSignUp ? 'email' : 'username'}
-            disabled={loading}
-            required
+        
+        {isSignUp ? (
+          <SignUpForm
+            className="auth-form"
+            onSuccess={handleSuccess}
           />
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={
-              isSignUp ? 'Create a strong password' : 'Enter your password'
-            }
-            autoComplete={isSignUp ? 'new-password' : 'current-password'}
-            disabled={loading}
-            required
+        ) : (
+          <LoginForm
+            className="auth-form"
+            onSuccess={handleSuccess}
           />
-          {isSignUp && (
-            <>
-              <label htmlFor="inviteCode">Invite code</label>
-              <input
-                id="inviteCode"
-                type="text"
-                value={inviteCode}
-                onChange={(event) => setInviteCode(event.target.value)}
-                placeholder="Enter your invite code"
-                autoComplete="off"
-                disabled={loading}
-                required
-              />
-            </>
-          )}
-          {error ? <div className="form-error">{error}</div> : null}
-          <button type="submit" disabled={loading}>
-            {loading
-              ? isSignUp
-                ? 'Creating account...'
-                : 'Signing in...'
-              : isSignUp
-                ? 'Create account'
-                : 'Sign in'}
-          </button>
-        </form>
+        )}
+        
         <div className="auth-toggle">
           <button
             type="button"
             className="link-button"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-            }}
+            onClick={() => setIsSignUp(!isSignUp)}
           >
             {isSignUp
               ? 'Already have an account? Sign in'

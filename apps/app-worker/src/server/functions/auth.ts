@@ -74,7 +74,7 @@ export const signInFn = createServerFn({ method: "POST" })
     });
 
     if (response.requiresMFA) {
-      throw redirect({ to: `/login` });
+      throw redirect({ to: `/mfa-challenge` });
     }
 
     throw redirect({ to: "/app" });

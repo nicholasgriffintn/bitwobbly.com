@@ -9,7 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as SetupMfaRouteImport } from './routes/setup-mfa'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as AppRouteImport } from './routes/app'
@@ -27,9 +30,24 @@ import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.
 import { Route as AppIssuesProjectIdIndexRouteImport } from './routes/app/issues/$projectId/index'
 import { Route as AppIssuesProjectIdIssueIssueIdRouteImport } from './routes/app/issues/$projectId/issue/$issueId'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupMfaRoute = SetupMfaRouteImport.update({
+  id: '/setup-mfa',
+  path: '/setup-mfa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MfaChallengeRoute = MfaChallengeRouteImport.update({
+  id: '/mfa-challenge',
+  path: '/mfa-challenge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -119,7 +137,10 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/mfa-challenge': typeof MfaChallengeRoute
   '/onboarding': typeof OnboardingRoute
+  '/setup-mfa': typeof SetupMfaRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
   '/app/monitors': typeof AppMonitorsRoute
@@ -137,7 +158,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/mfa-challenge': typeof MfaChallengeRoute
   '/onboarding': typeof OnboardingRoute
+  '/setup-mfa': typeof SetupMfaRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
   '/app/monitors': typeof AppMonitorsRoute
@@ -157,7 +181,10 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/mfa-challenge': typeof MfaChallengeRoute
   '/onboarding': typeof OnboardingRoute
+  '/setup-mfa': typeof SetupMfaRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
   '/app/monitors': typeof AppMonitorsRoute
@@ -178,7 +205,10 @@ export interface FileRouteTypes {
     | '/app'
     | '/join'
     | '/login'
+    | '/mfa-challenge'
     | '/onboarding'
+    | '/setup-mfa'
+    | '/verify-email'
     | '/app/components'
     | '/app/incidents'
     | '/app/monitors'
@@ -196,7 +226,10 @@ export interface FileRouteTypes {
     | '/'
     | '/join'
     | '/login'
+    | '/mfa-challenge'
     | '/onboarding'
+    | '/setup-mfa'
+    | '/verify-email'
     | '/app/components'
     | '/app/incidents'
     | '/app/monitors'
@@ -215,7 +248,10 @@ export interface FileRouteTypes {
     | '/app'
     | '/join'
     | '/login'
+    | '/mfa-challenge'
     | '/onboarding'
+    | '/setup-mfa'
+    | '/verify-email'
     | '/app/components'
     | '/app/incidents'
     | '/app/monitors'
@@ -235,18 +271,42 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
+  MfaChallengeRoute: typeof MfaChallengeRoute
   OnboardingRoute: typeof OnboardingRoute
+  SetupMfaRoute: typeof SetupMfaRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   StatusSlugRoute: typeof StatusSlugRoute
   ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup-mfa': {
+      id: '/setup-mfa'
+      path: '/setup-mfa'
+      fullPath: '/setup-mfa'
+      preLoaderRoute: typeof SetupMfaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mfa-challenge': {
+      id: '/mfa-challenge'
+      path: '/mfa-challenge'
+      fullPath: '/mfa-challenge'
+      preLoaderRoute: typeof MfaChallengeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -397,7 +457,10 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
+  MfaChallengeRoute: MfaChallengeRoute,
   OnboardingRoute: OnboardingRoute,
+  SetupMfaRoute: SetupMfaRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   StatusSlugRoute: StatusSlugRoute,
   ApiWebhooksMonitorIdRoute: ApiWebhooksMonitorIdRoute,
 }

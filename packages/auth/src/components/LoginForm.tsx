@@ -29,6 +29,8 @@ export function LoginForm({
     setSubmitting(true);
     try {
       await signIn(email, password);
+      // TODO: This needs to handle MFA setup/ challenge flows -signin should return state
+      // TODO: This needs to handle email verification flows -signin should return state
       onSuccess?.();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'isRedirect' in err) {
@@ -43,10 +45,14 @@ export function LoginForm({
   return (
     <form onSubmit={onSubmit} className={className}>
       <div className="form-group">
-        <label htmlFor="email">Email</label>
+        <label htmlFor="email" className="block mb-1">
+          Email
+        </label>
         <input
+          className="w-full"
           id="email"
           type="email"
+          placeholder="Enter your email address"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading || submitting}
@@ -54,10 +60,14 @@ export function LoginForm({
         />
       </div>
       <div className="form-group">
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password" className="block mb-1">
+          Password
+        </label>
         <input
+          className="w-full"
           id="password"
           type="password"
+          placeholder="Enter your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={loading || submitting}

@@ -44,10 +44,14 @@ export function SignUpForm({
   return (
     <form onSubmit={onSubmit} className={className}>
       <div className="form-group">
-        <label htmlFor="email">Email</label>
+        <label htmlFor="email" className="block mb-1">
+          Email
+        </label>
         <input
+          className="w-full"
           id="email"
           type="email"
+          placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading || submitting}
@@ -55,10 +59,14 @@ export function SignUpForm({
         />
       </div>
       <div className="form-group">
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password" className="block mb-1">
+          Password
+        </label>
         <input
+          className="w-full"
           id="password"
           type="password"
+          placeholder="Enter your chosen password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={loading || submitting}
@@ -66,10 +74,14 @@ export function SignUpForm({
         />
       </div>
       <div className="form-group">
-        <label htmlFor="inviteCode">Invite Code</label>
+        <label htmlFor="inviteCode" className="block mb-1">
+          Invite Code
+        </label>
         <input
+          className="w-full"
           id="inviteCode"
           type="text"
+          placeholder="Enter the invite code provided to you"
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
           disabled={loading || submitting}
