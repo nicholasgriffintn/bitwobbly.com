@@ -171,11 +171,15 @@ export const notificationPolicies = sqliteTable("notification_policies", {
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"),
   teamId: text("team_id")
     .notNull()
     .references(() => teams.id),
   currentTeamId: text("current_team_id").references(() => teams.id),
+  authProvider: text("auth_provider").notNull().default("custom"),
+  cognitoSub: text("cognito_sub").unique(),
+  mfaEnabled: integer("mfa_enabled").notNull().default(0),
+  emailVerified: integer("email_verified").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });
 

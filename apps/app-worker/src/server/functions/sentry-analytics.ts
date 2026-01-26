@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
+import { requireAuth } from '@bitwobbly/auth/server';
 
-import { requireAuth } from "../lib/auth-middleware";
 import {
   getClockDriftStats,
   getErrorRateByRelease,

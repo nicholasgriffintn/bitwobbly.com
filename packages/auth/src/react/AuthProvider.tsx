@@ -6,7 +6,6 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { signInFn, signUpFn, signOutFn } from '../server/functions/auth';
 
 export type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
@@ -21,30 +20,33 @@ export type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export type SignInData = { email: string; password: string };
+export type SignUpData = {
+  email: string;
+  password: string;
+  inviteCode: string;
+};
+
+export type AuthProviderProps = {
+  children: ReactNode;
+  signInFn: (opts: { data: SignInData }) => Promise<unknown>;
+  signUpFn: (opts: { data: SignUpData }) => Promise<unknown>;
+  signOutFn: () => Promise<unknown>;
+};
+
+export function AuthProvider({
+  children,
+  signInFn,
+  signUpFn,
+  signOutFn,
+}: AuthProviderProps) {
   const [loading, setLoading] = useState(false);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      await signInFn({ data: { email, password } });
-    } catch (err) {
-      if (err && typeof err === "object" && "isRedirect" in err) {
-        throw err;
-      }
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const signUp = useCallback(
-    async (email: string, password: string, inviteCode: string) => {
+  const signIn = useCallback(
+    async (email: string, password: string) => {
       setLoading(true);
       try {
-        await signUpFn({
-          data: { email, password, inviteCode },
-        });
+        await signInFn({ data: { email, password } });
       } catch (err) {
         if (err && typeof err === "object" && "isRedirect" in err) {
           throw err;
@@ -54,7 +56,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [],
+    [signInFn],
+  );
+
+  const signUp = useCallback(
+    async (email: string, password: string, inviteCode: string) => {
+      setLoading(true);
+      try {
+        await signUpFn({ data: { email, password, inviteCode } });
+      } catch (err) {
+        if (err && typeof err === "object" && "isRedirect" in err) {
+          throw err;
+        }
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [signUpFn],
   );
 
   const signOut = useCallback(async () => {
@@ -65,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     }
-  }, []);
+  }, [signOutFn]);
 
   const value = useMemo<AuthContextValue>(
     () => ({ signIn, signUp, signOut, loading }),

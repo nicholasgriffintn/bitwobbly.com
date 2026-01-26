@@ -21,7 +21,9 @@
       "invocation_logs": false
     }
   },
-  "vars": {},
+  "vars": {
+    "AUTH_PROVIDER": "custom"
+  },
   "d1_databases": [
     {
       "binding": "DB",

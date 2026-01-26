@@ -4,6 +4,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { schema } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
+import { requireOwner, useAppSession } from '@bitwobbly/auth/server';
 
 import { getDb } from "../lib/db";
 import {
@@ -23,8 +24,7 @@ import {
   updateTeamName,
   deleteTeam,
 } from "../repositories/teams";
-import { requireTeam, requireOwner } from "../lib/auth-middleware";
-import { useAppSession } from "../lib/session";
+import { requireTeam } from '../lib/auth-middleware';
 
 const CreateTeamSchema = z.object({
   name: z.string().min(1).max(100),
@@ -150,8 +150,10 @@ export const listTeamMembersFn = createServerFn({ method: "GET" }).handler(
   },
 );
 
-export const removeTeamMemberFn = createServerFn({ method: "POST" })
-  .validator(z.object({ userId: z.string() }))
+export const removeTeamMemberFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) =>
+    z.object({ userId: z.string() }).parse(data),
+  )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
     const vars = env;
@@ -161,9 +163,11 @@ export const removeTeamMemberFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const updateMemberRoleFn = createServerFn({ method: "POST" })
-  .validator(
-    z.object({ userId: z.string(), role: z.enum(["owner", "member"]) }),
+export const updateMemberRoleFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) =>
+    z
+      .object({ userId: z.string(), role: z.enum(['owner', 'member']) })
+      .parse(data),
   )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
@@ -184,13 +188,15 @@ export const listTeamInvitesFn = createServerFn({ method: "GET" }).handler(
   },
 );
 
-export const createTeamInviteFn = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      email: z.string().email().optional(),
-      role: z.enum(["owner", "member"]),
-      expiresInDays: z.number().default(7),
-    }),
+export const createTeamInviteFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        email: z.string().email().optional(),
+        role: z.enum(['owner', 'member']),
+        expiresInDays: z.number().default(7),
+      })
+      .parse(data),
   )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
@@ -208,8 +214,10 @@ export const createTeamInviteFn = createServerFn({ method: "POST" })
     return { inviteCode: result.inviteCode };
   });
 
-export const revokeTeamInviteFn = createServerFn({ method: "POST" })
-  .validator(z.object({ inviteCode: z.string() }))
+export const revokeTeamInviteFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) =>
+    z.object({ inviteCode: z.string() }).parse(data),
+  )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
     const vars = env;
@@ -219,8 +227,10 @@ export const revokeTeamInviteFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const updateTeamNameFn = createServerFn({ method: "POST" })
-  .validator(z.object({ name: z.string().min(1) }))
+export const updateTeamNameFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) =>
+    z.object({ name: z.string().min(1) }).parse(data),
+  )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
     const vars = env;

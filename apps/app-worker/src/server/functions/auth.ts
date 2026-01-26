@@ -1,11 +1,16 @@
-import { createServerFn } from '@tanstack/react-start'
-import { redirect } from '@tanstack/react-router'
-import { env } from 'cloudflare:workers'
-import { z } from 'zod'
+import { createServerFn } from "@tanstack/react-start";
+import { redirect } from "@tanstack/react-router";
+import { env } from "cloudflare:workers";
+import { z } from "zod";
+import {
+  createAuthAdapter,
+  signInHandler,
+  signUpHandler,
+  signOutHandler,
+  getCurrentUserHandler,
+} from "@bitwobbly/auth/server";
 
-import { getDb } from '../lib/db'
-import { authenticateUser, createUser, getUserById, createSession } from '../repositories/auth'
-import { useAppSession } from '../lib/session'
+import { getDb } from "../lib/db";
 
 const SignUpSchema = z.object({
   email: z.string().email(),
@@ -14,80 +19,67 @@ const SignUpSchema = z.object({
 });
 
 const SignInSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(1),
-})
+  email: z.string().email(),
+  password: z.string().min(1),
+});
 
 export const signUpFn = createServerFn({ method: "POST" })
-    .inputValidator((data: unknown) => SignUpSchema.parse(data))
-    .handler(async ({ data }) => {
-        const vars = env;
-
-        if (data.inviteCode !== vars.INVITE_CODE) {
-          throw new Error('Invalid invite code');
-        }
-
-        const db = getDb(vars.DB);
-        const userEmail = data.email;
-        const userPass = data.password;
-
-        const { user } = await createUser(db, {
-            email: userEmail,
-            password: userPass,
-        });
-
-        await createSession(db, user.id);
-
-        const session = await useAppSession();
-        await session.update({
-            userId: user.id,
-            email: user.email,
-        });
-
-        throw redirect({ to: '/onboarding' });
+  .inputValidator((data: unknown) => SignUpSchema.parse(data))
+  .handler(async ({ data }) => {
+    const adapter = createAuthAdapter({
+      provider: env.AUTH_PROVIDER || "custom",
+      db: getDb(env.DB),
     });
+
+    const response = await signUpHandler(adapter, {
+      email: data.email,
+      password: data.password,
+      inviteCode: data.inviteCode,
+    });
+
+    if (!response.user) {
+      throw new Error("Sign up failed");
+    }
+
+    throw redirect({ to: "/onboarding" });
+  });
 
 export const signInFn = createServerFn({ method: "POST" })
-    .inputValidator((data: unknown) => SignInSchema.parse(data))
-    .handler(async ({ data }) => {
-        const vars = env;
-        const db = getDb(vars.DB);
-        const userEmail = data.email;
-        const userPass = data.password;
-
-        const { user } = await authenticateUser(db, userEmail, userPass);
-
-        await createSession(db, user.id);
-
-        const session = await useAppSession();
-        await session.update({
-            userId: user.id,
-            email: user.email,
-        });
-
-        throw redirect({ to: '/app' });
+  .inputValidator((data: unknown) => SignInSchema.parse(data))
+  .handler(async ({ data }) => {
+    const adapter = createAuthAdapter({
+      provider: env.AUTH_PROVIDER || "custom",
+      db: getDb(env.DB),
     });
 
-export const signOutFn = createServerFn({ method: "POST" })
-    .handler(async () => {
-        const session = await useAppSession();
-        await session.clear();
-        throw redirect({ to: '/login' });
+    const response = await signInHandler(adapter, {
+      email: data.email,
+      password: data.password,
     });
 
-export const getCurrentUserFn = createServerFn({ method: "GET" })
-    .handler(async () => {
-        const session = await useAppSession();
-        const userId = session.data.userId;
+    if (response.requiresMFA) {
+      throw redirect({ to: `/login` });
+    }
 
-        if (!userId) {
-            return null;
-        }
+    throw redirect({ to: "/app" });
+  });
 
-        const vars = env;
-        const db = getDb(vars.DB);
+export const signOutFn = createServerFn({ method: "POST" }).handler(
+  async () => {
+    await signOutHandler();
+    throw redirect({ to: "/login" });
+  },
+);
 
-        const user = await getUserById(db, userId);
-
-        return user;
+export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const adapter = createAuthAdapter({
+      provider: env.AUTH_PROVIDER || "custom",
+      db: getDb(env.DB),
     });
+
+    const user = await getCurrentUserHandler(adapter);
+
+    return user;
+  },
+);

@@ -14,6 +14,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply bitwobbly_db --remote"
   },
   "dependencies": {
+    "@bitwobbly/auth": "workspace:*",
     "@bitwobbly/shared": "workspace:*",
     "@cloudflare/vite-plugin": "^1.13.8",
     "@sentry/react": "^10.36.0",

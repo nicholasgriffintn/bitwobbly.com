@@ -1,12 +1,7 @@
 import { useState, type FormEvent } from "react";
-import {
-  createFileRoute,
-  useNavigate,
-  isRedirect,
-  redirect,
-} from "@tanstack/react-router";
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { useAuth } from '@bitwobbly/auth/react';
 
-import { useAuth } from "@/context/auth";
 import Brand from "@/components/Brand";
 import { getCurrentUserFn } from "@/server/functions/auth";
 
@@ -22,13 +17,11 @@ export const Route = createFileRoute("/login")({
 
 export default function Login() {
   const { signIn, signUp, loading } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -45,23 +38,17 @@ export default function Login() {
       return;
     }
     setError(null);
-    setSubmitting(true);
     try {
       if (isSignUp) {
         await signUp(email.trim(), password, inviteCode.trim());
       } else {
         await signIn(email.trim(), password);
       }
-      await navigate({
-        to: "/app",
-      });
     } catch (err) {
-      if (isRedirect(err)) {
+      if (err && typeof err === 'object' && 'isRedirect' in err) {
         throw err;
       }
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setSubmitting(false);
+      setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
@@ -69,11 +56,11 @@ export default function Login() {
     <div className="auth">
       <div className="auth-card">
         <Brand />
-        <h1>{isSignUp ? "Create account" : "Sign in to BitWobbly"}</h1>
+        <h1>{isSignUp ? 'Create account' : 'Sign in to BitWobbly'}</h1>
         <p>
           {isSignUp
-            ? "Start monitoring your services with real-time alerts and beautiful status pages."
-            : "Welcome back! Sign in to access your monitoring dashboard."}
+            ? 'Start monitoring your services with real-time alerts and beautiful status pages.'
+            : 'Welcome back! Sign in to access your monitoring dashboard.'}
         </p>
         <form onSubmit={onSubmit} className="auth-form">
           <label htmlFor="email">Email</label>
@@ -83,7 +70,8 @@ export default function Login() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
-            autoComplete={isSignUp ? "email" : "username"}
+            autoComplete={isSignUp ? 'email' : 'username'}
+            disabled={loading}
             required
           />
           <label htmlFor="password">Password</label>
@@ -93,9 +81,10 @@ export default function Login() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder={
-              isSignUp ? "Create a strong password" : "Enter your password"
+              isSignUp ? 'Create a strong password' : 'Enter your password'
             }
-            autoComplete={isSignUp ? "new-password" : "current-password"}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            disabled={loading}
             required
           />
           {isSignUp && (
@@ -108,19 +97,20 @@ export default function Login() {
                 onChange={(event) => setInviteCode(event.target.value)}
                 placeholder="Enter your invite code"
                 autoComplete="off"
+                disabled={loading}
                 required
               />
             </>
           )}
           {error ? <div className="form-error">{error}</div> : null}
-          <button type="submit" disabled={loading || submitting}>
-            {submitting
+          <button type="submit" disabled={loading}>
+            {loading
               ? isSignUp
-                ? "Creating account..."
-                : "Signing in..."
+                ? 'Creating account...'
+                : 'Signing in...'
               : isSignUp
-                ? "Create account"
-                : "Sign in"}
+                ? 'Create account'
+                : 'Sign in'}
           </button>
         </form>
         <div className="auth-toggle">
@@ -133,8 +123,8 @@ export default function Login() {
             }}
           >
             {isSignUp
-              ? "Already have an account? Sign in"
-              : "Need an account? Sign up"}
+              ? 'Already have an account? Sign in'
+              : 'Need an account? Sign up'}
           </button>
         </div>
       </div>

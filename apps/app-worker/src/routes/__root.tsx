@@ -5,10 +5,12 @@ import {
   Outlet,
   Link,
 } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
+import { AuthProvider } from "@bitwobbly/auth/react";
 
-import { AuthProvider } from "@/context/auth";
+import { signInFn, signUpFn, signOutFn } from "@/server/functions/auth";
 
 import appCss from "../styles.css?url";
 
@@ -40,13 +42,17 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  const signIn = useServerFn(signInFn);
+  const signUp = useServerFn(signUpFn);
+  const signOut = useServerFn(signOutFn);
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        <AuthProvider>
+        <AuthProvider signInFn={signIn} signUpFn={signUp} signOutFn={signOut}>
           <Outlet />
         </AuthProvider>
         <TanStackDevtools
