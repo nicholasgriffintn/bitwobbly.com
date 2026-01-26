@@ -60,6 +60,21 @@ const handler = {
         });
       }
 
+      const { success } = await env.SENTRY_RATE_LIMITER.limit({
+        key: `sentry_project:${project.id}`,
+      });
+
+      if (!success) {
+        return new Response("Rate limit exceeded", {
+          status: 429,
+          headers: {
+            ...CORS_HEADERS,
+            "X-RateLimit-Limit": "1000",
+            "Retry-After": "60",
+          },
+        });
+      }
+
       const body = new Uint8Array(await request.arrayBuffer());
 
       const now = new Date();

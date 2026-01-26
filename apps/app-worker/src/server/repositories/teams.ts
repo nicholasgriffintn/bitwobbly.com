@@ -183,3 +183,170 @@ export async function useTeamInvite(db: DB, inviteCode: string): Promise<void> {
     .set({ usedAt: now })
     .where(eq(schema.teamInvites.inviteCode, inviteCode));
 }
+
+export async function listTeamMembers(
+  db: DB,
+  teamId: string,
+): Promise<
+  Array<{ userId: string; email: string; role: string; joinedAt: string }>
+> {
+  const members = await db
+    .select({
+      userId: schema.userTeams.userId,
+      email: schema.users.email,
+      role: schema.userTeams.role,
+      joinedAt: schema.userTeams.joinedAt,
+    })
+    .from(schema.userTeams)
+    .innerJoin(schema.users, eq(schema.userTeams.userId, schema.users.id))
+    .where(eq(schema.userTeams.teamId, teamId));
+
+  return members;
+}
+
+export async function removeTeamMember(
+  db: DB,
+  teamId: string,
+  userId: string,
+): Promise<void> {
+  const owners = await db
+    .select()
+    .from(schema.userTeams)
+    .where(
+      and(
+        eq(schema.userTeams.teamId, teamId),
+        eq(schema.userTeams.role, "owner"),
+      ),
+    );
+
+  if (owners.length === 1 && owners[0].userId === userId) {
+    throw new Error("Cannot remove the last owner from the team");
+  }
+
+  await db
+    .delete(schema.userTeams)
+    .where(
+      and(
+        eq(schema.userTeams.teamId, teamId),
+        eq(schema.userTeams.userId, userId),
+      ),
+    );
+}
+
+export async function updateMemberRole(
+  db: DB,
+  teamId: string,
+  userId: string,
+  role: string,
+): Promise<void> {
+  await db
+    .update(schema.userTeams)
+    .set({ role })
+    .where(
+      and(
+        eq(schema.userTeams.teamId, teamId),
+        eq(schema.userTeams.userId, userId),
+      ),
+    );
+}
+
+export async function listTeamInvites(
+  db: DB,
+  teamId: string,
+): Promise<
+  Array<{
+    inviteCode: string;
+    email: string | null;
+    role: string;
+    createdBy: string;
+    expiresAt: string;
+    usedAt: string | null;
+  }>
+> {
+  const invites = await db
+    .select({
+      inviteCode: schema.teamInvites.inviteCode,
+      email: schema.teamInvites.email,
+      role: schema.teamInvites.role,
+      createdBy: schema.teamInvites.createdBy,
+      expiresAt: schema.teamInvites.expiresAt,
+      usedAt: schema.teamInvites.usedAt,
+    })
+    .from(schema.teamInvites)
+    .where(eq(schema.teamInvites.teamId, teamId));
+
+  return invites;
+}
+
+export async function revokeTeamInvite(
+  db: DB,
+  inviteCode: string,
+): Promise<void> {
+  await db
+    .delete(schema.teamInvites)
+    .where(eq(schema.teamInvites.inviteCode, inviteCode));
+}
+
+export async function updateTeamName(
+  db: DB,
+  teamId: string,
+  name: string,
+): Promise<void> {
+  await db
+    .update(schema.teams)
+    .set({ name })
+    .where(eq(schema.teams.id, teamId));
+}
+
+export async function deleteTeam(db: DB, teamId: string): Promise<void> {
+  const hasMonitors = await db
+    .select()
+    .from(schema.monitors)
+    .where(eq(schema.monitors.teamId, teamId))
+    .limit(1);
+
+  const hasStatusPages = await db
+    .select()
+    .from(schema.statusPages)
+    .where(eq(schema.statusPages.teamId, teamId))
+    .limit(1);
+
+  const hasProjects = await db
+    .select()
+    .from(schema.sentryProjects)
+    .where(eq(schema.sentryProjects.teamId, teamId))
+    .limit(1);
+
+  if (hasMonitors.length || hasStatusPages.length || hasProjects.length) {
+    throw new Error(
+      "Cannot delete team with existing resources. Please delete all monitors, status pages, and projects first.",
+    );
+  }
+
+  await db.delete(schema.userTeams).where(eq(schema.userTeams.teamId, teamId));
+
+  await db
+    .delete(schema.teamInvites)
+    .where(eq(schema.teamInvites.teamId, teamId));
+
+  await db.delete(schema.teams).where(eq(schema.teams.id, teamId));
+}
+
+export async function getUserRole(
+  db: DB,
+  teamId: string,
+  userId: string,
+): Promise<string | null> {
+  const membership = await db
+    .select()
+    .from(schema.userTeams)
+    .where(
+      and(
+        eq(schema.userTeams.teamId, teamId),
+        eq(schema.userTeams.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return membership.length ? membership[0].role : null;
+}

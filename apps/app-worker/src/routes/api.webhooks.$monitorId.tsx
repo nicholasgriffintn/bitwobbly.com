@@ -20,9 +20,24 @@ export const Route = createFileRoute("/api/webhooks/$monitorId")({
     handlers: {
       POST: async ({ request, params }) => {
         try {
+          const vars = env;
+
+          const { success } = await vars.WEBHOOK_RATE_LIMITER.limit({
+            key: `webhook:${params.monitorId}`,
+          });
+
+          if (!success) {
+            return Response.json(
+              { ok: false, error: "Rate limit exceeded" },
+              {
+                status: 429,
+                headers: { "Retry-After": "60" },
+              },
+            );
+          }
+
           const body = await request.json();
           const data = WebhookPayloadSchema.parse(body);
-          const vars = env;
           const db = getDb(vars.DB);
 
           const tokenHash = await hashWebhookToken(data.token);

@@ -48,3 +48,24 @@ export async function requireTeam() {
 
   return { userId, teamId };
 }
+
+export async function requireOwner(
+  db: ReturnType<typeof getDb>,
+  teamId: string,
+  userId: string,
+): Promise<void> {
+  const membership = await db
+    .select()
+    .from(schema.userTeams)
+    .where(
+      and(
+        eq(schema.userTeams.userId, userId),
+        eq(schema.userTeams.teamId, teamId),
+      ),
+    )
+    .limit(1);
+
+  if (!membership.length || membership[0].role !== "owner") {
+    throw new Error("Access denied: Owner role required");
+  }
+}

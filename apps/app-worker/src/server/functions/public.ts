@@ -6,16 +6,24 @@ import { getDb } from "../lib/db";
 import {
   rebuildStatusSnapshot,
   StatusSnapshot,
-} from '../repositories/status-pages';
+} from "../repositories/status-pages";
 
-export const getPublicStatusFn = createServerFn({ method: 'GET' })
+export const getPublicStatusFn = createServerFn({ method: "GET" })
   .inputValidator((data: { slug: string }) => data)
   .handler(async ({ data }): Promise<StatusSnapshot> => {
     const vars = env;
 
+    const { success } = await vars.STATUS_PAGE_RATE_LIMITER.limit({
+      key: `status_page:${data.slug}`,
+    });
+
+    if (!success) {
+      throw new Error("Rate limit exceeded");
+    }
+
     const cached = (await vars.KV.get(
       `status:${data.slug}`,
-      'json',
+      "json",
     )) as StatusSnapshot | null;
     if (cached) {
       return cached;

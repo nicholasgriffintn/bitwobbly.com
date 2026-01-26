@@ -58,5 +58,12 @@
       "binding": "KV",
       "id": "7b37c9a568bf44558ba6959148073058"
     }
+  ],
+  "ratelimits": [
+    {
+      "name": "SENTRY_RATE_LIMITER",
+      "namespace_id": "2001",
+      "simple": { "limit": 1000, "period": 60 }
+    }
   ]
 }

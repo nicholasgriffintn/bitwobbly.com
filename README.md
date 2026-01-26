@@ -146,10 +146,6 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 
 ## Plan of Completion
 
-### Blocking Issues
-
-- **No CI/CD pipeline** -- No GitHub Actions or deployment automation exists. Workers must be deployed manually via Wrangler CLI.
-
 ### Incomplete Features
 
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
@@ -159,10 +155,7 @@ The app worker is configured to serve from `bitwobbly.com` via custom domain. Up
 
 ### Missing Integrations
 
-- **Create/Join/Manage teams** -- Need to be able to configure teams from settings.
 - **MFA support** -- No multi-factor authentication options for user accounts.
-- **Rate limiting** -- API endpoints have no rate limiting. Exposed public status page endpoints could be abused.
-- **Manually trigger checks** -- No API endpoint or CLI command to manually trigger monitor checks outside of the scheduler cron.
 - **Build in a pipelines / iceberg integration** -- At the moment, we just stream to pipelines and iceberg, we don't do anything with it.
 - **Configure notifications for issues** -- We don't trigger notifications on issues from the issue tracking integration yet.
 

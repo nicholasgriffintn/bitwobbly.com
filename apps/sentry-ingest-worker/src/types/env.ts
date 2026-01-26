@@ -1,4 +1,4 @@
-import type { Queue } from "@cloudflare/workers-types";
+import type { Queue, RateLimit } from "@cloudflare/workers-types";
 
 export interface Env {
   DB: D1Database;
@@ -6,4 +6,5 @@ export interface Env {
   SENTRY_PIPELINE: Pipeline;
   SENTRY_EVENTS: Queue;
   KV: KVNamespace;
+  SENTRY_RATE_LIMITER: RateLimit;
 }

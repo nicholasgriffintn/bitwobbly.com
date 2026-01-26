@@ -14,7 +14,7 @@ import {
 import { getMonitorMetrics } from "../repositories/metrics";
 import { clampInt } from "../lib/utils";
 import { requireTeam } from "../lib/auth-middleware";
-import { generateWebhookToken, hashWebhookToken } from "@bitwobbly/shared";
+import { generateWebhookToken, hashWebhookToken } from '@bitwobbly/shared';
 
 const CreateMonitorSchema = z
   .object({

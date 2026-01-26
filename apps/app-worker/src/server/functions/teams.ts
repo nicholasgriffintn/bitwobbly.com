@@ -14,7 +14,16 @@ import {
   getTeamById,
   validateTeamInvite,
   useTeamInvite,
+  listTeamMembers,
+  removeTeamMember,
+  updateMemberRole,
+  listTeamInvites,
+  createTeamInvite,
+  revokeTeamInvite,
+  updateTeamName,
+  deleteTeam,
 } from "../repositories/teams";
+import { requireTeam, requireOwner } from "../lib/auth-middleware";
 import { useAppSession } from "../lib/session";
 
 const CreateTeamSchema = z.object({
@@ -128,5 +137,106 @@ export const getCurrentTeamFn = createServerFn({ method: "GET" }).handler(
     }
 
     return await getTeamById(db, user[0].currentTeamId);
+  },
+);
+
+export const listTeamMembersFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    const members = await listTeamMembers(db, teamId);
+    return { members };
+  },
+);
+
+export const removeTeamMemberFn = createServerFn({ method: "POST" })
+  .validator(z.object({ userId: z.string() }))
+  .handler(async ({ data }) => {
+    const { userId: actorId, teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await requireOwner(db, teamId, actorId);
+    await removeTeamMember(db, teamId, data.userId);
+    return { ok: true };
+  });
+
+export const updateMemberRoleFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({ userId: z.string(), role: z.enum(["owner", "member"]) }),
+  )
+  .handler(async ({ data }) => {
+    const { userId: actorId, teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await requireOwner(db, teamId, actorId);
+    await updateMemberRole(db, teamId, data.userId, data.role);
+    return { ok: true };
+  });
+
+export const listTeamInvitesFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    const invites = await listTeamInvites(db, teamId);
+    return { invites };
+  },
+);
+
+export const createTeamInviteFn = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      email: z.string().email().optional(),
+      role: z.enum(["owner", "member"]),
+      expiresInDays: z.number().default(7),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { userId: actorId, teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await requireOwner(db, teamId, actorId);
+    const result = await createTeamInvite(
+      db,
+      teamId,
+      actorId,
+      data.email,
+      data.role,
+      data.expiresInDays,
+    );
+    return { inviteCode: result.inviteCode };
+  });
+
+export const revokeTeamInviteFn = createServerFn({ method: "POST" })
+  .validator(z.object({ inviteCode: z.string() }))
+  .handler(async ({ data }) => {
+    const { userId: actorId, teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await requireOwner(db, teamId, actorId);
+    await revokeTeamInvite(db, data.inviteCode);
+    return { ok: true };
+  });
+
+export const updateTeamNameFn = createServerFn({ method: "POST" })
+  .validator(z.object({ name: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const { userId: actorId, teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await requireOwner(db, teamId, actorId);
+    await updateTeamName(db, teamId, data.name);
+    return { ok: true };
+  });
+
+export const deleteTeamFn = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const { userId: actorId, teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await requireOwner(db, teamId, actorId);
+    await deleteTeam(db, teamId);
+    return { ok: true };
   },
 );
