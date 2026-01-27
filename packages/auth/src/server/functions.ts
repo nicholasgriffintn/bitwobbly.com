@@ -36,19 +36,44 @@ export async function signInHandler(
 ) {
   const result = await adapter.signIn(data);
 
-  if (result.requiresMFA) {
-    return { requiresMFA: true, session: result.session };
+  const session = await useAppSession();
+
+  if ('requiresMFA' in result) {
+    await session.update({ email: result.email, cognitoSession: result.session });
+    return { requiresMFA: true, session: result.session, email: result.email };
+  }
+
+  if ('requiresMFASetup' in result) {
+    await session.update({
+      email: result.email,
+      cognitoSession: result.session,
+    });
+    return {
+      requiresMFASetup: true,
+      session: result.session,
+      email: result.email,
+      challengeParameters: result.challengeParameters,
+    };
+  }
+
+  if ('requiresEmailVerification' in result) {
+    await session.update({ email: result.email });
+    return { requiresEmailVerification: true, email: result.email };
+  }
+
+  if ('requiresPasswordReset' in result) {
+    await session.update({ email: result.email });
+    return { requiresPasswordReset: true, email: result.email };
   }
 
   await adapter.createSession(result.user.id);
 
-  const session = await useAppSession();
   await session.update({
     userId: result.user.id,
     email: result.user.email,
   });
 
-  return { requiresMFA: false, session: result.session };
+  return { success: true, session: result.session };
 }
 
 export async function signOutHandler() {
@@ -65,4 +90,97 @@ export async function getCurrentUserHandler(adapter: AuthAdapter) {
     return null;
   }
   return await adapter.getUserById(userId);
+}
+
+export async function verifyMFAHandler(adapter: AuthAdapter, code: string) {
+  const session = await useAppSession();
+  const cognitoSession = session.data.cognitoSession;
+  const email = session.data.email;
+
+  if (!cognitoSession || !email) {
+    throw new Error('MFA session not found');
+  }
+
+  if (!adapter.verifyMFA) {
+    throw new Error('MFA not supported by this adapter');
+  }
+
+  const { user } = await adapter.verifyMFA({
+    session: cognitoSession,
+    code,
+    email,
+  });
+
+  await adapter.createSession(user.id);
+  await session.update({ userId: user.id, email: user.email, cognitoSession: undefined });
+
+  return { user };
+}
+
+export async function verifyEmailHandler(adapter: AuthAdapter, code: string, email?: string) {
+  if (!email) {
+    const session = await useAppSession();
+    email = session.data.email;
+  }
+
+  if (!email) {
+    throw new Error('Email not found in session');
+  }
+
+  if (!adapter.verifyEmail) {
+    throw new Error('Email verification not supported by this adapter');
+  }
+
+  await adapter.verifyEmail(code, email);
+}
+
+export async function resendVerificationCodeHandler(adapter: AuthAdapter, email?: string) {
+  if (!email) {
+    const session = await useAppSession();
+    email = session.data.email;
+  }
+
+  if (!email) {
+    throw new Error('Email not found in session');
+  }
+
+  if (!adapter.resendVerificationCode) {
+    throw new Error('Resending verification code not supported by this adapter');
+  }
+
+  await adapter.resendVerificationCode(email);
+}
+
+export async function forgotPasswordHandler(adapter: AuthAdapter, email: string) {
+  if (!adapter.forgotPassword) {
+    throw new Error('Forgot Password not supported by this adapter');
+  }
+
+  await adapter.forgotPassword(email);
+}
+
+export async function resetPasswordHandler(
+  adapter: AuthAdapter,
+  input: { email?: string; code: string; newPassword: string }
+) {
+  let email = input.email;
+
+  if (!email) {
+    const session = await useAppSession();
+    email = session.data.email;
+  }
+
+  if (!email) {
+    throw new Error('Email not found in session');
+  }
+
+  if (!adapter.confirmForgotPassword) {
+    throw new Error('Reset Password not supported by this adapter');
+  }
+
+  await adapter.confirmForgotPassword({
+    email,
+    code: input.code,
+    newPassword: input.newPassword,
+  });
 }

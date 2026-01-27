@@ -2,11 +2,14 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { EmailVerification } from '@bitwobbly/auth/components';
 
 import Brand from '@/components/Brand';
-import { getCurrentUserFn } from '@/server/functions/auth';
+import { getCurrentUserFn, verifyEmailFn, resendVerificationCodeFn } from '@/server/functions/auth';
 
 export const Route = createFileRoute('/verify-email')({
   beforeLoad: async () => {
     const user = await getCurrentUserFn();
+    if (!user) {
+      throw redirect({ to: '/login' });
+    }
     if (user?.emailVerified) {
       throw redirect({ to: '/app' });
     }
@@ -17,15 +20,13 @@ export const Route = createFileRoute('/verify-email')({
 function VerifyEmail() {
   const navigate = useNavigate();
 
-  const handleVerify = async (_code: string) => {
-    // TODO: Implement email verification logic when available in auth package
-    alert('Email verification has not been implemented yet.');
+  const handleVerify = async (code: string) => {
+    await verifyEmailFn({ data: { code } });
     await navigate({ to: '/app' });
   };
 
   const handleResend = async () => {
-    // TODO: Implement email resend logic when available in auth package
-    alert('Email verification has not been implemented yet.');
+    await resendVerificationCodeFn({ data: {} });
   };
 
   return (

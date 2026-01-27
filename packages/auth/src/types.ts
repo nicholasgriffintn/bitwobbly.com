@@ -35,12 +35,22 @@ export interface MFAChallengeInput {
   email: string;
 }
 
+export type SignInResult =
+  | { user: AuthUser; session?: string }
+  | { requiresMFA: true; session: string; email: string }
+  | { requiresEmailVerification: true; email: string }
+  | { requiresPasswordReset: true; email: string; session?: string }
+  | {
+    requiresMFASetup: true;
+    session: string;
+    email: string;
+    challengeParameters?: Record<string, string>;
+  };
+
 export interface AuthAdapter {
   // Core authentication
   signUp(input: SignUpInput): Promise<{ user: AuthUser; session?: string }>;
-  signIn(
-    input: SignInInput,
-  ): Promise<{ user: AuthUser; requiresMFA?: boolean; session?: string }>;
+  signIn(input: SignInInput): Promise<SignInResult>;
   signOut(userId: string): Promise<void>;
   getCurrentUser(sessionToken?: string): Promise<AuthUser | null>;
   getUserById(userId: string): Promise<AuthUser | null>;
@@ -59,6 +69,14 @@ export interface AuthAdapter {
   sendVerificationEmail?(email: string): Promise<void>;
   verifyEmail?(code: string, email: string): Promise<void>;
   resendVerificationCode?(email: string): Promise<void>;
+
+  // Password management
+  forgotPassword?(email: string): Promise<void>;
+  confirmForgotPassword?(input: {
+    email: string;
+    code: string;
+    newPassword: string;
+  }): Promise<void>;
 }
 
 export interface CognitoConfig {

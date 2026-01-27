@@ -7,6 +7,7 @@ import type {
   AuthAdapter,
   AuthUser,
   SignInInput,
+  SignInResult,
   SignUpInput,
   MFASetupResult,
   MFAChallengeInput,
@@ -30,6 +31,11 @@ type AuthenticationResultResponse = {
     RefreshToken: string;
     TokenType: string;
   };
+};
+
+type CognitoErrorResponse = {
+  __type: string;
+  message: string;
 };
 
 type SignUpResponse = {
@@ -179,95 +185,111 @@ export class CognitoAuthAdapter implements AuthAdapter {
     };
   }
 
-  async signIn(
-    input: SignInInput,
-  ): Promise<{ user: AuthUser; requiresMFA?: boolean; session?: string }> {
-    try {
-      const hash = await this.computeHash(input.email);
+  async signIn(input: SignInInput): Promise<SignInResult> {
+    const hash = await this.computeHash(input.email);
 
-      const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
-      const authResult = await this.client.fetch(awsUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-amz-json-1.1',
-          'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
-          'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const authResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
+        ClientId: this.clientId,
+        AuthFlow: 'USER_PASSWORD_AUTH',
+        AuthParameters: {
+          USERNAME: input.email,
+          PASSWORD: input.password,
+          SECRET_HASH: hash || '',
         },
-        body: JSON.stringify({
-          ClientId: this.clientId,
-          AuthFlow: 'USER_PASSWORD_AUTH',
-          AuthParameters: {
-            USERNAME: input.email,
-            PASSWORD: input.password,
-            SECRET_HASH: hash || '',
-          },
-        }),
-      });
+      }),
+    });
 
-      if (!authResult.ok) {
-        const errorData = await authResult.json();
-        console.error('Cognito SignIn Error:', errorData);
-        throw new Error('Invalid email or password');
-      }
+    if (!authResult.ok) {
+      const errorData = (await authResult.json()) as CognitoErrorResponse;
 
-      const authData =
-        (await authResult.json()) as AuthenticationResultResponse;
-
-      if (authData.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
+      if (errorData.__type === 'UserNotConfirmedException') {
         return {
-          user: {} as AuthUser,
-          requiresMFA: true,
-          session: authData.Session,
+          requiresEmailVerification: true,
+          email: input.email,
         };
       }
 
-      const accessToken = authData.AuthenticationResult?.AccessToken;
-      if (!accessToken) {
-        throw new Error('Failed to authenticate with Cognito');
+      if (errorData.__type === 'PasswordResetRequiredException') {
+        return {
+          requiresPasswordReset: true,
+          email: input.email,
+        };
       }
 
-      const auth = await this.verifier.verify(accessToken);
-
-      if (!auth?.payload?.sub) {
-        throw new Error('Invalid token payload');
-      }
-
-      const cognitoSub = auth.payload.sub;
-      const users = await this.db
-        .select()
-        .from(schema.users)
-        .where(eq(schema.users.cognitoSub, cognitoSub))
-        .limit(1);
-
-      if (!users.length) {
-        throw new Error('User not found');
-      }
-
-      const userData = users[0];
-
-      return {
-        user: {
-          id: userData.id,
-          email: userData.email,
-          teamId: userData.teamId,
-          currentTeamId: userData.currentTeamId,
-          authProvider: 'cognito',
-          cognitoSub: userData.cognitoSub,
-          mfaEnabled: userData.mfaEnabled === 1,
-          emailVerified: userData.emailVerified === 1,
-          createdAt: userData.createdAt,
-        },
-        session: accessToken,
-      };
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.message.includes('UserNotConfirmedException') ||
-          error.name === 'UserNotConfirmedException')
-      )
-        throw new Error('Please verify your email before signing in');
       throw new Error('Invalid email or password');
     }
+
+    const authData = (await authResult.json()) as AuthenticationResultResponse;
+
+    if (authData.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
+      if (!authData.Session) {
+        throw new Error('MFA session missing from Cognito response');
+      }
+      return {
+        requiresMFA: true,
+        session: authData.Session,
+        email: input.email,
+      };
+    }
+
+    if (authData.ChallengeName === 'MFA_SETUP') {
+      if (!authData.Session) {
+        throw new Error('MFA session missing from Cognito response');
+      }
+      return {
+        requiresMFASetup: true,
+        session: authData.Session,
+        email: input.email,
+        challengeParameters: authData.ChallengeParameters,
+      };
+    }
+
+    const accessToken = authData.AuthenticationResult?.AccessToken;
+    if (!accessToken) {
+      throw new Error('Failed to authenticate with Cognito');
+    }
+
+    const auth = await this.verifier.verify(accessToken);
+
+    if (!auth?.payload?.sub) {
+      throw new Error('Invalid token payload');
+    }
+
+    const cognitoSub = auth.payload.sub;
+    const users = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.cognitoSub, cognitoSub))
+      .limit(1);
+
+    if (!users.length) {
+      throw new Error('User not found');
+    }
+
+    const userData = users[0];
+
+    return {
+      user: {
+        id: userData.id,
+        email: userData.email,
+        teamId: userData.teamId,
+        currentTeamId: userData.currentTeamId,
+        authProvider: 'cognito',
+        cognitoSub: userData.cognitoSub,
+        mfaEnabled: userData.mfaEnabled === 1,
+        emailVerified: userData.emailVerified === 1,
+        createdAt: userData.createdAt,
+      },
+      session: accessToken,
+    };
   }
 
   async signOut(_userId: string): Promise<void> {
@@ -521,5 +543,62 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
   async resendVerificationCode(email: string): Promise<void> {
     await this.sendVerificationEmail(email);
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const hash = await this.computeHash(email);
+
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const result = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.ForgotPassword',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
+        ClientId: this.clientId,
+        Username: email,
+        SecretHash: hash || '',
+      }),
+    });
+
+    if (!result.ok) {
+      const errorData = await result.json();
+      console.error('Cognito Forgot Password Error:', errorData);
+      throw new Error('Failed to initiate password reset');
+    }
+  }
+
+  async confirmForgotPassword(input: {
+    email: string;
+    code: string;
+    newPassword: string;
+  }): Promise<void> {
+    const hash = await this.computeHash(input.email);
+
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const result = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target':
+          'AWSCognitoIdentityProviderService.ConfirmForgotPassword',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
+        ClientId: this.clientId,
+        Username: input.email,
+        ConfirmationCode: input.code,
+        Password: input.newPassword,
+        SecretHash: hash || '',
+      }),
+    });
+
+    if (!result.ok) {
+      const errorData = await result.json();
+      console.error('Cognito Confirm Forgot Password Error:', errorData);
+      throw new Error('Failed to reset password');
+    }
   }
 }

@@ -48,7 +48,11 @@ export function AuthProvider({
       try {
         await signInFn({ data: { email, password } });
       } catch (err) {
-        if (err && typeof err === "object" && "isRedirect" in err) {
+        if (
+          err &&
+          typeof err === "object" &&
+          ("isRedirect" in err || "isSerializedRedirect" in err)
+        ) {
           throw err;
         }
         throw err;
@@ -65,7 +69,11 @@ export function AuthProvider({
       try {
         await signUpFn({ data: { email, password, inviteCode } });
       } catch (err) {
-        if (err && typeof err === "object" && "isRedirect" in err) {
+        if (
+          err &&
+          typeof err === "object" &&
+          ("isRedirect" in err || "isSerializedRedirect" in err)
+        ) {
           throw err;
         }
         throw err;
@@ -80,7 +88,11 @@ export function AuthProvider({
     try {
       await signOutFn();
     } catch (err) {
-      if (err && typeof err === "object" && "isRedirect" in err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        ("isRedirect" in err || "isSerializedRedirect" in err)
+      ) {
         throw err;
       }
     }

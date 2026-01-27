@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginForm, SignUpForm } from '@bitwobbly/auth/components';
 
 import Brand from "@/components/Brand";
@@ -17,11 +17,6 @@ export const Route = createFileRoute("/login")({
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
-  const navigate = useNavigate();
-
-  const handleSuccess = async () => {
-    await navigate({ to: '/app' });
-  };
 
   return (
     <div className="auth">
@@ -33,19 +28,25 @@ export default function Login() {
             ? 'Start monitoring your services with real-time alerts and beautiful status pages.'
             : 'Welcome back! Sign in to access your monitoring dashboard.'}
         </p>
-        
+
         {isSignUp ? (
           <SignUpForm
             className="auth-form"
-            onSuccess={handleSuccess}
           />
         ) : (
           <LoginForm
             className="auth-form"
-            onSuccess={handleSuccess}
           />
         )}
-        
+
+        {!isSignUp && (
+          <div className="auth-forgot-password">
+            <a href="/forgot-password" className="link-button">
+              Forgot password?
+            </a>
+          </div>
+        )}
+
         <div className="auth-toggle">
           <button
             type="button"

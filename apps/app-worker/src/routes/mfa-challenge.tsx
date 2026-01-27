@@ -1,9 +1,8 @@
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { MFAChallengeForm } from '@bitwobbly/auth/components';
-import { useMFA } from '@bitwobbly/auth/react';
 
 import Brand from '@/components/Brand';
-import { getCurrentUserFn } from '@/server/functions/auth';
+import { getCurrentUserFn, verifyMFAFn } from '@/server/functions/auth';
 
 export const Route = createFileRoute('/mfa-challenge')({
   beforeLoad: async () => {
@@ -17,12 +16,9 @@ export const Route = createFileRoute('/mfa-challenge')({
 
 function MFAChallengePage() {
   const navigate = useNavigate();
-  const { verifyMFA } = useMFA();
 
   const handleVerify = async (code: string) => {
-    // TODO: MFA is not fully implemented yet
-    const result = await verifyMFA(code, '', '');
-    alert('MFA verification has not been fully implemented yet.');
+    await verifyMFAFn({ data: { code } });
     await navigate({ to: '/app' });
   };
 

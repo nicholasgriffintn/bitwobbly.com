@@ -54,40 +54,31 @@ interface SentryEvent {
 
 const handler = {
   async queue(batch: MessageBatch<ProcessJob>, env: Env): Promise<void> {
-    console.log(
-      `[SENTRY-PROCESSOR] Received batch with ${batch.messages.length} messages`,
-    );
-
     const db = getDb(env.DB);
 
     for (const msg of batch.messages) {
       try {
-        console.log(`[SENTRY-PROCESSOR] Processing ${msg.body.item_type}`);
-
         if (
-          msg.body.item_type === "event" ||
-          msg.body.item_type === "transaction"
+          msg.body.item_type === 'event' ||
+          msg.body.item_type === 'transaction'
         ) {
           await processEvent(msg.body, env, db);
         } else if (
-          msg.body.item_type === "session" ||
-          msg.body.item_type === "sessions"
+          msg.body.item_type === 'session' ||
+          msg.body.item_type === 'sessions'
         ) {
           await processSession(msg.body, env, db);
-        } else if (msg.body.item_type === "client_report") {
+        } else if (msg.body.item_type === 'client_report') {
           await processClientReport(msg.body, env, db);
         } else {
-          console.log(
+          console.error(
             `[SENTRY-PROCESSOR] Skipping unsupported type: ${msg.body.item_type}`,
           );
         }
 
         msg.ack();
-        console.log(
-          `[SENTRY-PROCESSOR] Successfully processed ${msg.body.item_type}`,
-        );
       } catch (error) {
-        console.error("[SENTRY-PROCESSOR] Processing failed", error);
+        console.error('[SENTRY-PROCESSOR] Processing failed', error);
       }
     }
   },
@@ -234,13 +225,9 @@ async function processSession(
   );
 
   if (!sessionData) {
-    console.error("[SENTRY-PROCESSOR] Could not extract session from envelope");
+    console.error('[SENTRY-PROCESSOR] Could not extract session from envelope');
     return;
   }
-
-  console.log(
-    "[SENTRY-PROCESSOR] Session received, storage not yet implemented",
-  );
 }
 
 async function processClientReport(
@@ -262,12 +249,8 @@ async function processClientReport(
 
   if (!reportData) {
     console.error(
-      "[SENTRY-PROCESSOR] Could not extract client report from envelope",
+      '[SENTRY-PROCESSOR] Could not extract client report from envelope',
     );
     return;
   }
-
-  console.log(
-    "[SENTRY-PROCESSOR] Client report received, storage not yet implemented",
-  );
 }

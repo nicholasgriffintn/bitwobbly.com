@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as SetupMfaRouteImport } from './routes/setup-mfa'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JoinRouteImport } from './routes/join'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
@@ -40,6 +42,11 @@ const SetupMfaRoute = SetupMfaRouteImport.update({
   path: '/setup-mfa',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -58,6 +65,11 @@ const LoginRoute = LoginRouteImport.update({
 const JoinRoute = JoinRouteImport.update({
   id: '/join',
   path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -135,10 +147,12 @@ const AppIssuesProjectIdIssueIssueIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/setup-mfa': typeof SetupMfaRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
@@ -156,10 +170,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/setup-mfa': typeof SetupMfaRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
@@ -179,10 +195,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/mfa-challenge': typeof MfaChallengeRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/setup-mfa': typeof SetupMfaRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
@@ -203,10 +221,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/forgot-password'
     | '/join'
     | '/login'
     | '/mfa-challenge'
     | '/onboarding'
+    | '/reset-password'
     | '/setup-mfa'
     | '/verify-email'
     | '/app/components'
@@ -224,10 +244,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
     | '/join'
     | '/login'
     | '/mfa-challenge'
     | '/onboarding'
+    | '/reset-password'
     | '/setup-mfa'
     | '/verify-email'
     | '/app/components'
@@ -246,10 +268,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/forgot-password'
     | '/join'
     | '/login'
     | '/mfa-challenge'
     | '/onboarding'
+    | '/reset-password'
     | '/setup-mfa'
     | '/verify-email'
     | '/app/components'
@@ -269,10 +293,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
   MfaChallengeRoute: typeof MfaChallengeRoute
   OnboardingRoute: typeof OnboardingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SetupMfaRoute: typeof SetupMfaRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   StatusSlugRoute: typeof StatusSlugRoute
@@ -293,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/setup-mfa'
       fullPath: '/setup-mfa'
       preLoaderRoute: typeof SetupMfaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -321,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/join'
       fullPath: '/join'
       preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -455,10 +495,12 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
   MfaChallengeRoute: MfaChallengeRoute,
   OnboardingRoute: OnboardingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SetupMfaRoute: SetupMfaRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   StatusSlugRoute: StatusSlugRoute,

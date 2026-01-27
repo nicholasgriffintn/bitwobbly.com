@@ -29,11 +29,13 @@ export function LoginForm({
     setSubmitting(true);
     try {
       await signIn(email, password);
-      // TODO: This needs to handle MFA setup/ challenge flows -signin should return state
-      // TODO: This needs to handle email verification flows -signin should return state
       onSuccess?.();
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'isRedirect' in err) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        ('isRedirect' in err || 'isSerializedRedirect' in err)
+      ) {
         throw err;
       }
       setError(err instanceof Error ? err.message : 'Sign in failed');

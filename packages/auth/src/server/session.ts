@@ -4,6 +4,7 @@ import { env } from 'cloudflare:workers';
 type SessionData = {
   userId?: string;
   email?: string;
+  cognitoSession?: string;
 };
 
 export function useAppSession() {

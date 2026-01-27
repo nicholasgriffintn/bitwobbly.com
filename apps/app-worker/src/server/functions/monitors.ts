@@ -164,20 +164,17 @@ export const triggerSchedulerFn = createServerFn({ method: "POST" }).handler(
   async () => {
     await requireTeam();
     try {
-      console.log("[APP] Triggering scheduler...");
-      const schedulerUrl = "http://localhost:8788/cdn-cgi/handler/scheduled";
-      const response = await fetch(schedulerUrl, { method: "POST" });
+      const schedulerUrl = 'http://localhost:8788/cdn-cgi/handler/scheduled';
+      const response = await fetch(schedulerUrl, { method: 'POST' });
 
       if (!response.ok) {
         throw new Error(`Scheduler returned ${response.status}`);
       }
-
-      console.log("[APP] Scheduler triggered successfully");
-      return { ok: true, message: "Scheduler triggered successfully" };
+      return { ok: true, message: 'Scheduler triggered successfully' };
     } catch (error) {
-      console.error("[APP] Failed to trigger scheduler:", error);
+      console.error('[APP] Failed to trigger scheduler:', error);
       throw new Error(
-        "Failed to trigger scheduler. Make sure dev server is running.",
+        'Failed to trigger scheduler. Make sure dev server is running.',
       );
     }
   },

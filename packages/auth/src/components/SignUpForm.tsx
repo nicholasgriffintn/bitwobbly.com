@@ -12,6 +12,7 @@ export function SignUpForm({
   const { signUp, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -24,6 +25,10 @@ export function SignUpForm({
     }
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
     setError(null);
@@ -69,6 +74,21 @@ export function SignUpForm({
           placeholder="Enter your chosen password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          disabled={loading || submitting}
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="confirmPassword" className="block mb-1">
+          Confirm Password
+        </label>
+        <input
+          className="w-full"
+          id="confirmPassword"
+          type="password"
+          placeholder="Re-enter your password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
           disabled={loading || submitting}
           required
         />

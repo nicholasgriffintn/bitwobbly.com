@@ -167,7 +167,7 @@ CREATE TABLE `user_teams` (
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,
-	`password_hash` text NOT NULL,
+	`password_hash` text,
 	`team_id` text NOT NULL,
 	`current_team_id` text,
 	`created_at` text NOT NULL,

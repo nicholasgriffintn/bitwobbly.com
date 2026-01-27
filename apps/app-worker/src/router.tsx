@@ -1,14 +1,18 @@
 import * as Sentry from "@sentry/react";
 import { createRouter } from "@tanstack/react-router";
 
-import { routeTree } from "./routeTree.gen";
+import { routeTree } from '@/routeTree.gen';
+import { ErrorComponent } from '@/components/ErrorComponent';
 
 export const getRouter = () => {
   const router = createRouter({
     routeTree,
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
-    notFoundMode: "root",
+    notFoundMode: 'root',
+    defaultErrorComponent: ({ error, reset }) => {
+      return <ErrorComponent error={error} reset={reset} />;
+    },
   });
 
   Sentry.init({
