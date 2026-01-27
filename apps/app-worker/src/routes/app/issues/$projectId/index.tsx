@@ -256,7 +256,13 @@ function ProjectIssues() {
                 placeholder="Search issues..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ flex: '1 1 200px', minWidth: '200px' }}
+                style={{
+                  flex: '1 1 200px',
+                  minWidth: '200px',
+                  border: '1px solid var(--stroke)',
+                  borderRadius: '8px',
+                  padding: '0.5rem 0.75rem',
+                }}
               />
               <select
                 value={statusFilter}
@@ -328,41 +334,42 @@ function ProjectIssues() {
                       </div>
                     </div>
                     <div className="button-row">
-                      {issue.status === 'unresolved' ? (
-                        <>
+                      {(issue.level === 'error' || issue.level === 'warning') &&
+                        (issue.status === 'unresolved' ? (
+                          <>
+                            <button
+                              type="button"
+                              className="outline"
+                              onClick={() =>
+                                handleStatusChange(issue.id, 'resolved')
+                              }
+                              style={{ fontSize: '0.875rem' }}
+                            >
+                              Resolve
+                            </button>
+                            <button
+                              type="button"
+                              className="outline"
+                              onClick={() =>
+                                handleStatusChange(issue.id, 'ignored')
+                              }
+                              style={{ fontSize: '0.875rem' }}
+                            >
+                              Ignore
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
                             className="outline"
                             onClick={() =>
-                              handleStatusChange(issue.id, 'resolved')
+                              handleStatusChange(issue.id, 'unresolved')
                             }
                             style={{ fontSize: '0.875rem' }}
                           >
-                            Resolve
+                            Reopen
                           </button>
-                          <button
-                            type="button"
-                            className="outline"
-                            onClick={() =>
-                              handleStatusChange(issue.id, 'ignored')
-                            }
-                            style={{ fontSize: '0.875rem' }}
-                          >
-                            Ignore
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className="outline"
-                          onClick={() =>
-                            handleStatusChange(issue.id, 'unresolved')
-                          }
-                          style={{ fontSize: '0.875rem' }}
-                        >
-                          Reopen
-                        </button>
-                      )}
+                        ))}
                       <Link
                         to="/app/issues/$projectId/issue/$issueId"
                         params={{ projectId, issueId: issue.id }}
