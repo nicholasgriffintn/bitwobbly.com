@@ -9,7 +9,6 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 ### Incomplete Features
 
 - **R2 API is a bit slow** -- Look for ways that we can make the frontend seem faster and also, potentially cache, although the analytics in issues are dug quite deep at the moment so not used often.
-- **Monitors can't be deleted** -- Error: "Failed query: delete from "monitors" where ("monitors"."team_id" = ? and "monitors"."id" = ?) params: team_gRa5n8d6JSY8Xg,mon_0UHlvHhn2S1Fpw"
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
 - **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Cognito supports this but custom does not.
 - **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Both cognito and custom auth are affected. Cognito supports this but custom does not.

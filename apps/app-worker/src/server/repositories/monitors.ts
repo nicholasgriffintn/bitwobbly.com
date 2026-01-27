@@ -86,6 +86,23 @@ export async function createMonitor(
 
 export async function deleteMonitor(db: DB, teamId: string, monitorId: string) {
   await db
+    .delete(schema.notificationPolicies)
+    .where(eq(schema.notificationPolicies.monitorId, monitorId));
+
+  await db
+    .delete(schema.componentMonitors)
+    .where(eq(schema.componentMonitors.monitorId, monitorId));
+
+  await db
+    .update(schema.incidents)
+    .set({ monitorId: null })
+    .where(eq(schema.incidents.monitorId, monitorId));
+
+  await db
+    .delete(schema.monitorState)
+    .where(eq(schema.monitorState.monitorId, monitorId));
+
+  await db
     .delete(schema.monitors)
     .where(
       and(
@@ -93,9 +110,6 @@ export async function deleteMonitor(db: DB, teamId: string, monitorId: string) {
         eq(schema.monitors.id, monitorId),
       ),
     );
-  await db
-    .delete(schema.monitorState)
-    .where(eq(schema.monitorState.monitorId, monitorId));
 }
 
 export async function monitorExists(
