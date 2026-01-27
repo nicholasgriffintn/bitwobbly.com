@@ -77,102 +77,88 @@ function ProjectIssues() {
   const getReleaseStats = useServerFn(getErrorRateByReleaseFn);
   const getSDKDist = useServerFn(getSDKDistributionFn);
 
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
   const [volumeStats, setVolumeStats] = useState<{
-    total_events: number;
-    accepted_events: number;
-    filtered_events: number;
-    dropped_events: number;
-  } | null>(null);
-  const [timeseriesBreakdown, setTimeseriesBreakdown] = useState<
-    Array<{
+    data: {
+      total_events: number;
+      accepted_events: number;
+      filtered_events: number;
+      dropped_events: number;
+    } | null;
+    loading: boolean;
+  }>({ data: null, loading: false });
+  const [timeseriesBreakdown, setTimeseriesBreakdown] = useState<{
+    data: Array<{
       timestamp: string;
       accepted: number;
       filtered: number;
       dropped: number;
-    }>
-  >([]);
-  const [sdkDistribution, setSdkDistribution] = useState<
-    Array<{ sdk_name: string; event_count: number; percentage: number }>
-  >([]);
-  const [topErrors, setTopErrors] = useState<
-    Array<{
+    }>;
+    loading: boolean;
+  }>({ data: [], loading: false });
+  const [sdkDistribution, setSdkDistribution] = useState<{
+    data: Array<{ sdk_name: string; event_count: number; percentage: number }>;
+    loading: boolean;
+  }>({ data: [], loading: false });
+  const [topErrors, setTopErrors] = useState<{
+    data: Array<{
       message: string;
       event_count: number;
       first_seen: string;
       last_seen: string;
-    }>
-  >([]);
-  const [releaseStats, setReleaseStats] = useState<
-    Array<{
+    }>;
+    loading: boolean;
+  }>({ data: [], loading: false });
+  const [releaseStats, setReleaseStats] = useState<{
+    data: Array<{
       release: string;
       environment: string;
       error_count: number;
       user_count: number;
-    }>
-  >([]);
+    }>;
+    loading: boolean;
+  }>({ data: [], loading: false });
 
   useEffect(() => {
-    if (activeTab === "analytics") {
+    if (activeTab === 'analytics' && !analyticsLoaded) {
       loadAnalytics();
     }
-  }, [activeTab]);
+  }, [activeTab, analyticsLoaded]);
 
-  const loadAnalytics = async () => {
-    setAnalyticsLoading(true);
-    setAnalyticsError(null);
+  const loadAnalytics = () => {
+    setAnalyticsLoaded(true);
 
     const endDate = new Date().toISOString();
     const startDate = new Date(
       Date.now() - 14 * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    try {
-      const [stats, breakdown, sdk, errors, releases] = await Promise.all([
-        getStats({
-          data: {
-            projectId,
-            startDate,
-            endDate,
-          },
-        }),
-        getTimeseriesBreakdown({
-          data: {
-            projectId,
-            startDate,
-            endDate,
-            interval: "hour",
-          },
-        }),
-        getSDKDist({
-          data: {
-            projectId,
-            startDate,
-            endDate,
-          },
-        }),
-        getTopErrors({
-          data: { projectId, limit: 10 },
-        }),
-        getReleaseStats({
-          data: { projectId, startDate, endDate },
-        }),
-      ]);
+    setVolumeStats((s) => ({ ...s, loading: true }));
+    getStats({ data: { projectId, startDate, endDate } })
+      .then((data) => setVolumeStats({ data, loading: false }))
+      .catch(() => setVolumeStats({ data: null, loading: false }));
 
-      setVolumeStats(stats);
-      setTimeseriesBreakdown(breakdown);
-      setSdkDistribution(sdk);
-      setTopErrors(errors);
-      setReleaseStats(releases);
-    } catch (err) {
-      console.error("Failed to load analytics:", err);
-      setAnalyticsError(
-        err instanceof Error ? err.message : "Failed to load analytics data",
-      );
-    } finally {
-      setAnalyticsLoading(false);
-    }
+    setTimeseriesBreakdown((s) => ({ ...s, loading: true }));
+    getTimeseriesBreakdown({
+      data: { projectId, startDate, endDate, interval: 'hour' },
+    })
+      .then((data) => setTimeseriesBreakdown({ data, loading: false }))
+      .catch(() => setTimeseriesBreakdown({ data: [], loading: false }));
+
+    setSdkDistribution((s) => ({ ...s, loading: true }));
+    getSDKDist({ data: { projectId, startDate, endDate } })
+      .then((data) => setSdkDistribution({ data, loading: false }))
+      .catch(() => setSdkDistribution({ data: [], loading: false }));
+
+    setTopErrors((s) => ({ ...s, loading: true }));
+    getTopErrors({ data: { projectId, limit: 10 } })
+      .then((data) => setTopErrors({ data, loading: false }))
+      .catch(() => setTopErrors({ data: [], loading: false }));
+
+    setReleaseStats((s) => ({ ...s, loading: true }));
+    getReleaseStats({ data: { projectId, startDate, endDate } })
+      .then((data) => setReleaseStats({ data, loading: false }))
+      .catch(() => setReleaseStats({ data: [], loading: false }));
   };
 
   const handleStatusChange = async (issueId: string, newStatus: string) => {
@@ -430,116 +416,71 @@ function ProjectIssues() {
                 border: '1px solid var(--stroke)',
               }}
             >
-              {analyticsError ? (
-                <div
-                  className="card"
-                  style={{
-                    padding: '2rem',
-                    textAlign: 'center',
-                    color: 'var(--red)',
-                  }}
-                >
-                  <div style={{ marginBottom: '0.5rem', fontWeight: 600 }}>
-                    Failed to load analytics
+              <div>
+                {volumeStats.loading ? (
+                  <div className="grid metrics mb-1.5">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="card skeleton"
+                        style={{ height: '80px' }}
+                      />
+                    ))}
                   </div>
-                  <div className="muted">{analyticsError}</div>
-                  <button
-                    type="button"
-                    className="outline"
-                    style={{ marginTop: '1rem' }}
-                    onClick={loadAnalytics}
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : analyticsLoading ? (
-                <div
-                  className="muted"
-                  style={{ padding: '2rem', textAlign: 'center' }}
-                >
-                  Loading analytics data...
-                </div>
-              ) : (
-                <div>
-                  {volumeStats && <EventMetrics stats={volumeStats} />}
+                ) : volumeStats.data ? (
+                  <EventMetrics stats={volumeStats.data} />
+                ) : null}
 
-                  <div className="card mb-1.5">
-                    <div className="card-title">
-                      Event Volume (Last 14 Days)
+                <div className="card mb-1.5">
+                  <div className="card-title">Event Volume (Last 14 Days)</div>
+                  {timeseriesBreakdown.loading ? (
+                    <div className="skeleton" style={{ height: '400px' }} />
+                  ) : timeseriesBreakdown.data.length > 0 ? (
+                    <EventVolumeChart data={timeseriesBreakdown.data} />
+                  ) : (
+                    <div className="muted" style={{ padding: '2rem' }}>
+                      No event data available
                     </div>
-                    {timeseriesBreakdown.length > 0 ? (
-                      <EventVolumeChart data={timeseriesBreakdown} />
+                  )}
+                </div>
+
+                <div className="grid two mb-1.5">
+                  <div className="card">
+                    <div className="card-title">SDK Distribution</div>
+                    {sdkDistribution.loading ? (
+                      <div className="skeleton" style={{ height: '200px' }} />
+                    ) : sdkDistribution.data.length > 0 ? (
+                      <SDKDistributionChart data={sdkDistribution.data} />
                     ) : (
                       <div className="muted" style={{ padding: '2rem' }}>
-                        No event data available
+                        No SDK data available
                       </div>
                     )}
                   </div>
 
-                  <div className="grid two mb-1.5">
-                    <div className="card">
-                      <div className="card-title">SDK Distribution</div>
-                      {sdkDistribution.length > 0 ? (
-                        <SDKDistributionChart data={sdkDistribution} />
-                      ) : (
-                        <div className="muted" style={{ padding: '2rem' }}>
-                          No SDK data available
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="card">
-                      <div className="card-title">Top Error Messages</div>
-                      {topErrors.length > 0 ? (
-                        <div className="list">
-                          {topErrors.slice(0, 5).map((error, idx) => (
-                            <div key={idx} className="list-item">
-                              <div style={{ flex: 1 }}>
-                                <div className="list-title">
-                                  {error.message}
-                                </div>
-                                <div
-                                  className="muted"
-                                  style={{ marginTop: '0.25rem' }}
-                                >
-                                  {error.event_count} occurrences
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="muted" style={{ padding: '2rem' }}>
-                          No error data available
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
                   <div className="card">
-                    <div className="card-title">Error Rate by Release</div>
-                    {releaseStats.length > 0 ? (
+                    <div className="card-title">Top Error Messages</div>
+                    {topErrors.loading ? (
                       <div className="list">
-                        {releaseStats.slice(0, 10).map((stat, idx) => (
+                        {[1, 2, 3].map((i) => (
+                          <div
+                            key={i}
+                            className="list-item skeleton"
+                            style={{ height: '48px' }}
+                          />
+                        ))}
+                      </div>
+                    ) : topErrors.data.length > 0 ? (
+                      <div className="list">
+                        {topErrors.data.slice(0, 5).map((error, idx) => (
                           <div key={idx} className="list-item">
                             <div style={{ flex: 1 }}>
-                              <div className="list-title">
-                                {stat.release || 'Unknown Release'}
-                                {stat.environment && (
-                                  <span
-                                    className="pill small"
-                                    style={{ marginLeft: '0.5rem' }}
-                                  >
-                                    {stat.environment}
-                                  </span>
-                                )}
-                              </div>
+                              <div className="list-title">{error.message}</div>
                               <div
                                 className="muted"
                                 style={{ marginTop: '0.25rem' }}
                               >
-                                {stat.error_count} errors · {stat.user_count}{' '}
-                                users affected
+                                {error.event_count} occurrences
                               </div>
                             </div>
                           </div>
@@ -547,12 +488,58 @@ function ProjectIssues() {
                       </div>
                     ) : (
                       <div className="muted" style={{ padding: '2rem' }}>
-                        No release data available
+                        No error data available
                       </div>
                     )}
                   </div>
                 </div>
-              )}
+
+                <div className="card">
+                  <div className="card-title">Error Rate by Release</div>
+                  {releaseStats.loading ? (
+                    <div className="list">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="list-item skeleton"
+                          style={{ height: '48px' }}
+                        />
+                      ))}
+                    </div>
+                  ) : releaseStats.data.length > 0 ? (
+                    <div className="list">
+                      {releaseStats.data.slice(0, 10).map((stat, idx) => (
+                        <div key={idx} className="list-item">
+                          <div style={{ flex: 1 }}>
+                            <div className="list-title">
+                              {stat.release || 'Unknown Release'}
+                              {stat.environment && (
+                                <span
+                                  className="pill small"
+                                  style={{ marginLeft: '0.5rem' }}
+                                >
+                                  {stat.environment}
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              className="muted"
+                              style={{ marginTop: '0.25rem' }}
+                            >
+                              {stat.error_count} errors · {stat.user_count}{' '}
+                              users affected
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="muted" style={{ padding: '2rem' }}>
+                      No release data available
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           ) : null}
         </div>

@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
-import { requireAuth } from '@bitwobbly/auth/server';
+import { requireAuth } from "@bitwobbly/auth/server";
 
 import { getDb } from "../lib/db";
 import { requireTeam } from "../lib/auth-middleware";
 import { getSentryProject } from "../repositories/sentry-projects";
+import { withCache, analyticsKey } from "../lib/cache";
 
 import {
   getClockDriftStats,
@@ -65,11 +66,19 @@ export const getErrorRateByReleaseFn = createServerFn({ method: "GET" })
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
-    return getErrorRateByRelease(
-      config,
+    const cacheKey = analyticsKey(
+      "releases",
       project.sentryProjectId,
       data.startDate,
       data.endDate,
+    );
+    return withCache(env.KV, cacheKey, () =>
+      getErrorRateByRelease(
+        config,
+        project.sentryProjectId,
+        data.startDate,
+        data.endDate,
+      ),
     );
   });
 
@@ -85,7 +94,10 @@ export const getTopErrorMessagesFn = createServerFn({ method: "GET" })
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
-    return getTopErrorMessages(config, project.sentryProjectId, data.limit);
+    const cacheKey = `analytics:errors:${project.sentryProjectId}:${data.limit ?? 20}`;
+    return withCache(env.KV, cacheKey, () =>
+      getTopErrorMessages(config, project.sentryProjectId, data.limit),
+    );
   });
 
 export const getEventVolumeTimeseriesFn = createServerFn({ method: "GET" })
@@ -130,11 +142,19 @@ export const getEventVolumeStatsFn = createServerFn({ method: "GET" })
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
-    return getEventVolumeStats(
-      config,
+    const cacheKey = analyticsKey(
+      "stats",
       project.sentryProjectId,
       data.startDate,
       data.endDate,
+    );
+    return withCache(env.KV, cacheKey, () =>
+      getEventVolumeStats(
+        config,
+        project.sentryProjectId,
+        data.startDate,
+        data.endDate,
+      ),
     );
   });
 
@@ -159,12 +179,21 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
-    return getEventVolumeTimeseriesBreakdown(
-      config,
+    const cacheKey = analyticsKey(
+      "timeseries",
       project.sentryProjectId,
       data.startDate,
       data.endDate,
       data.interval,
+    );
+    return withCache(env.KV, cacheKey, () =>
+      getEventVolumeTimeseriesBreakdown(
+        config,
+        project.sentryProjectId,
+        data.startDate,
+        data.endDate,
+        data.interval,
+      ),
     );
   });
 
@@ -182,10 +211,18 @@ export const getSDKDistributionFn = createServerFn({ method: "GET" })
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
-    return getSDKDistribution(
-      config,
+    const cacheKey = analyticsKey(
+      "sdk",
       project.sentryProjectId,
       data.startDate,
       data.endDate,
+    );
+    return withCache(env.KV, cacheKey, () =>
+      getSDKDistribution(
+        config,
+        project.sentryProjectId,
+        data.startDate,
+        data.endDate,
+      ),
     );
   });

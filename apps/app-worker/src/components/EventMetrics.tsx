@@ -25,34 +25,19 @@ export function EventMetrics({ stats }: EventMetricsProps) {
         <div className="metric-value">{formatNumber(stats.total_events)}</div>
       </div>
       <div className="card">
-        <div className="metric-label">
-          Accepted{" "}
-          <span className="muted" style={{ fontSize: "0.75rem" }}>
-            ⓘ
-          </span>
-        </div>
+        <div className="metric-label">Accepted</div>
         <div className="metric-value" style={{ color: "#f97316" }}>
           {formatNumber(stats.accepted_events)}
         </div>
       </div>
       <div className="card">
-        <div className="metric-label">
-          Filtered{" "}
-          <span className="muted" style={{ fontSize: "0.75rem" }}>
-            ⓘ
-          </span>
-        </div>
+        <div className="metric-label">Filtered</div>
         <div className="metric-value" style={{ color: "#a855f7" }}>
           {formatNumber(stats.filtered_events)}
         </div>
       </div>
       <div className="card">
-        <div className="metric-label">
-          Dropped{" "}
-          <span className="muted" style={{ fontSize: "0.75rem" }}>
-            ⓘ
-          </span>
-        </div>
+        <div className="metric-label">Dropped</div>
         <div className="metric-value" style={{ color: "#ef4444" }}>
           {formatNumber(stats.dropped_events)}
         </div>

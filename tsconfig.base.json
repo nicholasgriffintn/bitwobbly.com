@@ -9,6 +9,6 @@
     "types": ["@cloudflare/workers-types"],
     "resolveJsonModule": true,
     "noEmit": true,
-    "noExplictAny": true
+    "noExplicitAny": true
   }
 }
