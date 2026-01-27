@@ -35,6 +35,16 @@ export interface MFAChallengeInput {
   email: string;
 }
 
+export interface NewPasswordInput {
+  session: string;
+  email: string;
+  newPassword: string;
+}
+
+export type SignUpResult =
+  | { user: AuthUser; requiresEmailVerification: true; email: string }
+  | { user: AuthUser };
+
 export type SignInResult =
   | { user: AuthUser; session?: string }
   | { requiresMFA: true; session: string; email: string }
@@ -45,11 +55,23 @@ export type SignInResult =
       session: string;
       email: string;
       challengeParameters?: Record<string, string>;
+    }
+  | {
+      requiresNewPassword: true;
+      session: string;
+      email: string;
+      challengeParameters?: Record<string, string>;
+    }
+  | {
+      unsupportedChallenge: true;
+      challengeName: string;
+      session?: string;
+      email: string;
     };
 
 export interface AuthAdapter {
   // Core authentication
-  signUp(input: SignUpInput): Promise<{ user: AuthUser; session?: string }>;
+  signUp(input: SignUpInput): Promise<SignUpResult>;
   signIn(input: SignInInput): Promise<SignInResult>;
   signOut(userId: string): Promise<void>;
   getCurrentUser(sessionToken?: string): Promise<AuthUser | null>;
@@ -60,11 +82,16 @@ export interface AuthAdapter {
   validateSession(sessionToken: string): Promise<{ userId: string } | null>;
   deleteSession(sessionToken: string): Promise<void>;
 
-  // MFA operations (optional))
+  // MFA operations (optional)
   setupMFA?(input: { session: string; email: string }): Promise<MFASetupResult>;
   verifyMFA?(input: MFAChallengeInput): Promise<{ user: AuthUser }>;
   verifyMFASetup?(input: MFAChallengeInput): Promise<{ user: AuthUser }>;
   disableMFA?(userId: string): Promise<void>;
+
+  // Challenge responses (optional)
+  completeNewPasswordChallenge?(
+    input: NewPasswordInput,
+  ): Promise<{ user: AuthUser }>;
 
   // Email verification (optional)
   sendVerificationEmail?(email: string): Promise<void>;

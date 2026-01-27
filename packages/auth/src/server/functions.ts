@@ -14,17 +14,14 @@ export async function signUpHandler(
     throw new Error("Invalid invite code");
   }
 
-  const { user } = await adapter.signUp(data);
+  const result = await adapter.signUp(data);
 
-  await adapter.createSession(user.id);
+  await adapter.createSession(result.user.id);
 
   const session = await useAppSession();
+  await session.update({ userId: result.user.id, email: result.user.email });
 
-  await session.update({ userId: user.id, email: user.email });
-
-  return {
-    user,
-  };
+  return result;
 }
 
 export async function signInHandler(
@@ -67,6 +64,30 @@ export async function signInHandler(
   if ("requiresPasswordReset" in result) {
     await session.update({ email: result.email });
     return { requiresPasswordReset: true, email: result.email };
+  }
+
+  if ("requiresNewPassword" in result) {
+    await session.update({
+      email: result.email,
+      cognitoSession: result.session,
+    });
+    return {
+      requiresNewPassword: true,
+      session: result.session,
+      email: result.email,
+    };
+  }
+
+  if ("unsupportedChallenge" in result) {
+    await session.update({
+      email: result.email,
+      cognitoSession: result.session,
+    });
+    return {
+      unsupportedChallenge: true,
+      challengeName: result.challengeName,
+      email: result.email,
+    };
   }
 
   await adapter.createSession(result.user.id);
@@ -166,6 +187,38 @@ export async function verifyMFASetupHandler(
     session: cognitoSession,
     code,
     email,
+  });
+
+  await adapter.createSession(user.id);
+  await session.update({
+    userId: user.id,
+    email: user.email,
+    cognitoSession: undefined,
+  });
+
+  return { user };
+}
+
+export async function newPasswordHandler(
+  adapter: AuthAdapter,
+  newPassword: string,
+) {
+  const session = await useAppSession();
+  const cognitoSession = session.data.cognitoSession;
+  const email = session.data.email;
+
+  if (!cognitoSession || !email) {
+    throw new Error("New password session not found");
+  }
+
+  if (!adapter.completeNewPasswordChallenge) {
+    throw new Error("New password challenge not supported by this adapter");
+  }
+
+  const { user } = await adapter.completeNewPasswordChallenge({
+    session: cognitoSession,
+    email,
+    newPassword,
   });
 
   await adapter.createSession(user.id);

@@ -11,6 +11,7 @@ import {
   verifyMFAHandler,
   setupMFAHandler,
   verifyMFASetupHandler,
+  newPasswordHandler,
   verifyEmailHandler,
   resendVerificationCodeHandler,
   forgotPasswordHandler,
@@ -60,6 +61,13 @@ export const signUpFn = createServerFn({ method: 'POST' })
       throw new Error('Sign up failed');
     }
 
+    if (
+      'requiresEmailVerification' in response &&
+      response.requiresEmailVerification
+    ) {
+      throw redirect({ to: '/verify-email' });
+    }
+
     throw redirect({ to: '/onboarding' });
   });
 
@@ -103,6 +111,17 @@ export const signInFn = createServerFn({ method: 'POST' })
 
     if (response.requiresPasswordReset) {
       throw redirect({ to: `/reset-password` });
+    }
+
+    if ('requiresNewPassword' in response) {
+      throw redirect({ to: `/new-password` });
+    }
+
+    if ('unsupportedChallenge' in response) {
+      throw redirect({
+        to: `/auth-error`,
+        search: { challenge: response.challengeName },
+      });
     }
 
     throw redirect({ to: '/app' });
@@ -213,6 +232,34 @@ export const verifyMFASetupFn = createServerFn({ method: 'POST' })
     });
 
     await verifyMFASetupHandler(adapter, data.code);
+
+    return { user: await getCurrentUserHandler(adapter) };
+  });
+
+const NewPasswordSchema = z.object({
+  password: z.string().min(8),
+});
+
+export const newPasswordFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) => NewPasswordSchema.parse(data))
+  .handler(async ({ data }) => {
+    const adapter = createAuthAdapter({
+      provider: env.AUTH_PROVIDER || 'custom',
+      db: getDb(env.DB),
+      cognito:
+        env.AUTH_PROVIDER === 'cognito'
+          ? {
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
+          : undefined,
+    });
+
+    await newPasswordHandler(adapter, data.password);
 
     return { user: await getCurrentUserHandler(adapter) };
   });

@@ -9,8 +9,10 @@ import type {
   SignInInput,
   SignInResult,
   SignUpInput,
+  SignUpResult,
   MFASetupResult,
   MFAChallengeInput,
+  NewPasswordInput,
   CognitoConfig,
 } from '../types';
 import { getVerifier } from './lib/cognito/jwt';
@@ -49,6 +51,49 @@ type SignUpResponse = {
   };
 };
 
+// Challenge handler registry for maintainable challenge response handling
+type ChallengeHandler = (
+  authData: AuthenticationResultResponse,
+  email: string,
+) => SignInResult;
+
+const CHALLENGE_HANDLERS: Record<string, ChallengeHandler> = {
+  SOFTWARE_TOKEN_MFA: (authData, email) => {
+    if (!authData.Session) {
+      throw new Error("MFA session missing from Cognito response");
+    }
+    return {
+      requiresMFA: true,
+      session: authData.Session,
+      email,
+    };
+  },
+
+  MFA_SETUP: (authData, email) => {
+    if (!authData.Session) {
+      throw new Error("MFA setup session missing from Cognito response");
+    }
+    return {
+      requiresMFASetup: true,
+      session: authData.Session,
+      email,
+      challengeParameters: authData.ChallengeParameters,
+    };
+  },
+
+  NEW_PASSWORD_REQUIRED: (authData, email) => {
+    if (!authData.Session) {
+      throw new Error("New password session missing from Cognito response");
+    }
+    return {
+      requiresNewPassword: true,
+      session: authData.Session,
+      email,
+      challengeParameters: authData.ChallengeParameters,
+    };
+  },
+};
+
 export class CognitoAuthAdapter implements AuthAdapter {
   private client: AwsClient;
   private verifier: ReturnType<typeof getVerifier>;
@@ -59,7 +104,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
   constructor(config: CognitoConfig & { db: DB }) {
     if (!config.region || !config.userPoolId || !config.clientId) {
       throw new Error(
-        'Cognito configuration is incomplete. Please provide region, userPoolId, and clientId.',
+        "Cognito configuration is incomplete. Please provide region, userPoolId, and clientId.",
       );
     }
 
@@ -99,7 +144,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
     return btoa(String.fromCharCode(...new Uint8Array(signature)));
   }
 
-  async signUp(input: SignUpInput): Promise<{ user: AuthUser }> {
+  async signUp(input: SignUpInput): Promise<SignUpResult> {
     const existing = await this.db
       .select()
       .from(schema.users)
@@ -130,7 +175,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
     });
 
     if (!signUpResult.ok) {
-      const errorData = await signUpResult.json() as CognitoErrorResponse;
+      const errorData = (await signUpResult.json()) as CognitoErrorResponse;
 
       if (errorData.__type === 'UsernameExistsException') {
         throw new Error('User with this email already exists');
@@ -179,19 +224,27 @@ export class CognitoAuthAdapter implements AuthAdapter {
       joinedAt: createdAt,
     });
 
-    return {
-      user: {
-        id: userId,
-        email: input.email,
-        teamId: tempTeamId,
-        currentTeamId: tempTeamId,
-        authProvider: 'cognito',
-        cognitoSub,
-        mfaEnabled: false,
-        emailVerified: signUpData.UserConfirmed || false,
-        createdAt,
-      },
+    const user: AuthUser = {
+      id: userId,
+      email: input.email,
+      teamId: tempTeamId,
+      currentTeamId: tempTeamId,
+      authProvider: 'cognito',
+      cognitoSub,
+      mfaEnabled: false,
+      emailVerified: signUpData.UserConfirmed || false,
+      createdAt,
     };
+
+    if (!signUpData.UserConfirmed) {
+      return {
+        user,
+        requiresEmailVerification: true,
+        email: input.email,
+      };
+    }
+
+    return { user };
   }
 
   async signIn(input: SignInInput): Promise<SignInResult> {
@@ -238,26 +291,20 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const authData = (await authResult.json()) as AuthenticationResultResponse;
 
-    if (authData.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
-      if (!authData.Session) {
-        throw new Error('MFA session missing from Cognito response');
-      }
-      return {
-        requiresMFA: true,
-        session: authData.Session,
-        email: input.email,
-      };
-    }
+    // Use challenge handler registry for supported challenges
+    if (authData.ChallengeName) {
+      const handler = CHALLENGE_HANDLERS[authData.ChallengeName];
 
-    if (authData.ChallengeName === 'MFA_SETUP') {
-      if (!authData.Session) {
-        throw new Error('MFA session missing from Cognito response');
+      if (handler) {
+        return handler(authData, input.email);
       }
+
+      // Challenge exists but no handler - return unsupported
       return {
-        requiresMFASetup: true,
+        unsupportedChallenge: true,
+        challengeName: authData.ChallengeName,
         session: authData.Session,
         email: input.email,
-        challengeParameters: authData.ChallengeParameters,
       };
     }
 
@@ -627,7 +674,67 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
   async disableMFA(_userId: string): Promise<void> {
     // TODO: Implement MFA disable flow once access tokens are stored.
-    throw new Error('MFA disable requires an active access token');
+    throw new Error("MFA disable requires an active access token");
+  }
+
+  async completeNewPasswordChallenge(
+    input: NewPasswordInput,
+  ): Promise<{ user: AuthUser }> {
+    const hash = await this.computeHash(input.email);
+
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const challengeResult = await this.client.fetch(awsUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target":
+          "AWSCognitoIdentityProviderService.RespondToAuthChallenge",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
+      },
+      body: JSON.stringify({
+        ClientId: this.clientId,
+        ChallengeName: "NEW_PASSWORD_REQUIRED",
+        Session: input.session,
+        ChallengeResponses: {
+          USERNAME: input.email,
+          NEW_PASSWORD: input.newPassword,
+          SECRET_HASH: hash || "",
+        },
+      }),
+    });
+
+    if (!challengeResult.ok) {
+      const errorData = await challengeResult.json();
+      console.error("Cognito New Password Challenge Error:", errorData);
+      throw new Error("Failed to set new password");
+    }
+
+    const authData =
+      (await challengeResult.json()) as AuthenticationResultResponse;
+    const accessToken = authData.AuthenticationResult?.AccessToken;
+
+    if (!accessToken) {
+      throw new Error("Failed to complete new password challenge");
+    }
+
+    const auth = await this.verifier.verify(accessToken);
+
+    if (!auth?.payload?.sub) {
+      throw new Error("Invalid token payload");
+    }
+
+    const cognitoSub = auth.payload.sub;
+    const users = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.cognitoSub, cognitoSub))
+      .limit(1);
+
+    if (!users.length) {
+      throw new Error("User not found");
+    }
+
+    return { user: this.mapUserData(users[0]) };
   }
 
   async sendVerificationEmail(email: string): Promise<void> {

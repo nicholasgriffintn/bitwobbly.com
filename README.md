@@ -8,13 +8,12 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ### Incomplete Features
 
-- **Viewing metrics on monitors and components crashes out the server** -- Need to fix an issue that is causes this, seems to be when there is a lot of data (although it's not all that much just a couple days, but it is 5 mins so maybe?).
+- **R2 API is a bit slow** -- Look for ways that we can make the frontend seem faster and also, potentially cache, although the analytics in issues are dug quite deep at the moment so not used often.
 - **Monitors can't be deleted** -- Error: "Failed query: delete from "monitors" where ("monitors"."team_id" = ? and "monitors"."id" = ?) params: team_gRa5n8d6JSY8Xg,mon_0UHlvHhn2S1Fpw"
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
 - **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Cognito supports this but custom does not.
 - **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Both cognito and custom auth are affected. Cognito supports this but custom does not.
 - **MFA support** -- No multi-factor authentication options for user accounts. Cognito supports this but custom does not.
-- **Respond to all possible Cognito challenges** -- The adapter is not configured to respond to all possible Cognito challenges. https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_InitiateAuth.html#API_InitiateAuth_ResponseSyntax
 
 ### Missing Integrations
 
