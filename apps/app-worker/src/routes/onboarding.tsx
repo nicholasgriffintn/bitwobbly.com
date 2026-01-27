@@ -12,7 +12,7 @@ import { createTeamFn, joinTeamFn } from "@/server/functions/teams";
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async () => {
-    const user = await getCurrentUserFn();
+    const { user } = await getCurrentUserFn();
     if (!user) {
       throw redirect({ to: "/login" });
     }

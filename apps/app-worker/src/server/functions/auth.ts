@@ -13,6 +13,7 @@ import {
   resendVerificationCodeHandler,
   forgotPasswordHandler,
   resetPasswordHandler,
+  useAppSession,
 } from '@bitwobbly/auth/server';
 
 import { getDb } from "../lib/db";
@@ -37,13 +38,13 @@ export const signUpFn = createServerFn({ method: "POST" })
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
@@ -69,13 +70,13 @@ export const signInFn = createServerFn({ method: "POST" })
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
@@ -120,18 +121,23 @@ export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
+    const session = await useAppSession();
     const user = await getCurrentUserHandler(adapter);
-    return user;
+    return {
+      user,
+      email: session.data.email ?? null,
+      hasCognitoSession: Boolean(session.data.cognitoSession),
+    };
   },
 );
 
@@ -148,13 +154,13 @@ export const verifyMFAFn = createServerFn({ method: 'POST' })
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
@@ -177,13 +183,13 @@ export const verifyEmailFn = createServerFn({ method: 'POST' })
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
@@ -205,13 +211,13 @@ export const resendVerificationCodeFn = createServerFn({ method: 'POST' })
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
@@ -231,13 +237,13 @@ export const forgotPasswordFn = createServerFn({ method: 'POST' })
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
@@ -259,13 +265,13 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
       cognito:
         env.AUTH_PROVIDER === 'cognito'
           ? {
-            region: env.COGNITO_REGION!,
-            userPoolId: env.COGNITO_USER_POOL_ID!,
-            clientId: env.COGNITO_CLIENT_ID!,
-            clientSecret: env.COGNITO_CLIENT_SECRET!,
-            accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
-            secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
-          }
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
           : undefined,
     });
 
@@ -275,5 +281,3 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
       newPassword: data.password,
     });
   });
-
-

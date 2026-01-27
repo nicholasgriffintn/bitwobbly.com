@@ -1,25 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   createFileRoute,
   redirect,
   useNavigate,
   isRedirect,
-} from '@tanstack/react-router';
+} from "@tanstack/react-router";
 
-import Brand from '@/components/Brand';
-import { getCurrentUserFn } from '@/server/functions/auth';
-import { joinTeamFn } from '@/server/functions/teams';
+import Brand from "@/components/Brand";
+import { getCurrentUserFn } from "@/server/functions/auth";
+import { joinTeamFn } from "@/server/functions/teams";
 
-export const Route = createFileRoute('/join')({
+export const Route = createFileRoute("/join")({
   validateSearch: (search: Record<string, unknown>) => ({
-    code: (search.code as string) || '',
+    code: (search.code as string) || "",
   }),
   beforeLoad: async () => {
-    const user = await getCurrentUserFn();
+    const { user } = await getCurrentUserFn();
 
     if (!user) {
       throw redirect({
-        to: '/login',
+        to: "/login",
       });
     }
   },
@@ -35,7 +35,7 @@ function Join() {
 
   useEffect(() => {
     if (!code) {
-      setError('No invite code provided.');
+      setError("No invite code provided.");
       return;
     }
 
@@ -46,12 +46,12 @@ function Join() {
       try {
         await joinTeamFn({ data: { inviteCode: code } });
         setJoined(true);
-        await navigate({ to: '/app' });
+        await navigate({ to: "/app" });
       } catch (err) {
         if (isRedirect(err)) {
           throw err;
         }
-        setError(err instanceof Error ? err.message : 'Failed to join team');
+        setError(err instanceof Error ? err.message : "Failed to join team");
         setSubmitting(false);
       }
     };
@@ -69,8 +69,8 @@ function Join() {
         {error && (
           <>
             <div className="form-error">{error}</div>
-            <div style={{ marginTop: '16px' }}>
-              <button type="button" onClick={() => navigate({ to: '/app' })}>
+            <div style={{ marginTop: "16px" }}>
+              <button type="button" onClick={() => navigate({ to: "/app" })}>
                 Go to dashboard
               </button>
             </div>
