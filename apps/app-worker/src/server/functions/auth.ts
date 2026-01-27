@@ -1,7 +1,7 @@
-import { createServerFn } from "@tanstack/react-start";
-import { redirect } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
-import { z } from "zod";
+import { createServerFn } from '@tanstack/react-start';
+import { redirect } from '@tanstack/react-router';
+import { env } from 'cloudflare:workers';
+import { z } from 'zod';
 import {
   createAuthAdapter,
   signInHandler,
@@ -9,6 +9,8 @@ import {
   signOutHandler,
   getCurrentUserHandler,
   verifyMFAHandler,
+  setupMFAHandler,
+  verifyMFASetupHandler,
   verifyEmailHandler,
   resendVerificationCodeHandler,
   forgotPasswordHandler,
@@ -16,7 +18,7 @@ import {
   useAppSession,
 } from '@bitwobbly/auth/server';
 
-import { getDb } from "../lib/db";
+import { getDb } from '../lib/db';
 
 const SignUpSchema = z.object({
   email: z.string().email(),
@@ -29,7 +31,7 @@ const SignInSchema = z.object({
   password: z.string().min(1),
 });
 
-export const signUpFn = createServerFn({ method: "POST" })
+export const signUpFn = createServerFn({ method: 'POST' })
   .inputValidator((data: unknown) => SignUpSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
@@ -55,13 +57,13 @@ export const signUpFn = createServerFn({ method: "POST" })
     });
 
     if (!response.user) {
-      throw new Error("Sign up failed");
+      throw new Error('Sign up failed');
     }
 
-    throw redirect({ to: "/onboarding" });
+    throw redirect({ to: '/onboarding' });
   });
 
-export const signInFn = createServerFn({ method: "POST" })
+export const signInFn = createServerFn({ method: 'POST' })
   .inputValidator((data: unknown) => SignInSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
@@ -103,17 +105,17 @@ export const signInFn = createServerFn({ method: "POST" })
       throw redirect({ to: `/reset-password` });
     }
 
-    throw redirect({ to: "/app" });
+    throw redirect({ to: '/app' });
   });
 
-export const signOutFn = createServerFn({ method: "POST" }).handler(
+export const signOutFn = createServerFn({ method: 'POST' }).handler(
   async () => {
     await signOutHandler();
-    throw redirect({ to: "/login" });
+    throw redirect({ to: '/login' });
   },
 );
 
-export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
+export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const adapter = createAuthAdapter({
       provider: env.AUTH_PROVIDER || 'custom',
@@ -166,7 +168,53 @@ export const verifyMFAFn = createServerFn({ method: 'POST' })
 
     await verifyMFAHandler(adapter, data.code);
 
-    throw redirect({ to: '/app' });
+    return { user: await getCurrentUserHandler(adapter) };
+  });
+
+export const setupMFAFn = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const adapter = createAuthAdapter({
+      provider: env.AUTH_PROVIDER || 'custom',
+      db: getDb(env.DB),
+      cognito:
+        env.AUTH_PROVIDER === 'cognito'
+          ? {
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
+          : undefined,
+    });
+
+    return await setupMFAHandler(adapter);
+  },
+);
+
+export const verifyMFASetupFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) => VerifyMFASchema.parse(data))
+  .handler(async ({ data }) => {
+    const adapter = createAuthAdapter({
+      provider: env.AUTH_PROVIDER || 'custom',
+      db: getDb(env.DB),
+      cognito:
+        env.AUTH_PROVIDER === 'cognito'
+          ? {
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
+          : undefined,
+    });
+
+    await verifyMFASetupHandler(adapter, data.code);
+
+    return { user: await getCurrentUserHandler(adapter) };
   });
 
 const VerifyEmailSchema = z.object({

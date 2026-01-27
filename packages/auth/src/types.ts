@@ -41,11 +41,11 @@ export type SignInResult =
   | { requiresEmailVerification: true; email: string }
   | { requiresPasswordReset: true; email: string; session?: string }
   | {
-    requiresMFASetup: true;
-    session: string;
-    email: string;
-    challengeParameters?: Record<string, string>;
-  };
+      requiresMFASetup: true;
+      session: string;
+      email: string;
+      challengeParameters?: Record<string, string>;
+    };
 
 export interface AuthAdapter {
   // Core authentication
@@ -61,8 +61,9 @@ export interface AuthAdapter {
   deleteSession(sessionToken: string): Promise<void>;
 
   // MFA operations (optional))
-  setupMFA?(userId: string): Promise<MFASetupResult>;
+  setupMFA?(input: { session: string; email: string }): Promise<MFASetupResult>;
   verifyMFA?(input: MFAChallengeInput): Promise<{ user: AuthUser }>;
+  verifyMFASetup?(input: MFAChallengeInput): Promise<{ user: AuthUser }>;
   disableMFA?(userId: string): Promise<void>;
 
   // Email verification (optional)

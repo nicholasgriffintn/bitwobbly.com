@@ -130,7 +130,16 @@ export class CognitoAuthAdapter implements AuthAdapter {
     });
 
     if (!signUpResult.ok) {
-      const errorData = await signUpResult.json();
+      const errorData = await signUpResult.json() as CognitoErrorResponse;
+
+      if (errorData.__type === 'UsernameExistsException') {
+        throw new Error('User with this email already exists');
+      }
+
+      if (errorData.__type === 'InvalidPasswordException') {
+        throw new Error(errorData.message);
+      }
+
       console.error('Cognito SignUp Error:', errorData);
       throw new Error(`Failed to create user in Cognito`);
     }
@@ -399,9 +408,148 @@ export class CognitoAuthAdapter implements AuthAdapter {
       .where(eq(schema.sessions.id, sessionToken));
   }
 
-  async setupMFA(_userId: string): Promise<MFASetupResult> {
-    // TODO: Implement MFA setup flow
-    throw new Error('MFA setup requires active session with access token');
+  async setupMFA(input: {
+    session: string;
+    email: string;
+  }): Promise<MFASetupResult> {
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+    const associateResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target':
+          'AWSCognitoIdentityProviderService.AssociateSoftwareToken',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
+        Session: input.session,
+      }),
+    });
+
+    if (!associateResult.ok) {
+      const errorData = await associateResult.json();
+      console.error('Cognito MFA Setup Error:', errorData);
+      throw new Error('Failed to start MFA setup');
+    }
+
+    const associateData = (await associateResult.json()) as {
+      SecretCode?: string;
+      Session?: string;
+    };
+
+    if (!associateData.SecretCode) {
+      throw new Error('Failed to retrieve MFA secret');
+    }
+
+    const issuer = 'BitWobbly';
+    const otpauth = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(
+      input.email,
+    )}?secret=${encodeURIComponent(associateData.SecretCode)}&issuer=${encodeURIComponent(
+      issuer,
+    )}`;
+    return {
+      secret: associateData.SecretCode,
+      qrCodeUrl: otpauth,
+      session: associateData.Session || input.session,
+    };
+  }
+
+  async verifyMFASetup(input: MFAChallengeInput): Promise<{ user: AuthUser }> {
+    const hash = await this.computeHash(input.email);
+    const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
+
+    const verifyResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.VerifySoftwareToken',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
+        UserCode: input.code,
+        Session: input.session,
+      }),
+    });
+
+    if (!verifyResult.ok) {
+      const errorData = await verifyResult.json();
+      console.error('Cognito MFA Verify Token Error:', errorData);
+      throw new Error('MFA setup verification failed');
+    }
+
+    const verifyData = (await verifyResult.json()) as { Session?: string };
+
+    const challengeResult = await this.client.fetch(awsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target':
+          'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
+        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+      },
+      body: JSON.stringify({
+        ClientId: this.clientId,
+        ChallengeName: 'MFA_SETUP',
+        Session: verifyData.Session || input.session,
+        ChallengeResponses: {
+          USERNAME: input.email,
+          SOFTWARE_TOKEN_MFA_CODE: input.code,
+          SECRET_HASH: hash || '',
+        },
+      }),
+    });
+
+    if (!challengeResult.ok) {
+      const errorData = await challengeResult.json();
+      console.error('Cognito MFA Setup Challenge Error:', errorData);
+      throw new Error('MFA setup failed');
+    }
+
+    const authData =
+      (await challengeResult.json()) as AuthenticationResultResponse;
+    const accessToken = authData.AuthenticationResult?.AccessToken;
+
+    if (!accessToken) {
+      throw new Error('MFA setup failed');
+    }
+
+    const auth = await this.verifier.verify(accessToken);
+
+    if (!auth?.payload?.sub) {
+      throw new Error('Invalid token payload');
+    }
+
+    const cognitoSub = auth.payload.sub;
+    const users = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.cognitoSub, cognitoSub))
+      .limit(1);
+
+    if (!users.length) {
+      throw new Error('User not found');
+    }
+
+    const userData = users[0];
+
+    await this.db
+      .update(schema.users)
+      .set({ mfaEnabled: 1 })
+      .where(eq(schema.users.id, userData.id));
+
+    return {
+      user: {
+        id: userData.id,
+        email: userData.email,
+        teamId: userData.teamId,
+        currentTeamId: userData.currentTeamId,
+        authProvider: 'cognito',
+        cognitoSub: userData.cognitoSub,
+        mfaEnabled: true,
+        emailVerified: userData.emailVerified === 1,
+        createdAt: userData.createdAt,
+      },
+    };
   }
 
   async verifyMFA(input: MFAChallengeInput): Promise<{ user: AuthUser }> {
@@ -478,8 +626,8 @@ export class CognitoAuthAdapter implements AuthAdapter {
   }
 
   async disableMFA(_userId: string): Promise<void> {
-    // TODO: Implement MFA disable flow
-    throw new Error('MFA disable not yet implemented');
+    // TODO: Implement MFA disable flow once access tokens are stored.
+    throw new Error('MFA disable requires an active access token');
   }
 
   async sendVerificationEmail(email: string): Promise<void> {

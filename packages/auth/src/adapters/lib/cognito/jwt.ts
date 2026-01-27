@@ -1,12 +1,12 @@
-import { jwtVerify, JWK, errors, importJWK } from 'jose';
+import { jwtVerify, JWK, errors, importJWK } from "jose";
 
-import decode from './decode';
-import { JwtInvalidError } from './errors';
+import decode from "./decode";
+import { JwtInvalidError } from "./errors";
 import {
   JwtCognitoClaimValidationError,
   JwtVerificationError,
   JwksNoMatchingKeyError,
-} from './errors';
+} from "./errors";
 
 export type AWS_JWK = {
   kid: string;
@@ -20,7 +20,7 @@ export type AWS_JWK = {
 function handleVerificationError(e: Error) {
   if (
     e instanceof errors.JOSEError &&
-    ['ERR_JWT_CLAIM_INVALID', 'ERR_JWT_EXPIRED', 'ERR_JWT_MALFORMED'].includes(
+    ["ERR_JWT_CLAIM_INVALID", "ERR_JWT_EXPIRED", "ERR_JWT_MALFORMED"].includes(
       e.code,
     )
   ) {
@@ -35,13 +35,13 @@ function handleVerificationError(e: Error) {
 }
 
 function isNoMatchingKeyError(e: Error) {
-  return e instanceof errors.JOSEError && e.code === 'ERR_JWKS_NO_MATCHING_KEY';
+  return e instanceof errors.JOSEError && e.code === "ERR_JWKS_NO_MATCHING_KEY";
 }
 
-function validateTokenUseClaim(payload: any, tokenType: 'id' | 'access') {
+function validateTokenUseClaim(payload: any, tokenType: "id" | "access") {
   if (!payload.token_use || payload.token_use !== tokenType) {
     const originalError = new JwtCognitoClaimValidationError(
-      'token_use',
+      "token_use",
       `expected "${tokenType}", got "${payload.token_use}"`,
     );
 
@@ -55,14 +55,14 @@ export async function getJwkByKid(iss: string, kid: string) {
   if (kid in jwkCache) {
     return jwkCache[kid];
   }
-  const jwksEndpoint = iss + '/.well-known/jwks.json';
+  const jwksEndpoint = iss + "/.well-known/jwks.json";
   const result = await fetch(jwksEndpoint, {
     cf: {
       cacheEverything: true,
       cacheTtlByStatus: {
-        '200-299': 864000, // 10 days
+        "200-299": 864000, // 10 days
         404: 1,
-        '500-599': 0,
+        "500-599": 0,
       },
     },
   });
@@ -77,10 +77,13 @@ export async function getJwkByKid(iss: string, kid: string) {
 }
 
 export function getJwt(str: string) {
-  if (!str || str.substring(0, 6) !== 'Bearer') {
+  if (!str) {
     return null;
   }
-  return str.substring(6).trim();
+  if (str.substring(0, 6) === "Bearer") {
+    return str.substring(6).trim();
+  }
+  return str.trim();
 }
 
 export function getVerifier({
@@ -92,10 +95,10 @@ export function getVerifier({
   awsRegion: string;
   userPoolId: string;
   appClientId: string;
-  tokenType: 'id' | 'access';
+  tokenType: "id" | "access";
 }) {
   if (!crypto || !crypto.subtle) {
-    throw new Error('Crypto not supported');
+    throw new Error("Crypto not supported");
   }
 
   return {
@@ -116,8 +119,8 @@ export function getVerifier({
 
       try {
         const joseOptions = {
-          profile: tokenType === 'id' ? 'id_token' : undefined,
-          audience: tokenType === 'id' ? appClientId : undefined,
+          profile: tokenType === "id" ? "id_token" : undefined,
+          audience: tokenType === "id" ? appClientId : undefined,
           issuer: `https://cognito-idp.${awsRegion}.amazonaws.com/${userPoolId}`,
         };
 
@@ -150,7 +153,7 @@ export {
   JwtVerificationError,
   JwksNoMatchingKeyError,
   JwtInvalidError,
-} from './errors';
-export * as decode from './decode';
+} from "./errors";
+export * as decode from "./decode";
 
-export type { JWK, JWTPayload, JWTVerifyResult } from 'jose';
+export type { JWK, JWTPayload, JWTVerifyResult } from "jose";

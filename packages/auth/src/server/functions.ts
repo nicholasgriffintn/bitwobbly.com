@@ -11,7 +11,7 @@ export async function signUpHandler(
   },
 ) {
   if (data.inviteCode !== requiredInviteCode) {
-    throw new Error('Invalid invite code');
+    throw new Error("Invalid invite code");
   }
 
   const { user } = await adapter.signUp(data);
@@ -38,12 +38,15 @@ export async function signInHandler(
 
   const session = await useAppSession();
 
-  if ('requiresMFA' in result) {
-    await session.update({ email: result.email, cognitoSession: result.session });
+  if ("requiresMFA" in result) {
+    await session.update({
+      email: result.email,
+      cognitoSession: result.session,
+    });
     return { requiresMFA: true, session: result.session, email: result.email };
   }
 
-  if ('requiresMFASetup' in result) {
+  if ("requiresMFASetup" in result) {
     await session.update({
       email: result.email,
       cognitoSession: result.session,
@@ -56,12 +59,12 @@ export async function signInHandler(
     };
   }
 
-  if ('requiresEmailVerification' in result) {
+  if ("requiresEmailVerification" in result) {
     await session.update({ email: result.email });
     return { requiresEmailVerification: true, email: result.email };
   }
 
-  if ('requiresPasswordReset' in result) {
+  if ("requiresPasswordReset" in result) {
     await session.update({ email: result.email });
     return { requiresPasswordReset: true, email: result.email };
   }
@@ -98,11 +101,11 @@ export async function verifyMFAHandler(adapter: AuthAdapter, code: string) {
   const email = session.data.email;
 
   if (!cognitoSession || !email) {
-    throw new Error('MFA session not found');
+    throw new Error("MFA session not found");
   }
 
   if (!adapter.verifyMFA) {
-    throw new Error('MFA not supported by this adapter');
+    throw new Error("MFA not supported by this adapter");
   }
 
   const { user } = await adapter.verifyMFA({
@@ -112,48 +115,118 @@ export async function verifyMFAHandler(adapter: AuthAdapter, code: string) {
   });
 
   await adapter.createSession(user.id);
-  await session.update({ userId: user.id, email: user.email, cognitoSession: undefined });
+  await session.update({
+    userId: user.id,
+    email: user.email,
+    cognitoSession: undefined,
+  });
 
   return { user };
 }
 
-export async function verifyEmailHandler(adapter: AuthAdapter, code: string, email?: string) {
+export async function setupMFAHandler(adapter: AuthAdapter) {
+  const session = await useAppSession();
+  const cognitoSession = session.data.cognitoSession;
+  const email = session.data.email;
+
+  if (!cognitoSession || !email) {
+    throw new Error("MFA session not found");
+  }
+
+  if (!adapter.setupMFA) {
+    throw new Error("MFA setup not supported by this adapter");
+  }
+
+  const result = await adapter.setupMFA({ session: cognitoSession, email });
+
+  if (result.session && result.session !== cognitoSession) {
+    await session.update({ cognitoSession: result.session, email });
+  }
+
+  return result;
+}
+
+export async function verifyMFASetupHandler(
+  adapter: AuthAdapter,
+  code: string,
+) {
+  const session = await useAppSession();
+  const cognitoSession = session.data.cognitoSession;
+  const email = session.data.email;
+
+  if (!cognitoSession || !email) {
+    throw new Error("MFA session not found");
+  }
+
+  if (!adapter.verifyMFASetup) {
+    throw new Error("MFA setup verification not supported by this adapter");
+  }
+
+  const { user } = await adapter.verifyMFASetup({
+    session: cognitoSession,
+    code,
+    email,
+  });
+
+  await adapter.createSession(user.id);
+  await session.update({
+    userId: user.id,
+    email: user.email,
+    cognitoSession: undefined,
+  });
+
+  return { user };
+}
+
+export async function verifyEmailHandler(
+  adapter: AuthAdapter,
+  code: string,
+  email?: string,
+) {
   if (!email) {
     const session = await useAppSession();
     email = session.data.email;
   }
 
   if (!email) {
-    throw new Error('Email not found in session');
+    throw new Error("Email not found in session");
   }
 
   if (!adapter.verifyEmail) {
-    throw new Error('Email verification not supported by this adapter');
+    throw new Error("Email verification not supported by this adapter");
   }
 
   await adapter.verifyEmail(code, email);
 }
 
-export async function resendVerificationCodeHandler(adapter: AuthAdapter, email?: string) {
+export async function resendVerificationCodeHandler(
+  adapter: AuthAdapter,
+  email?: string,
+) {
   if (!email) {
     const session = await useAppSession();
     email = session.data.email;
   }
 
   if (!email) {
-    throw new Error('Email not found in session');
+    throw new Error("Email not found in session");
   }
 
   if (!adapter.resendVerificationCode) {
-    throw new Error('Resending verification code not supported by this adapter');
+    throw new Error(
+      "Resending verification code not supported by this adapter",
+    );
   }
 
   await adapter.resendVerificationCode(email);
 }
 
-export async function forgotPasswordHandler(adapter: AuthAdapter, email: string) {
+export async function forgotPasswordHandler(
+  adapter: AuthAdapter,
+  email: string,
+) {
   if (!adapter.forgotPassword) {
-    throw new Error('Forgot Password not supported by this adapter');
+    throw new Error("Forgot Password not supported by this adapter");
   }
 
   await adapter.forgotPassword(email);
@@ -161,7 +234,7 @@ export async function forgotPasswordHandler(adapter: AuthAdapter, email: string)
 
 export async function resetPasswordHandler(
   adapter: AuthAdapter,
-  input: { email?: string; code: string; newPassword: string }
+  input: { email?: string; code: string; newPassword: string },
 ) {
   let email = input.email;
 
@@ -171,11 +244,11 @@ export async function resetPasswordHandler(
   }
 
   if (!email) {
-    throw new Error('Email not found in session');
+    throw new Error("Email not found in session");
   }
 
   if (!adapter.confirmForgotPassword) {
-    throw new Error('Reset Password not supported by this adapter');
+    throw new Error("Reset Password not supported by this adapter");
   }
 
   await adapter.confirmForgotPassword({

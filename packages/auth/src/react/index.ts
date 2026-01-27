@@ -1,2 +1,1 @@
-export * from "./AuthProvider";
-export * from "./useMFA";
+export * from './AuthProvider';

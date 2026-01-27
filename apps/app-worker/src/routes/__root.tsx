@@ -10,7 +10,13 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { AuthProvider } from "@bitwobbly/auth/react";
 
-import { signInFn, signUpFn, signOutFn } from "@/server/functions/auth";
+import {
+  signInFn,
+  signUpFn,
+  signOutFn,
+  setupMFAFn,
+  verifyMFASetupFn,
+} from "@/server/functions/auth";
 
 import appCss from "../styles.css?url";
 
@@ -45,6 +51,8 @@ function RootDocument() {
   const signIn = useServerFn(signInFn);
   const signUp = useServerFn(signUpFn);
   const signOut = useServerFn(signOutFn);
+  const setupMFA = useServerFn(setupMFAFn);
+  const verifyMFASetup = useServerFn(verifyMFASetupFn);
 
   return (
     <html lang="en">
@@ -52,7 +60,13 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <AuthProvider signInFn={signIn} signUpFn={signUp} signOutFn={signOut}>
+        <AuthProvider
+          signInFn={signIn}
+          signUpFn={signUp}
+          signOutFn={signOut}
+          setupMFAFn={setupMFA}
+          verifyMFASetupFn={verifyMFASetup}
+        >
           <Outlet />
         </AuthProvider>
         <TanStackDevtools

@@ -29,6 +29,13 @@ export function MFAChallengeForm({
     try {
       await onVerify(code);
     } catch (err) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        ('isRedirect' in err || 'isSerializedRedirect' in err)
+      ) {
+        throw err;
+      }
       setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setLoading(false);

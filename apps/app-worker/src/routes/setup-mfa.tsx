@@ -10,7 +10,9 @@ export const Route = createFileRoute("/setup-mfa")({
     if (!user && !hasCognitoSession) {
       throw redirect({ to: "/login" });
     }
-    // TODO: Check if MFA is already set up and redirect if so
+    if (user?.mfaEnabled) {
+      throw redirect({ to: '/app' });
+    }
   },
   component: SetupMFA,
 });
@@ -19,8 +21,7 @@ function SetupMFA() {
   const navigate = useNavigate();
 
   const handleComplete = async () => {
-    // TODO: Does it not need to verify anything here?
-    await navigate({ to: "/app" });
+    await navigate({ to: '/app' });
   };
 
   return (

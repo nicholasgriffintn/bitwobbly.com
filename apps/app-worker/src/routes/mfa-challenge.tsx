@@ -1,14 +1,14 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { MFAChallengeForm } from "@bitwobbly/auth/components";
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { MFAChallengeForm } from '@bitwobbly/auth/components';
 
-import Brand from "@/components/Brand";
-import { getCurrentUserFn, verifyMFAFn } from "@/server/functions/auth";
+import Brand from '@/components/Brand';
+import { getCurrentUserFn, verifyMFAFn } from '@/server/functions/auth';
 
-export const Route = createFileRoute("/mfa-challenge")({
+export const Route = createFileRoute('/mfa-challenge')({
   beforeLoad: async () => {
     const { user, hasCognitoSession } = await getCurrentUserFn();
     if (!user && !hasCognitoSession) {
-      throw redirect({ to: "/login" });
+      throw redirect({ to: '/login' });
     }
   },
   component: MFAChallengePage,
@@ -19,7 +19,7 @@ function MFAChallengePage() {
 
   const handleVerify = async (code: string) => {
     await verifyMFAFn({ data: { code } });
-    await navigate({ to: "/app" });
+    await navigate({ to: '/app' });
   };
 
   return (

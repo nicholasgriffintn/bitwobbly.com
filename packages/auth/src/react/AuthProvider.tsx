@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
+import type { MFASetupResult } from "../types";
+
 export type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
@@ -15,6 +17,9 @@ export type AuthContextValue = {
     inviteCode: string,
   ) => Promise<void>;
   signOut: () => Promise<void>;
+  setupMFA: () => Promise<MFASetupResult>;
+  verifyMFASetup: (code: string) => Promise<void>;
+  disableMFA?: () => Promise<void>;
   loading: boolean;
 };
 
@@ -32,6 +37,9 @@ export type AuthProviderProps = {
   signInFn: (opts: { data: SignInData }) => Promise<unknown>;
   signUpFn: (opts: { data: SignUpData }) => Promise<unknown>;
   signOutFn: () => Promise<unknown>;
+  setupMFAFn: () => Promise<unknown>;
+  verifyMFASetupFn: (opts: { data: { code: string } }) => Promise<unknown>;
+  disableMFAFn?: () => Promise<unknown>;
 };
 
 export function AuthProvider({
@@ -39,6 +47,9 @@ export function AuthProvider({
   signInFn,
   signUpFn,
   signOutFn,
+  setupMFAFn,
+  verifyMFASetupFn,
+  disableMFAFn,
 }: AuthProviderProps) {
   const [loading, setLoading] = useState(false);
 
@@ -98,9 +109,77 @@ export function AuthProvider({
     }
   }, [signOutFn]);
 
+  const setupMFA = useCallback(async (): Promise<MFASetupResult> => {
+    try {
+      return (await setupMFAFn()) as MFASetupResult;
+    } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        ("isRedirect" in err || "isSerializedRedirect" in err)
+      ) {
+        throw err;
+      }
+      throw err;
+    }
+  }, [setupMFAFn]);
+
+  const verifyMFASetup = useCallback(
+    async (code: string) => {
+      try {
+        await verifyMFASetupFn({ data: { code } });
+      } catch (err) {
+        if (
+          err &&
+          typeof err === "object" &&
+          ("isRedirect" in err || "isSerializedRedirect" in err)
+        ) {
+          throw err;
+        }
+        throw err;
+      }
+    },
+    [verifyMFASetupFn],
+  );
+
+  const disableMFA = useCallback(async () => {
+    if (!disableMFAFn) {
+      throw new Error("MFA disable not supported");
+    }
+    try {
+      await disableMFAFn();
+    } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        ("isRedirect" in err || "isSerializedRedirect" in err)
+      ) {
+        throw err;
+      }
+      throw err;
+    }
+  }, [disableMFAFn]);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ signIn, signUp, signOut, loading }),
-    [signIn, signUp, signOut, loading],
+    () => ({
+      signIn,
+      signUp,
+      signOut,
+      setupMFA,
+      verifyMFASetup,
+      disableMFA: disableMFAFn ? disableMFA : undefined,
+      loading,
+    }),
+    [
+      signIn,
+      signUp,
+      signOut,
+      setupMFA,
+      verifyMFASetup,
+      disableMFA,
+      disableMFAFn,
+      loading,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
