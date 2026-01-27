@@ -229,40 +229,40 @@ function ProjectIssues() {
 
       <div className="card">
         <div className="card-title">
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
             <button
               type="button"
-              className={activeTab === "issues" ? "" : "outline"}
-              onClick={() => setActiveTab("issues")}
-              style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
+              className={activeTab === 'issues' ? '' : 'outline'}
+              onClick={() => setActiveTab('issues')}
+              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
             >
               Issues ({filteredAndSortedIssues.length})
             </button>
             <button
               type="button"
-              className={activeTab === "events" ? "" : "outline"}
-              onClick={() => setActiveTab("events")}
-              style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
+              className={activeTab === 'events' ? '' : 'outline'}
+              onClick={() => setActiveTab('events')}
+              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
             >
               Events ({events.length})
             </button>
             <button
               type="button"
-              className={activeTab === "analytics" ? "" : "outline"}
-              onClick={() => setActiveTab("analytics")}
-              style={{ fontSize: "0.875rem", padding: "0.5rem 1rem" }}
+              className={activeTab === 'analytics' ? '' : 'outline'}
+              onClick={() => setActiveTab('analytics')}
+              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
             >
               Analytics
             </button>
           </div>
 
-          {activeTab === "issues" && (
+          {activeTab === 'issues' && (
             <div
               style={{
-                display: "flex",
-                gap: "0.5rem",
-                flexWrap: "wrap",
-                marginBottom: "1rem",
+                display: 'flex',
+                gap: '0.5rem',
+                flexWrap: 'wrap',
+                marginBottom: '1rem',
               }}
             >
               <input
@@ -270,12 +270,12 @@ function ProjectIssues() {
                 placeholder="Search issues..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ flex: "1 1 200px", minWidth: "200px" }}
+                style={{ flex: '1 1 200px', minWidth: '200px' }}
               />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ flex: "0 0 auto" }}
+                style={{ flex: '0 0 auto' }}
               >
                 <option value="all">All Statuses</option>
                 <option value="unresolved">Unresolved</option>
@@ -285,7 +285,7 @@ function ProjectIssues() {
               <select
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
-                style={{ flex: "0 0 auto" }}
+                style={{ flex: '0 0 auto' }}
               >
                 <option value="all">All Levels</option>
                 <option value="error">Error</option>
@@ -296,9 +296,9 @@ function ProjectIssues() {
               <select
                 value={sortBy}
                 onChange={(e) =>
-                  setSortBy(e.target.value as "recent" | "oldest" | "count")
+                  setSortBy(e.target.value as 'recent' | 'oldest' | 'count')
                 }
-                style={{ flex: "0 0 auto" }}
+                style={{ flex: '0 0 auto' }}
               >
                 <option value="recent">Most Recent</option>
                 <option value="oldest">Oldest First</option>
@@ -308,7 +308,7 @@ function ProjectIssues() {
           )}
         </div>
         <div className="list">
-          {activeTab === "issues" ? (
+          {activeTab === 'issues' ? (
             filteredAndSortedIssues.length ? (
               filteredAndSortedIssues.map((issue) => (
                 <div key={issue.id} className="list-item-expanded">
@@ -318,39 +318,39 @@ function ProjectIssues() {
                         {issue.title}
                         <span
                           className="pill small"
-                          style={{ marginLeft: "0.5rem" }}
+                          style={{ marginLeft: '0.5rem' }}
                         >
                           {issue.status}
                         </span>
                       </div>
-                      <div className="muted" style={{ marginTop: "0.25rem" }}>
+                      <div className="muted" style={{ marginTop: '0.25rem' }}>
                         <span className={`status ${issue.level}`}>
                           {issue.level}
                         </span>
-                        {" · "}
+                        {' · '}
                         {issue.eventCount} event
-                        {issue.eventCount !== 1 ? "s" : ""}
+                        {issue.eventCount !== 1 ? 's' : ''}
                         {issue.userCount > 0 && (
                           <>
-                            {" · "}
+                            {' · '}
                             {issue.userCount} user
-                            {issue.userCount !== 1 ? "s" : ""}
+                            {issue.userCount !== 1 ? 's' : ''}
                           </>
                         )}
-                        {" · "}
+                        {' · '}
                         Last seen {formatRelativeTime(issue.lastSeenAt)}
                       </div>
                     </div>
                     <div className="button-row">
-                      {issue.status === "unresolved" ? (
+                      {issue.status === 'unresolved' ? (
                         <>
                           <button
                             type="button"
                             className="outline"
                             onClick={() =>
-                              handleStatusChange(issue.id, "resolved")
+                              handleStatusChange(issue.id, 'resolved')
                             }
-                            style={{ fontSize: "0.875rem" }}
+                            style={{ fontSize: '0.875rem' }}
                           >
                             Resolve
                           </button>
@@ -358,9 +358,9 @@ function ProjectIssues() {
                             type="button"
                             className="outline"
                             onClick={() =>
-                              handleStatusChange(issue.id, "ignored")
+                              handleStatusChange(issue.id, 'ignored')
                             }
-                            style={{ fontSize: "0.875rem" }}
+                            style={{ fontSize: '0.875rem' }}
                           >
                             Ignore
                           </button>
@@ -370,9 +370,9 @@ function ProjectIssues() {
                           type="button"
                           className="outline"
                           onClick={() =>
-                            handleStatusChange(issue.id, "unresolved")
+                            handleStatusChange(issue.id, 'unresolved')
                           }
-                          style={{ fontSize: "0.875rem" }}
+                          style={{ fontSize: '0.875rem' }}
                         >
                           Reopen
                         </button>
@@ -391,12 +391,12 @@ function ProjectIssues() {
               ))
             ) : (
               <div className="muted">
-                {searchQuery || statusFilter !== "all" || levelFilter !== "all"
-                  ? "No issues match your filters."
-                  : "No issues found."}
+                {searchQuery || statusFilter !== 'all' || levelFilter !== 'all'
+                  ? 'No issues match your filters.'
+                  : 'No issues found.'}
               </div>
             )
-          ) : activeTab === "events" ? (
+          ) : activeTab === 'events' ? (
             events.length ? (
               events.map((event) => (
                 <div key={event.id} className="list-item">
@@ -404,13 +404,13 @@ function ProjectIssues() {
                     <div className="list-title">
                       {event.message || `${event.type} event`}
                     </div>
-                    <div className="muted" style={{ marginTop: "0.25rem" }}>
+                    <div className="muted" style={{ marginTop: '0.25rem' }}>
                       {event.level && (
                         <>
                           <span className={`status ${event.level}`}>
                             {event.level}
                           </span>
-                          {" · "}
+                          {' · '}
                         </>
                       )}
                       {formatRelativeTime(event.receivedAt)}
@@ -421,126 +421,139 @@ function ProjectIssues() {
             ) : (
               <div className="muted">No events found.</div>
             )
-          ) : activeTab === "analytics" ? (
-            analyticsError ? (
-              <div
-                className="card"
-                style={{
-                  padding: "2rem",
-                  textAlign: "center",
-                  color: "var(--red)",
-                }}
-              >
-                <div style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
-                  Failed to load analytics
-                </div>
-                <div className="muted">{analyticsError}</div>
-                <button
-                  type="button"
-                  className="outline"
-                  style={{ marginTop: "1rem" }}
-                  onClick={loadAnalytics}
+          ) : activeTab === 'analytics' ? (
+            <div
+              style={{
+                padding: '1rem',
+                background: 'var(--bg)',
+                borderRadius: '16px',
+                border: '1px solid var(--stroke)',
+              }}
+            >
+              {analyticsError ? (
+                <div
+                  className="card"
+                  style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: 'var(--red)',
+                  }}
                 >
-                  Retry
-                </button>
-              </div>
-            ) : analyticsLoading ? (
-              <div
-                className="muted"
-                style={{ padding: "2rem", textAlign: "center" }}
-              >
-                Loading analytics data...
-              </div>
-            ) : (
-              <div>
-                {volumeStats && <EventMetrics stats={volumeStats} />}
-
-                <div className="card mb-1.5">
-                  <div className="card-title">Event Volume (Last 14 Days)</div>
-                  {timeseriesBreakdown.length > 0 ? (
-                    <EventVolumeChart data={timeseriesBreakdown} />
-                  ) : (
-                    <div className="muted" style={{ padding: "2rem" }}>
-                      No event data available
-                    </div>
-                  )}
+                  <div style={{ marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Failed to load analytics
+                  </div>
+                  <div className="muted">{analyticsError}</div>
+                  <button
+                    type="button"
+                    className="outline"
+                    style={{ marginTop: '1rem' }}
+                    onClick={loadAnalytics}
+                  >
+                    Retry
+                  </button>
                 </div>
+              ) : analyticsLoading ? (
+                <div
+                  className="muted"
+                  style={{ padding: '2rem', textAlign: 'center' }}
+                >
+                  Loading analytics data...
+                </div>
+              ) : (
+                <div>
+                  {volumeStats && <EventMetrics stats={volumeStats} />}
 
-                <div className="grid two mb-1.5">
-                  <div className="card">
-                    <div className="card-title">SDK Distribution</div>
-                    {sdkDistribution.length > 0 ? (
-                      <SDKDistributionChart data={sdkDistribution} />
+                  <div className="card mb-1.5">
+                    <div className="card-title">
+                      Event Volume (Last 14 Days)
+                    </div>
+                    {timeseriesBreakdown.length > 0 ? (
+                      <EventVolumeChart data={timeseriesBreakdown} />
                     ) : (
-                      <div className="muted" style={{ padding: "2rem" }}>
-                        No SDK data available
+                      <div className="muted" style={{ padding: '2rem' }}>
+                        No event data available
                       </div>
                     )}
                   </div>
 
+                  <div className="grid two mb-1.5">
+                    <div className="card">
+                      <div className="card-title">SDK Distribution</div>
+                      {sdkDistribution.length > 0 ? (
+                        <SDKDistributionChart data={sdkDistribution} />
+                      ) : (
+                        <div className="muted" style={{ padding: '2rem' }}>
+                          No SDK data available
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="card">
+                      <div className="card-title">Top Error Messages</div>
+                      {topErrors.length > 0 ? (
+                        <div className="list">
+                          {topErrors.slice(0, 5).map((error, idx) => (
+                            <div key={idx} className="list-item">
+                              <div style={{ flex: 1 }}>
+                                <div className="list-title">
+                                  {error.message}
+                                </div>
+                                <div
+                                  className="muted"
+                                  style={{ marginTop: '0.25rem' }}
+                                >
+                                  {error.event_count} occurrences
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="muted" style={{ padding: '2rem' }}>
+                          No error data available
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="card">
-                    <div className="card-title">Top Error Messages</div>
-                    {topErrors.length > 0 ? (
+                    <div className="card-title">Error Rate by Release</div>
+                    {releaseStats.length > 0 ? (
                       <div className="list">
-                        {topErrors.slice(0, 5).map((error, idx) => (
+                        {releaseStats.slice(0, 10).map((stat, idx) => (
                           <div key={idx} className="list-item">
                             <div style={{ flex: 1 }}>
-                              <div className="list-title">{error.message}</div>
+                              <div className="list-title">
+                                {stat.release || 'Unknown Release'}
+                                {stat.environment && (
+                                  <span
+                                    className="pill small"
+                                    style={{ marginLeft: '0.5rem' }}
+                                  >
+                                    {stat.environment}
+                                  </span>
+                                )}
+                              </div>
                               <div
                                 className="muted"
-                                style={{ marginTop: "0.25rem" }}
+                                style={{ marginTop: '0.25rem' }}
                               >
-                                {error.event_count} occurrences
+                                {stat.error_count} errors · {stat.user_count}{' '}
+                                users affected
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="muted" style={{ padding: "2rem" }}>
-                        No error data available
+                      <div className="muted" style={{ padding: '2rem' }}>
+                        No release data available
                       </div>
                     )}
                   </div>
                 </div>
-
-                <div className="card">
-                  <div className="card-title">Error Rate by Release</div>
-                  {releaseStats.length > 0 ? (
-                    <div className="list">
-                      {releaseStats.slice(0, 10).map((stat, idx) => (
-                        <div key={idx} className="list-item">
-                          <div style={{ flex: 1 }}>
-                            <div className="list-title">
-                              {stat.release || "Unknown Release"}
-                              {stat.environment && (
-                                <span
-                                  className="pill small"
-                                  style={{ marginLeft: "0.5rem" }}
-                                >
-                                  {stat.environment}
-                                </span>
-                              )}
-                            </div>
-                            <div
-                              className="muted"
-                              style={{ marginTop: "0.25rem" }}
-                            >
-                              {stat.error_count} errors · {stat.user_count}{" "}
-                              users affected
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="muted" style={{ padding: "2rem" }}>
-                      No release data available
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
+              )}
+            </div>
           ) : null}
         </div>
       </div>

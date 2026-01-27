@@ -8,41 +8,41 @@ import * as path from "path";
 
 const RESEND_API_KEY_PARAM = "/bitwobbly/resend-api-key";
 
-export interface CognitoEmailSenderStackProps extends cdk.StackProps {
+export interface BitWobblyCognitoEmailSenderStackProps extends cdk.StackProps {
   userPoolId?: string;
 }
 
-export class CognitoEmailSenderStack extends cdk.Stack {
+export class BitWobblyCognitoEmailSenderStack extends cdk.Stack {
   public readonly emailSenderFunction: lambda.IFunction;
   public readonly kmsKey: kms.IKey;
 
   constructor(
     scope: Construct,
     id: string,
-    props?: CognitoEmailSenderStackProps,
+    props?: BitWobblyCognitoEmailSenderStackProps,
   ) {
     super(scope, id, props);
 
     const userPoolId =
-      props?.userPoolId ?? this.node.tryGetContext("userPoolId");
+      props?.userPoolId ?? this.node.tryGetContext('userPoolId');
 
-    this.kmsKey = new kms.Key(this, "EmailSenderKey", {
-      description: "KMS key for Cognito custom email sender code encryption",
+    this.kmsKey = new kms.Key(this, 'EmailSenderKey', {
+      description: 'KMS key for Cognito custom email sender code encryption',
       enableKeyRotation: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    new kms.Alias(this, "EmailSenderKeyAlias", {
-      aliasName: "alias/cognito-email-sender",
+    new kms.Alias(this, 'EmailSenderKeyAlias', {
+      aliasName: 'alias/cognito-email-sender',
       targetKey: this.kmsKey,
     });
 
     this.emailSenderFunction = new nodejs.NodejsFunction(
       this,
-      "EmailSenderFunction",
+      'EmailSenderFunction',
       {
-        entry: path.join(__dirname, "../lambda/index.ts"),
-        handler: "handler",
+        entry: path.join(__dirname, '../lambda/index.ts'),
+        handler: 'handler',
         runtime: lambda.Runtime.NODEJS_20_X,
         architecture: lambda.Architecture.ARM_64,
         timeout: cdk.Duration.seconds(30),
@@ -51,8 +51,8 @@ export class CognitoEmailSenderStack extends cdk.Stack {
           KEY_ID: this.kmsKey.keyId,
           KEY_ARN: this.kmsKey.keyArn,
           RESEND_API_KEY_PARAM,
-          FROM_EMAIL: "BitWobbly <bitwobbly@notifications.nicholasgriffin.dev>",
-          APP_URL: "https://bitwobbly.com",
+          FROM_EMAIL: 'BitWobbly <bitwobbly@notifications.nicholasgriffin.dev>',
+          APP_URL: 'https://bitwobbly.com',
         },
         bundling: {
           minify: true,
@@ -67,7 +67,7 @@ export class CognitoEmailSenderStack extends cdk.Stack {
     (this.emailSenderFunction as nodejs.NodejsFunction).addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["ssm:GetParameter"],
+        actions: ['ssm:GetParameter'],
         resources: [
           `arn:aws:ssm:${this.region}:${this.account}:parameter${RESEND_API_KEY_PARAM}`,
         ],
@@ -77,19 +77,19 @@ export class CognitoEmailSenderStack extends cdk.Stack {
     this.kmsKey.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        principals: [new iam.ServicePrincipal("cognito-idp.amazonaws.com")],
-        actions: ["kms:Encrypt"],
-        resources: ["*"],
+        principals: [new iam.ServicePrincipal('cognito-idp.amazonaws.com')],
+        actions: ['kms:Encrypt'],
+        resources: ['*'],
         conditions: {
           StringEquals: {
-            "aws:SourceAccount": this.account,
+            'aws:SourceAccount': this.account,
           },
         },
       }),
     );
 
-    this.emailSenderFunction.addPermission("CognitoInvoke", {
-      principal: new iam.ServicePrincipal("cognito-idp.amazonaws.com"),
+    this.emailSenderFunction.addPermission('CognitoInvoke', {
+      principal: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
       sourceArn: userPoolId
         ? `arn:aws:cognito-idp:${this.region}:${this.account}:userpool/${userPoolId}`
         : `arn:aws:cognito-idp:${this.region}:${this.account}:userpool/*`,
@@ -98,9 +98,9 @@ export class CognitoEmailSenderStack extends cdk.Stack {
     if (userPoolId) {
       const triggerConfigFn = this.createTriggerConfigFunction();
 
-      this.kmsKey.grant(triggerConfigFn, "kms:CreateGrant", "kms:DescribeKey");
+      this.kmsKey.grant(triggerConfigFn, 'kms:CreateGrant', 'kms:DescribeKey');
 
-      new cdk.CustomResource(this, "CustomEmailSenderTrigger", {
+      new cdk.CustomResource(this, 'CustomEmailSenderTrigger', {
         serviceToken: triggerConfigFn.functionArn,
         properties: {
           UserPoolId: userPoolId,
@@ -110,21 +110,21 @@ export class CognitoEmailSenderStack extends cdk.Stack {
       });
     }
 
-    new cdk.CfnOutput(this, "LambdaFunctionArn", {
+    new cdk.CfnOutput(this, 'LambdaFunctionArn', {
       value: this.emailSenderFunction.functionArn,
-      description: "ARN of the custom email sender Lambda function",
+      description: 'ARN of the custom email sender Lambda function',
     });
 
-    new cdk.CfnOutput(this, "KmsKeyArn", {
+    new cdk.CfnOutput(this, 'KmsKeyArn', {
       value: this.kmsKey.keyArn,
-      description: "ARN of the KMS key for code encryption",
+      description: 'ARN of the KMS key for code encryption',
     });
   }
 
   private createTriggerConfigFunction(): lambda.Function {
-    const fn = new nodejs.NodejsFunction(this, "TriggerConfigFunction", {
-      entry: path.join(__dirname, "../lambda/configure-trigger.ts"),
-      handler: "handler",
+    const fn = new nodejs.NodejsFunction(this, 'TriggerConfigFunction', {
+      entry: path.join(__dirname, '../lambda/configure-trigger.ts'),
+      handler: 'handler',
       runtime: lambda.Runtime.NODEJS_20_X,
       architecture: lambda.Architecture.ARM_64,
       timeout: cdk.Duration.minutes(5),
@@ -134,7 +134,7 @@ export class CognitoEmailSenderStack extends cdk.Stack {
     fn.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["cognito-idp:UpdateUserPool", "cognito-idp:DescribeUserPool"],
+        actions: ['cognito-idp:UpdateUserPool', 'cognito-idp:DescribeUserPool'],
         resources: [
           `arn:aws:cognito-idp:${this.region}:${this.account}:userpool/*`,
         ],

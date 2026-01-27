@@ -28,7 +28,7 @@ async function getResendApiKey(): Promise<string> {
     }),
   );
 
-  cachedApiKey = response.Parameter?.Value ?? "";
+  cachedApiKey = (response.Parameter?.Value ?? "").trim();
   return cachedApiKey;
 }
 
