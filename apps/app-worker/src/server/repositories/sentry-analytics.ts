@@ -1,4 +1,9 @@
 import { executeR2SQL, type R2SQLConfig } from "../lib/r2-sql";
+import {
+  requireUnixSeconds,
+  requireFiniteInt,
+  clampFiniteInt,
+} from "../lib/utils";
 
 export interface EventVolumeBySDK {
   day: string;
@@ -40,8 +45,8 @@ export async function getEventVolumeBySDK(
   startDate: string,
   endDate: string,
 ): Promise<EventVolumeBySDK[]> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+  const startTimestamp = requireUnixSeconds(startDate, "startDate");
+  const endTimestamp = requireUnixSeconds(endDate, "endDate");
 
   const query = `
     SELECT
@@ -71,8 +76,15 @@ export async function getEventVolumeBySDK(
     query,
   );
 
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
   const grouped = new Map<string, EventVolumeBySDK>();
-  for (const row of result.data) {
+  for (const row of resultData) {
     const [sdk_name, sdk_version, count, bytes] = Object.values(row);
     const day = startDate.split("T")[0];
     const key = `${day}|${sdk_name}|${sdk_version}`;
@@ -125,7 +137,14 @@ export async function getClockDriftStats(
     query,
   );
 
-  return result.data
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
+  return resultData
     .map((row) => {
       const [sdk_name, avg, max, min] = Object.values(row);
       return {
@@ -143,8 +162,8 @@ export async function getItemTypeDistribution(
   startDate: string,
   endDate: string,
 ): Promise<ItemTypeDistribution[]> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+  const startTimestamp = requireUnixSeconds(startDate, "startDate");
+  const endTimestamp = requireUnixSeconds(endDate, "endDate");
 
   const query = `
     SELECT
@@ -169,7 +188,14 @@ export async function getItemTypeDistribution(
     query,
   );
 
-  return result.data
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
+  return resultData
     .map((row) => {
       const [item_type, count, sum_bytes] = Object.values(row);
       return {
@@ -187,8 +213,9 @@ export async function getErrorRateByRelease(
   startDate: string,
   endDate: string,
 ): Promise<ErrorRateByRelease[]> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+  const pid = requireFiniteInt(projectId, "projectId");
+  const startTimestamp = requireUnixSeconds(startDate, "startDate");
+  const endTimestamp = requireUnixSeconds(endDate, "endDate");
 
   const query = `
     SELECT
@@ -198,7 +225,7 @@ export async function getErrorRateByRelease(
       COUNT(*)
     FROM default.issue_manifests
     WHERE
-      sentry_project_id = ${projectId}
+      sentry_project_id = ${pid}
       AND item_type = 'event'
       AND event_release IS NOT NULL
       AND received_at >= ${startTimestamp}
@@ -220,8 +247,15 @@ export async function getErrorRateByRelease(
     query,
   );
 
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
   const grouped = new Map<string, ErrorRateByRelease>();
-  for (const row of result.data) {
+  for (const row of resultData) {
     const [release, environment, user_id, count] = Object.values(row);
     const key = `${release}|${environment}`;
 
@@ -254,6 +288,8 @@ export async function getTopErrorMessages(
   projectId: number,
   limit: number = 20,
 ): Promise<TopErrorMessages[]> {
+  const pid = requireFiniteInt(projectId, "projectId");
+  const safeLimit = clampFiniteInt(limit, 1, 100, 20);
   const query = `
     SELECT
       event_message,
@@ -261,7 +297,7 @@ export async function getTopErrorMessages(
       COUNT(*)
     FROM default.issue_manifests
     WHERE
-      sentry_project_id = ${projectId}
+      sentry_project_id = ${pid}
       AND item_type = 'event'
       AND event_message IS NOT NULL
     GROUP BY event_message, received_at
@@ -280,8 +316,15 @@ export async function getTopErrorMessages(
     query,
   );
 
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
   const grouped = new Map<string, TopErrorMessages>();
-  for (const row of result.data) {
+  for (const row of resultData) {
     const [message, received_at, count] = Object.values(row);
     const msgKey = message as string;
 
@@ -307,7 +350,7 @@ export async function getTopErrorMessages(
 
   return Array.from(grouped.values())
     .sort((a, b) => b.event_count - a.event_count)
-    .slice(0, limit);
+    .slice(0, safeLimit);
 }
 
 export async function getEventVolumeTimeseries(
@@ -317,8 +360,9 @@ export async function getEventVolumeTimeseries(
   endDate: string,
   interval: "hour" | "day" = "hour",
 ): Promise<{ timestamp: string; event_count: number }[]> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+  const pid = requireFiniteInt(projectId, "projectId");
+  const startTimestamp = requireUnixSeconds(startDate, "startDate");
+  const endTimestamp = requireUnixSeconds(endDate, "endDate");
 
   const query = `
     SELECT
@@ -326,7 +370,7 @@ export async function getEventVolumeTimeseries(
       COUNT(*)
     FROM default.issue_manifests
     WHERE
-      sentry_project_id = ${projectId}
+      sentry_project_id = ${pid}
       AND item_type = 'event'
       AND received_at >= ${startTimestamp}
       AND received_at <= ${endTimestamp}
@@ -345,10 +389,17 @@ export async function getEventVolumeTimeseries(
     query,
   );
 
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
   const intervalMs = interval === "hour" ? 3600000 : 86400000;
   const grouped = new Map<string, number>();
 
-  for (const row of result.data) {
+  for (const row of resultData) {
     const [received_at, count] = Object.values(row);
     const timestamp = (received_at as number) * 1000;
     const bucketTimestamp = Math.floor(timestamp / intervalMs) * intervalMs;
@@ -384,15 +435,16 @@ export async function getEventVolumeStats(
   startDate: string,
   endDate: string,
 ): Promise<EventVolumeStats> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+  const pid = requireFiniteInt(projectId, "projectId");
+  const startTimestamp = requireUnixSeconds(startDate, "startDate");
+  const endTimestamp = requireUnixSeconds(endDate, "endDate");
 
   const query = `
     SELECT
       COUNT(*)
     FROM default.issue_manifests
     WHERE
-      sentry_project_id = ${projectId}
+      sentry_project_id = ${pid}
       AND received_at >= ${startTimestamp}
       AND received_at <= ${endTimestamp}
   `;
@@ -407,8 +459,20 @@ export async function getEventVolumeStats(
     query,
   );
 
-  const acceptedEvents = result.data[0]
-    ? (Object.values(result.data[0])[0] as number)
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return {
+      total_events: 0,
+      accepted_events: 0,
+      filtered_events: 0,
+      dropped_events: 0,
+    };
+  }
+
+  const acceptedEvents = resultData[0]
+    ? (Object.values(resultData[0])[0] as number)
     : 0;
 
   return {
@@ -433,8 +497,9 @@ export async function getEventVolumeTimeseriesBreakdown(
   endDate: string,
   interval: "hour" | "day" = "hour",
 ): Promise<EventVolumeTimeseriesBreakdown[]> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+  const pid = requireFiniteInt(projectId, "projectId");
+  const startTimestamp = requireUnixSeconds(startDate, "startDate");
+  const endTimestamp = requireUnixSeconds(endDate, "endDate");
 
   const query = `
     SELECT
@@ -442,7 +507,7 @@ export async function getEventVolumeTimeseriesBreakdown(
       COUNT(*)
     FROM default.issue_manifests
     WHERE
-      sentry_project_id = ${projectId}
+      sentry_project_id = ${pid}
       AND received_at >= ${startTimestamp}
       AND received_at <= ${endTimestamp}
     GROUP BY received_at
@@ -460,10 +525,17 @@ export async function getEventVolumeTimeseriesBreakdown(
     query,
   );
 
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
   const intervalMs = interval === "hour" ? 3600000 : 86400000;
   const grouped = new Map<string, number>();
 
-  for (const row of result.data) {
+  for (const row of resultData) {
     const [received_at, count] = Object.values(row);
     const timestamp = (received_at as number) * 1000;
     const bucketTimestamp = Math.floor(timestamp / intervalMs) * intervalMs;
@@ -503,14 +575,15 @@ export async function getSDKDistribution(
   startDate: string,
   endDate: string,
 ): Promise<SDKDistribution[]> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+  const pid = requireFiniteInt(projectId, "projectId");
+  const startTimestamp = requireUnixSeconds(startDate, "startDate");
+  const endTimestamp = requireUnixSeconds(endDate, "endDate");
 
   const totalQuery = `
     SELECT COUNT(*)
     FROM default.issue_manifests
     WHERE
-      sentry_project_id = ${projectId}
+      sentry_project_id = ${pid}
       AND item_type = 'event'
       AND received_at >= ${startTimestamp}
       AND received_at <= ${endTimestamp}
@@ -526,8 +599,15 @@ export async function getSDKDistribution(
     totalQuery,
   );
 
-  const total = totalResult.data[0]
-    ? (Object.values(totalResult.data[0])[0] as number)
+  const totalIsSuccess = totalResult?.success === true;
+  const totalResultData = totalResult?.result?.rows ?? [];
+
+  if (!totalIsSuccess || !totalResultData?.length) {
+    return [];
+  }
+
+  const total = totalResultData[0]
+    ? (Object.values(totalResultData[0])[0] as number)
     : 0;
 
   const distributionQuery = `
@@ -536,7 +616,7 @@ export async function getSDKDistribution(
       COUNT(*)
     FROM default.issue_manifests
     WHERE
-      sentry_project_id = ${projectId}
+      sentry_project_id = ${pid}
       AND item_type = 'event'
       AND received_at >= ${startTimestamp}
       AND received_at <= ${endTimestamp}
@@ -555,7 +635,14 @@ export async function getSDKDistribution(
     distributionQuery,
   );
 
-  return result.data
+  const isSuccess = result?.success === true;
+  const resultData = result?.result?.rows ?? [];
+
+  if (!isSuccess || !resultData?.length) {
+    return [];
+  }
+
+  return resultData
     .map((row) => {
       const [sdk_name, count] = Object.values(row);
       return {

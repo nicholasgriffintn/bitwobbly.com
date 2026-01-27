@@ -39,7 +39,14 @@ export async function getMonitorMetrics(
   const sanitizedMonitorId = monitorId.replace(/'/g, "''");
   const startTimestamp = Math.floor(startTime.getTime() / 1000);
   const endTimestamp = Math.floor(endTime.getTime() / 1000);
-  const bucketSize = hours * 60;
+  const bucketSize =
+    hours <= 1
+      ? 60
+      : hours <= 6
+        ? 300
+        : hours <= 72
+          ? 1800
+          : 3600;
 
   const query = `
     SELECT
@@ -124,9 +131,8 @@ export async function getMonitorMetrics(
     })
     .sort(
       (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    )
-    .slice(0, hours);
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
 
   const totalChecks = rawData.length;
   const totalUp = rawData.filter((r) => r.status === "up").length;
@@ -186,7 +192,7 @@ export async function getComponentUptimeMetrics(
     WHERE blob2 IN (${monitorIdsClause})
       AND timestamp >= toDateTime(${startTimestamp})
       AND timestamp <= toDateTime(${endTimestamp})
-    ORDER BY timestamp DESC
+    ORDER BY timestamp ASC
   `;
 
   const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
@@ -216,14 +222,26 @@ export async function getComponentUptimeMetrics(
   };
   const rawData = responseJSON.data || [];
 
-  const totalChecks = rawData.length;
-  const upChecks = rawData.filter((r) => r.status === "up");
-  const downChecks = rawData.filter((r) => r.status === "down");
+  const orderedRawData = rawData
+    .map((r) => {
+      const ts =
+        typeof r.timestamp === "string"
+          ? new Date(r.timestamp).getTime() / 1000
+          : r.timestamp;
+      return { ...r, timestamp: ts };
+    })
+    .sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
+
+  const totalChecks = orderedRawData.length;
+  const upChecks = orderedRawData.filter((r) => r.status === "up");
+  const downChecks = orderedRawData.filter((r) => r.status === "down");
   const successfulChecks = upChecks.length;
   const failedChecks = downChecks.length;
   const uptimePercentage =
     totalChecks > 0 ? (successfulChecks / totalChecks) * 100 : 100;
-  const latencies = rawData.map((r) => r.latency_ms).sort((a, b) => a - b);
+  const latencies = orderedRawData
+    .map((r) => r.latency_ms)
+    .sort((a, b) => a - b);
   const averageLatencyMs =
     latencies.length > 0
       ? latencies.reduce((a, b) => a + b, 0) / latencies.length
@@ -237,12 +255,9 @@ export async function getComponentUptimeMetrics(
   let inIncident = false;
   let incidentStartTime: number | null = null;
 
-  for (let i = 0; i < rawData.length; i++) {
-    const check = rawData[i];
-    const ts =
-      typeof check.timestamp === "string"
-        ? new Date(check.timestamp).getTime() / 1000
-        : check.timestamp;
+  for (let i = 0; i < orderedRawData.length; i++) {
+    const check = orderedRawData[i];
+    const ts = check.timestamp as number;
 
     if (check.status === "down" && !inIncident) {
       incidents++;

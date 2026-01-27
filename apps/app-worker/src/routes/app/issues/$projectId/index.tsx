@@ -132,14 +132,14 @@ function ProjectIssues() {
       const [stats, breakdown, sdk, errors, releases] = await Promise.all([
         getStats({
           data: {
-            projectId: parseInt(projectId),
+            projectId,
             startDate,
             endDate,
           },
         }),
         getTimeseriesBreakdown({
           data: {
-            projectId: parseInt(projectId),
+            projectId,
             startDate,
             endDate,
             interval: "hour",
@@ -147,16 +147,16 @@ function ProjectIssues() {
         }),
         getSDKDist({
           data: {
-            projectId: parseInt(projectId),
+            projectId,
             startDate,
             endDate,
           },
         }),
         getTopErrors({
-          data: { projectId: parseInt(projectId), limit: 10 },
+          data: { projectId, limit: 10 },
         }),
         getReleaseStats({
-          data: { projectId: parseInt(projectId), startDate, endDate },
+          data: { projectId, startDate, endDate },
         }),
       ]);
 

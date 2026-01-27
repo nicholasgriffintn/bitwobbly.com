@@ -4,11 +4,33 @@ export interface R2SQLConfig {
 }
 
 export interface QueryResult<T = unknown> {
-  data: T[];
-  meta?: {
-    rows: number;
-    duration_ms: number;
+  result: {
+    request_id: string;
+    schema: Array<{
+      name: string;
+      descriptor: {
+        type: {
+          name: string;
+        };
+        nullable: boolean;
+      };
+    }>;
+    rows: T[];
+    metrics: {
+      r2_requests_count: number;
+      files_scanned: number;
+      bytes_scanned: number;
+    };
   };
+  success: boolean;
+  errors: Array<{
+    code: number;
+    message: string;
+  }>;
+  messages: Array<{
+    code: string;
+    message: string;
+  }>;
 }
 
 export async function executeR2SQL<T = unknown>(

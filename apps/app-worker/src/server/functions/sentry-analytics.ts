@@ -2,6 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { requireAuth } from '@bitwobbly/auth/server';
 
+import { getDb } from "../lib/db";
+import { requireTeam } from "../lib/auth-middleware";
+import { getSentryProject } from "../repositories/sentry-projects";
+
 import {
   getClockDriftStats,
   getErrorRateByRelease,
@@ -49,37 +53,45 @@ export const getItemTypeDistributionFn = createServerFn({ method: "GET" })
 
 export const getErrorRateByReleaseFn = createServerFn({ method: "GET" })
   .inputValidator(
-    (data: { projectId: number; startDate: string; endDate: string }) => data,
+    (data: { projectId: string; startDate: string; endDate: string }) => data,
   )
   .handler(async ({ data }) => {
     await requireAuth();
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
     return getErrorRateByRelease(
       config,
-      data.projectId,
+      project.sentryProjectId,
       data.startDate,
       data.endDate,
     );
   });
 
 export const getTopErrorMessagesFn = createServerFn({ method: "GET" })
-  .inputValidator((data: { projectId: number; limit?: number }) => data)
+  .inputValidator((data: { projectId: string; limit?: number }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
-    return getTopErrorMessages(config, data.projectId, data.limit);
+    return getTopErrorMessages(config, project.sentryProjectId, data.limit);
   });
 
 export const getEventVolumeTimeseriesFn = createServerFn({ method: "GET" })
   .inputValidator(
     (data: {
-      projectId: number;
+      projectId: string;
       startDate: string;
       endDate: string;
       interval?: "hour" | "day";
@@ -87,13 +99,17 @@ export const getEventVolumeTimeseriesFn = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     await requireAuth();
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
     return getEventVolumeTimeseries(
       config,
-      data.projectId,
+      project.sentryProjectId,
       data.startDate,
       data.endDate,
       data.interval,
@@ -102,17 +118,21 @@ export const getEventVolumeTimeseriesFn = createServerFn({ method: "GET" })
 
 export const getEventVolumeStatsFn = createServerFn({ method: "GET" })
   .inputValidator(
-    (data: { projectId: number; startDate: string; endDate: string }) => data,
+    (data: { projectId: string; startDate: string; endDate: string }) => data,
   )
   .handler(async ({ data }) => {
     await requireAuth();
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
     return getEventVolumeStats(
       config,
-      data.projectId,
+      project.sentryProjectId,
       data.startDate,
       data.endDate,
     );
@@ -123,7 +143,7 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
 })
   .inputValidator(
     (data: {
-      projectId: number;
+      projectId: string;
       startDate: string;
       endDate: string;
       interval?: "hour" | "day";
@@ -131,13 +151,17 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
   )
   .handler(async ({ data }) => {
     await requireAuth();
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
     return getEventVolumeTimeseriesBreakdown(
       config,
-      data.projectId,
+      project.sentryProjectId,
       data.startDate,
       data.endDate,
       data.interval,
@@ -146,17 +170,21 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
 
 export const getSDKDistributionFn = createServerFn({ method: "GET" })
   .inputValidator(
-    (data: { projectId: number; startDate: string; endDate: string }) => data,
+    (data: { projectId: string; startDate: string; endDate: string }) => data,
   )
   .handler(async ({ data }) => {
     await requireAuth();
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
     return getSDKDistribution(
       config,
-      data.projectId,
+      project.sentryProjectId,
       data.startDate,
       data.endDate,
     );
