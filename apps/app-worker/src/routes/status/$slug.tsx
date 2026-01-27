@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { getPublicStatusFn } from "@/server/functions/public";
 import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
-import { StatusSnapshot } from '@/server/repositories/status-pages';
+import { StatusSnapshot } from "@/server/repositories/status-pages";
 
 export const Route = createFileRoute("/status/$slug")({
   component: PublicStatusPage,
@@ -45,10 +45,11 @@ function PublicStatusPage() {
 
   const formatDate = (dateStrOrTimestamp: string | number) => {
     const timestamp =
-      typeof dateStrOrTimestamp === 'string'
+      typeof dateStrOrTimestamp === "string"
         ? dateStrOrTimestamp
         : dateStrOrTimestamp * 1000;
-    return new Date(timestamp).toLocaleString();
+    const date = new Date(timestamp);
+    return date.toISOString().replace("T", " ").slice(0, 16) + " UTC";
   };
 
   return (
