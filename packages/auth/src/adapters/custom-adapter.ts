@@ -19,17 +19,17 @@ export class CustomAuthAdapter implements AuthAdapter {
       .limit(1);
 
     if (existing.length > 0) {
-      throw new Error("User with this email already exists");
+      throw new Error('User with this email already exists');
     }
 
     const pwHash = await hashPassword(input.password);
-    const userId = randomId("usr");
+    const userId = randomId('usr');
     const createdAt = nowIso();
-    const tempTeamId = randomId("team");
+    const tempTeamId = randomId('team');
 
     await this.config.db.insert(schema.teams).values({
       id: tempTeamId,
-      name: "Default Team",
+      name: 'Default Team',
       createdAt,
     });
 
@@ -39,14 +39,14 @@ export class CustomAuthAdapter implements AuthAdapter {
       passwordHash: pwHash,
       teamId: tempTeamId,
       currentTeamId: tempTeamId,
-      authProvider: "custom",
+      authProvider: 'custom',
       createdAt,
     });
 
     await this.config.db.insert(schema.userTeams).values({
       userId,
       teamId: tempTeamId,
-      role: "owner",
+      role: 'owner',
       joinedAt: createdAt,
     });
 
@@ -55,7 +55,7 @@ export class CustomAuthAdapter implements AuthAdapter {
       email: input.email,
       teamId: tempTeamId,
       currentTeamId: tempTeamId,
-      authProvider: "custom",
+      authProvider: 'custom',
       createdAt,
     };
 
@@ -70,18 +70,18 @@ export class CustomAuthAdapter implements AuthAdapter {
       .limit(1);
 
     if (!users.length) {
-      throw new Error("Invalid email or password");
+      throw new Error('Invalid email or password');
     }
 
     const userData = users[0];
 
     if (!userData.passwordHash) {
-      throw new Error("Invalid email or password");
+      throw new Error('Invalid email or password');
     }
 
     const isValid = await verifyPassword(input.password, userData.passwordHash);
     if (!isValid) {
-      throw new Error("Invalid email or password");
+      throw new Error('Invalid email or password');
     }
 
     const user: AuthUser = {
@@ -89,7 +89,7 @@ export class CustomAuthAdapter implements AuthAdapter {
       email: userData.email,
       teamId: userData.teamId,
       currentTeamId: userData.currentTeamId,
-      authProvider: "custom",
+      authProvider: 'custom',
       createdAt: userData.createdAt,
     };
 
@@ -97,7 +97,6 @@ export class CustomAuthAdapter implements AuthAdapter {
   }
 
   async signOut(_userId: string): Promise<void> {
-    // Session cleanup handled by session management
     return;
   }
 
@@ -125,7 +124,7 @@ export class CustomAuthAdapter implements AuthAdapter {
       email: userData.email,
       teamId: userData.teamId,
       currentTeamId: userData.currentTeamId,
-      authProvider: "custom",
+      authProvider: 'custom',
       createdAt: userData.createdAt,
     };
   }

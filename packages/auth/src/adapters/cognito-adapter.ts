@@ -51,7 +51,6 @@ type SignUpResponse = {
   };
 };
 
-// Challenge handler registry for maintainable challenge response handling
 type ChallengeHandler = (
   authData: AuthenticationResultResponse,
   email: string,
@@ -291,7 +290,6 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const authData = (await authResult.json()) as AuthenticationResultResponse;
 
-    // Use challenge handler registry for supported challenges
     if (authData.ChallengeName) {
       const handler = CHALLENGE_HANDLERS[authData.ChallengeName];
 
@@ -299,7 +297,6 @@ export class CognitoAuthAdapter implements AuthAdapter {
         return handler(authData, input.email);
       }
 
-      // Challenge exists but no handler - return unsupported
       return {
         unsupportedChallenge: true,
         challengeName: authData.ChallengeName,

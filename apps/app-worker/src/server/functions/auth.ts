@@ -1,7 +1,7 @@
-import { createServerFn } from '@tanstack/react-start';
-import { redirect } from '@tanstack/react-router';
-import { env } from 'cloudflare:workers';
-import { z } from 'zod';
+import { createServerFn } from "@tanstack/react-start";
+import { redirect } from "@tanstack/react-router";
+import { env } from "cloudflare:workers";
+import { z } from "zod";
 import {
   createAuthAdapter,
   signInHandler,
@@ -17,9 +17,9 @@ import {
   forgotPasswordHandler,
   resetPasswordHandler,
   useAppSession,
-} from '@bitwobbly/auth/server';
+} from "@bitwobbly/auth/server";
 
-import { getDb } from '../lib/db';
+import { getDb } from "../lib/db";
 
 const SignUpSchema = z.object({
   email: z.string().email(),
@@ -32,14 +32,14 @@ const SignInSchema = z.object({
   password: z.string().min(1),
 });
 
-export const signUpFn = createServerFn({ method: 'POST' })
+export const signUpFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => SignUpSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -58,27 +58,27 @@ export const signUpFn = createServerFn({ method: 'POST' })
     });
 
     if (!response.user) {
-      throw new Error('Sign up failed');
+      throw new Error("Sign up failed");
     }
 
     if (
-      'requiresEmailVerification' in response &&
+      "requiresEmailVerification" in response &&
       response.requiresEmailVerification
     ) {
-      throw redirect({ to: '/verify-email' });
+      throw redirect({ to: "/verify-email" });
     }
 
-    throw redirect({ to: '/onboarding' });
+    throw redirect({ to: "/onboarding" });
   });
 
-export const signInFn = createServerFn({ method: 'POST' })
+export const signInFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => SignInSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -105,7 +105,7 @@ export const signInFn = createServerFn({ method: 'POST' })
       throw redirect({ to: `/mfa-challenge` });
     }
 
-    if ('requiresMFASetup' in response) {
+    if ("requiresMFASetup" in response) {
       throw redirect({ to: `/setup-mfa` });
     }
 
@@ -113,34 +113,34 @@ export const signInFn = createServerFn({ method: 'POST' })
       throw redirect({ to: `/reset-password` });
     }
 
-    if ('requiresNewPassword' in response) {
+    if ("requiresNewPassword" in response) {
       throw redirect({ to: `/new-password` });
     }
 
-    if ('unsupportedChallenge' in response) {
+    if ("unsupportedChallenge" in response) {
       throw redirect({
         to: `/auth-error`,
         search: { challenge: response.challengeName },
       });
     }
 
-    throw redirect({ to: '/app' });
+    throw redirect({ to: "/app" });
   });
 
-export const signOutFn = createServerFn({ method: 'POST' }).handler(
+export const signOutFn = createServerFn({ method: "POST" }).handler(
   async () => {
     await signOutHandler();
-    throw redirect({ to: '/login' });
+    throw redirect({ to: "/login" });
   },
 );
 
-export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
+export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
   async () => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -166,14 +166,14 @@ const VerifyMFASchema = z.object({
   code: z.string().min(1),
 });
 
-export const verifyMFAFn = createServerFn({ method: 'POST' })
+export const verifyMFAFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => VerifyMFASchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -190,13 +190,13 @@ export const verifyMFAFn = createServerFn({ method: 'POST' })
     return { user: await getCurrentUserHandler(adapter) };
   });
 
-export const setupMFAFn = createServerFn({ method: 'POST' }).handler(
+export const setupMFAFn = createServerFn({ method: "POST" }).handler(
   async () => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -212,14 +212,14 @@ export const setupMFAFn = createServerFn({ method: 'POST' }).handler(
   },
 );
 
-export const verifyMFASetupFn = createServerFn({ method: 'POST' })
+export const verifyMFASetupFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => VerifyMFASchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -240,14 +240,14 @@ const NewPasswordSchema = z.object({
   password: z.string().min(8),
 });
 
-export const newPasswordFn = createServerFn({ method: 'POST' })
+export const newPasswordFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => NewPasswordSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -269,14 +269,14 @@ const VerifyEmailSchema = z.object({
   email: z.string().email().optional(),
 });
 
-export const verifyEmailFn = createServerFn({ method: 'POST' })
+export const verifyEmailFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => VerifyEmailSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -290,21 +290,21 @@ export const verifyEmailFn = createServerFn({ method: 'POST' })
 
     await verifyEmailHandler(adapter, data.code, data.email);
 
-    throw redirect({ to: '/app' });
+    return { success: true };
   });
 
 const ResendVerificationSchema = z.object({
   email: z.string().email().optional(),
 });
 
-export const resendVerificationCodeFn = createServerFn({ method: 'POST' })
+export const resendVerificationCodeFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ResendVerificationSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -323,14 +323,14 @@ const ForgotPasswordSchema = z.object({
   email: z.string().email(),
 });
 
-export const forgotPasswordFn = createServerFn({ method: 'POST' })
+export const forgotPasswordFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ForgotPasswordSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,
@@ -351,14 +351,14 @@ const ResetPasswordSchema = z.object({
   password: z.string().min(8),
 });
 
-export const resetPasswordFn = createServerFn({ method: 'POST' })
+export const resetPasswordFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ResetPasswordSchema.parse(data))
   .handler(async ({ data }) => {
     const adapter = createAuthAdapter({
-      provider: env.AUTH_PROVIDER || 'custom',
+      provider: env.AUTH_PROVIDER || "custom",
       db: getDb(env.DB),
       cognito:
-        env.AUTH_PROVIDER === 'cognito'
+        env.AUTH_PROVIDER === "cognito"
           ? {
               region: env.COGNITO_REGION!,
               userPoolId: env.COGNITO_USER_POOL_ID!,

@@ -171,8 +171,7 @@ function IssueTracking() {
 
   const groupProjectsByComponent = () => {
     const grouped = new Map<string, SentryProject[]>();
-    
-    // Add projects with components to their component groups
+
     for (const project of projects) {
       if (project.componentId) {
         const componentId = project.componentId;
@@ -182,7 +181,7 @@ function IssueTracking() {
         grouped.get(componentId)?.push(project);
       }
     }
-    
+
     return grouped;
   };
 

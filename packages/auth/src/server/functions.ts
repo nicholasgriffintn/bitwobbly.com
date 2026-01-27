@@ -11,14 +11,22 @@ export async function signUpHandler(
   },
 ) {
   if (data.inviteCode !== requiredInviteCode) {
-    throw new Error("Invalid invite code");
+    throw new Error('Invalid invite code');
   }
 
   const result = await adapter.signUp(data);
 
-  await adapter.createSession(result.user.id);
-
   const session = await useAppSession();
+
+  if (
+    'requiresEmailVerification' in result &&
+    result.requiresEmailVerification
+  ) {
+    await session.update({ email: result.user.email });
+    return result;
+  }
+
+  await adapter.createSession(result.user.id);
   await session.update({ userId: result.user.id, email: result.user.email });
 
   return result;

@@ -10,12 +10,12 @@ import {
 
 export const Route = createFileRoute("/verify-email")({
   beforeLoad: async () => {
-    const { user } = await getCurrentUserFn();
-    if (!user) {
-      throw redirect({ to: "/login" });
-    }
+    const { user, email } = await getCurrentUserFn();
     if (user?.emailVerified) {
       throw redirect({ to: "/app" });
+    }
+    if (!email && !user) {
+      throw redirect({ to: '/login' });
     }
   },
   component: VerifyEmail,
@@ -26,7 +26,7 @@ function VerifyEmail() {
 
   const handleVerify = async (code: string) => {
     await verifyEmailFn({ data: { code } });
-    await navigate({ to: "/app" });
+    await navigate({ to: '/login' });
   };
 
   const handleResend = async () => {

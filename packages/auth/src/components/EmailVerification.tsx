@@ -9,7 +9,7 @@ export function EmailVerification({
   onResend?: () => Promise<void>;
   className?: string;
 }) {
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -17,15 +17,18 @@ export function EmailVerification({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (code.length !== 6) {
-      setError('Enter a 6-digit code');
+      setError("Enter a 6-digit code");
       return;
     }
     setLoading(true);
     setError(null);
     try {
       await onVerify(code);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "isRedirect" in err) {
+        throw err;
+      }
+      setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setLoading(false);
     }
@@ -37,9 +40,9 @@ export function EmailVerification({
     setError(null);
     try {
       await onResend();
-      setError('Verification code sent!');
+      setError("Verification code sent!");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend');
+      setError(err instanceof Error ? err.message : "Failed to resend");
     } finally {
       setResending(false);
     }
@@ -59,7 +62,7 @@ export function EmailVerification({
           pattern="[0-9]{6}"
           maxLength={6}
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           placeholder="000000"
           autoFocus
           disabled={loading}
@@ -68,7 +71,7 @@ export function EmailVerification({
       </div>
       {error && <div className="form-error">{error}</div>}
       <button type="submit" disabled={loading || code.length !== 6}>
-        {loading ? 'Verifying...' : 'Verify Email'}
+        {loading ? "Verifying..." : "Verify Email"}
       </button>
       {onResend && (
         <button
@@ -77,7 +80,7 @@ export function EmailVerification({
           disabled={resending}
           className="link-button"
         >
-          {resending ? 'Sending...' : 'Resend code'}
+          {resending ? "Sending..." : "Resend code"}
         </button>
       )}
     </form>

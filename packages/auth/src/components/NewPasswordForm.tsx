@@ -31,7 +31,10 @@ export function NewPasswordForm({
     setError(null);
     try {
       await onSubmit(password);
-    } catch (err) {
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "isRedirect" in err) {
+        throw err;
+      }
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setLoading(false);
