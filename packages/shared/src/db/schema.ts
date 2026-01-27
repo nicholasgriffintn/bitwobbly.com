@@ -3,7 +3,8 @@ import {
   integer,
   sqliteTable,
   primaryKey,
-} from "drizzle-orm/sqlite-core";
+  index,
+} from 'drizzle-orm/sqlite-core';
 
 export const teams = sqliteTable("teams", {
   id: text("id").primaryKey(),
@@ -168,28 +169,106 @@ export const notificationPolicies = sqliteTable("notification_policies", {
   createdAt: text("created_at").notNull(),
 });
 
-export const users = sqliteTable("users", {
-  id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash"),
-  teamId: text("team_id")
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  passwordHash: text('password_hash'),
+  teamId: text('team_id')
     .notNull()
     .references(() => teams.id),
-  currentTeamId: text("current_team_id").references(() => teams.id),
-  authProvider: text("auth_provider").notNull().default("custom"),
-  cognitoSub: text("cognito_sub").unique(),
-  mfaEnabled: integer("mfa_enabled").notNull().default(0),
-  emailVerified: integer("email_verified").notNull().default(0),
-  createdAt: text("created_at").notNull(),
+  currentTeamId: text('current_team_id').references(() => teams.id),
+  authProvider: text('auth_provider').notNull().default('custom'),
+  cognitoSub: text('cognito_sub').unique(),
+  mfaEnabled: integer('mfa_enabled').notNull().default(0),
+  emailVerified: integer('email_verified').notNull().default(0),
+  lastLoginAt: integer('last_login_at'),
+  createdAt: text('created_at').notNull(),
 });
 
-export const sessions = sqliteTable("sessions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
     .notNull()
     .references(() => users.id),
-  expiresAt: integer("expires_at").notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  lastUsedAt: integer('last_used_at').notNull(),
 });
+
+export const authChallenges = sqliteTable(
+  'auth_challenges',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    tokenHash: text('token_hash').notNull().unique(),
+    type: text('type').notNull(),
+    method: text('method'),
+    metadata: text('metadata'),
+    expiresAt: integer('expires_at').notNull(),
+    createdAt: integer('created_at').notNull(),
+    usedAt: integer('used_at'),
+  },
+  (table) => [
+    index('auth_challenges_user_expires_idx').on(table.userId, table.expiresAt),
+  ],
+);
+
+export const mfaCredentials = sqliteTable(
+  'mfa_credentials',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    type: text('type').notNull(),
+    secretEncrypted: text('secret_encrypted'),
+    credentialId: text('credential_id'),
+    publicKey: text('public_key'),
+    counter: integer('counter').notNull().default(0),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [
+    index('mfa_credentials_user_type_idx').on(table.userId, table.type),
+    index('mfa_credentials_credential_id_idx').on(table.credentialId),
+  ],
+);
+
+export const mfaRecoveryCodes = sqliteTable(
+  'mfa_recovery_codes',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    codeHash: text('code_hash').notNull().unique(),
+    usedAt: integer('used_at'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('mfa_recovery_codes_user_idx').on(table.userId)],
+);
+
+export const loginAuditLogs = sqliteTable(
+  'login_audit_logs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id').references(() => users.id),
+    email: text('email'),
+    event: text('event').notNull(),
+    status: text('status').notNull(),
+    reason: text('reason'),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    index('login_audit_logs_user_idx').on(table.userId),
+    index('login_audit_logs_email_idx').on(table.email),
+    index('login_audit_logs_created_idx').on(table.createdAt),
+  ],
+);
 
 export const userTeams = sqliteTable(
   "user_teams",
