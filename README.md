@@ -8,7 +8,6 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ### Incomplete Features
 
-- **Unified monitor alerts**: Add `sourceType: "monitor"` rules to replace notificationPolicies and phase out the old system
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
 - **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Cognito supports this but custom does not.
 - **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Both cognito and custom auth are affected. Cognito supports this but custom does not.

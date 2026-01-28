@@ -6,6 +6,7 @@ export interface CreateAlertRuleInput {
   enabled?: number;
   sourceType: string;
   projectId?: string | null;
+  monitorId?: string | null;
   environment?: string | null;
   triggerType: string;
   conditionsJson?: string | null;
@@ -19,6 +20,7 @@ export interface UpdateAlertRuleInput {
   name?: string;
   enabled?: number;
   projectId?: string | null;
+  monitorId?: string | null;
   environment?: string | null;
   triggerType?: string;
   conditionsJson?: string | null;
@@ -37,6 +39,7 @@ export async function listAlertRules(db: DB, teamId: string) {
       enabled: schema.alertRules.enabled,
       sourceType: schema.alertRules.sourceType,
       projectId: schema.alertRules.projectId,
+      monitorId: schema.alertRules.monitorId,
       environment: schema.alertRules.environment,
       triggerType: schema.alertRules.triggerType,
       conditionsJson: schema.alertRules.conditionsJson,
@@ -48,11 +51,16 @@ export async function listAlertRules(db: DB, teamId: string) {
       createdAt: schema.alertRules.createdAt,
       channelType: schema.notificationChannels.type,
       channelConfig: schema.notificationChannels.configJson,
+      monitorName: schema.monitors.name,
     })
     .from(schema.alertRules)
     .innerJoin(
       schema.notificationChannels,
       eq(schema.notificationChannels.id, schema.alertRules.channelId),
+    )
+    .leftJoin(
+      schema.monitors,
+      eq(schema.monitors.id, schema.alertRules.monitorId),
     )
     .where(eq(schema.alertRules.teamId, teamId))
     .orderBy(desc(schema.alertRules.createdAt));
@@ -85,6 +93,7 @@ export async function createAlertRule(
     enabled: input.enabled ?? 1,
     sourceType: input.sourceType,
     projectId: input.projectId || null,
+    monitorId: input.monitorId || null,
     environment: input.environment || null,
     triggerType: input.triggerType,
     conditionsJson: input.conditionsJson || null,

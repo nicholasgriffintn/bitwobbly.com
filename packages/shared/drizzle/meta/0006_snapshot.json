@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "e2468a86-6054-4e06-87a3-8d87f14edbe0",
-  "prevId": "352c5a1a-6b0e-4137-9b4e-6f6e28ad68a1",
+  "id": "102598dc-ec16-4ab1-95ea-9448972bbc5b",
+  "prevId": "e2468a86-6054-4e06-87a3-8d87f14edbe0",
   "tables": {
     "alert_rule_fires": {
       "name": "alert_rule_fires",
@@ -189,6 +189,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "monitor_id": {
+          "name": "monitor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "environment": {
           "name": "environment",
           "type": "text",
@@ -262,6 +269,19 @@
           "tableTo": "teams",
           "columnsFrom": [
             "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "alert_rules_monitor_id_monitors_id_fk": {
+          "name": "alert_rules_monitor_id_monitors_id_fk",
+          "tableFrom": "alert_rules",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "monitor_id"
           ],
           "columnsTo": [
             "id"

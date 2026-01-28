@@ -7,14 +7,14 @@ import { withSentry } from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
 import { sendAlertEmail, sendIssueAlertEmail } from "./lib/email";
-import { getDb } from "./lib/db";
-import { getNotificationPoliciesForMonitor } from "./repositories/notification-policies";
+import { getDb } from './lib/db';
 import {
   getAlertRuleById,
   getChannelById,
   getIssueById,
   getProjectById,
-} from "./repositories/alert-rules";
+  getAlertRulesForMonitor,
+} from './repositories/alert-rules';
 
 const handler = {
   async queue(batch: MessageBatch<AlertJob>, env: Env): Promise<void> {
@@ -51,29 +51,28 @@ async function handleMonitorAlert(
   env: Env,
   db: ReturnType<typeof getDb>,
 ) {
-  const policies = await getNotificationPoliciesForMonitor(
-    db,
-    job.team_id,
-    job.monitor_id,
-  );
+  const triggerType =
+    job.status === 'down' ? 'monitor_down' : 'monitor_recovery';
+  const rules = await getAlertRulesForMonitor(db, job.monitor_id, triggerType);
 
-  if (!policies.length) return;
+  if (!rules.length) return;
 
-  for (const p of policies) {
-    if (job.status === "up" && Number(p.notifyOnRecovery) !== 1) continue;
+  for (const rule of rules) {
+    const channel = await getChannelById(db, rule.channelId);
+    if (!channel) continue;
 
     let cfg: unknown = null;
     try {
-      cfg = JSON.parse(p.configJson);
+      cfg = JSON.parse(channel.configJson);
     } catch {
-      console.warn("invalid channel config", p.type);
+      console.warn('invalid channel config', channel.type);
       continue;
     }
 
-    if (p.type === "webhook") {
+    if (channel.type === 'webhook') {
       await sendWebhook(cfg as { url?: string }, {
         alert_id: job.alert_id,
-        type: "monitor",
+        type: 'monitor',
         team_id: job.team_id,
         monitor_id: job.monitor_id,
         status: job.status,
@@ -81,13 +80,13 @@ async function handleMonitorAlert(
         incident_id: job.incident_id,
         ts: new Date().toISOString(),
       });
-    } else if (p.type === "email") {
+    } else if (channel.type === 'email') {
       const emailConfig = cfg as { to?: string };
       const to = emailConfig.to;
       if (!to) continue;
 
       const statusText =
-        job.status === "down" ? "Service Down" : "Service Recovered";
+        job.status === 'down' ? 'Service Down' : 'Service Recovered';
 
       await sendAlertEmail({
         email: to,

@@ -42,3 +42,21 @@ export async function getProjectById(db: DrizzleD1Database, projectId: string) {
     .limit(1);
   return results[0] || null;
 }
+
+export async function getAlertRulesForMonitor(
+  db: DrizzleD1Database,
+  monitorId: string,
+  triggerType: string,
+) {
+  return await db
+    .select()
+    .from(schema.alertRules)
+    .where(
+      and(
+        eq(schema.alertRules.monitorId, monitorId),
+        eq(schema.alertRules.sourceType, 'monitor'),
+        eq(schema.alertRules.triggerType, triggerType),
+        eq(schema.alertRules.enabled, 1),
+      ),
+    );
+}

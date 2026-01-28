@@ -152,22 +152,6 @@ export const notificationChannels = sqliteTable("notification_channels", {
   createdAt: text("created_at").notNull(),
 });
 
-export const notificationPolicies = sqliteTable("notification_policies", {
-  id: text("id").primaryKey(),
-  teamId: text("team_id")
-    .notNull()
-    .references(() => teams.id),
-  monitorId: text("monitor_id")
-    .notNull()
-    .references(() => monitors.id),
-  channelId: text("channel_id")
-    .notNull()
-    .references(() => notificationChannels.id),
-  thresholdFailures: integer("threshold_failures").notNull().default(3),
-  notifyOnRecovery: integer("notify_on_recovery").notNull().default(1),
-  createdAt: text("created_at").notNull(),
-});
-
 export const alertRules = sqliteTable('alert_rules', {
   id: text('id').primaryKey(),
   teamId: text('team_id')
@@ -177,6 +161,7 @@ export const alertRules = sqliteTable('alert_rules', {
   enabled: integer('enabled').notNull().default(1),
   sourceType: text('source_type').notNull(),
   projectId: text('project_id'),
+  monitorId: text('monitor_id').references(() => monitors.id),
   environment: text('environment'),
   triggerType: text('trigger_type').notNull(),
   conditionsJson: text('conditions_json'),

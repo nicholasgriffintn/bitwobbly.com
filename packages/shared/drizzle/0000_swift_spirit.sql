@@ -91,19 +91,6 @@ CREATE TABLE `notification_channels` (
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE TABLE `notification_policies` (
-	`id` text PRIMARY KEY NOT NULL,
-	`team_id` text NOT NULL,
-	`monitor_id` text NOT NULL,
-	`channel_id` text NOT NULL,
-	`threshold_failures` integer DEFAULT 3 NOT NULL,
-	`notify_on_recovery` integer DEFAULT 1 NOT NULL,
-	`created_at` text NOT NULL,
-	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`monitor_id`) REFERENCES `monitors`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`channel_id`) REFERENCES `notification_channels`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
 CREATE TABLE `sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,

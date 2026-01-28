@@ -10,11 +10,7 @@ import {
   createChannelFn,
   deleteChannelFn,
 } from "@/server/functions/notification-channels";
-import {
-  listPoliciesFn,
-  createPolicyFn,
-  deletePolicyFn,
-} from "@/server/functions/notification-policies";
+
 import {
   listAlertRulesFn,
   createAlertRuleFn,
@@ -41,24 +37,13 @@ type Channel = {
   createdAt: string;
 };
 
-type Policy = {
-  id: string;
-  monitorId: string;
-  monitorName: string;
-  channelId: string;
-  channelType: string;
-  channelConfig: string;
-  thresholdFailures: number;
-  notifyOnRecovery: number;
-  createdAt: string;
-};
-
 type AlertRule = {
   id: string;
   name: string;
   enabled: number;
   sourceType: string;
   projectId: string | null;
+  monitorId: string | null;
   environment: string | null;
   triggerType: string;
   conditionsJson: string | null;
@@ -70,9 +55,10 @@ type AlertRule = {
   createdAt: string;
   channelType: string;
   channelConfig: string;
+  monitorName?: string;
 };
 
-type Tab = 'channels' | 'policies' | 'rules';
+type Tab = 'channels' | 'rules';
 
 const TRIGGER_TYPES = [
   { value: 'new_issue', label: 'New Issue' },
@@ -81,6 +67,8 @@ const TRIGGER_TYPES = [
   { value: 'user_threshold', label: 'User Threshold' },
   { value: 'status_change', label: 'Status Change' },
   { value: 'high_priority', label: 'High Priority' },
+  { value: 'monitor_down', label: 'Monitor Down' },
+  { value: 'monitor_recovery', label: 'Monitor Recovery' },
 ];
 
 const TIME_WINDOWS = [
@@ -104,17 +92,16 @@ const ACTION_INTERVALS = [
 export const Route = createFileRoute("/app/notifications")({
   component: Notifications,
   loader: async () => {
-    const [channelsRes, policiesRes, monitorsRes, projectsRes, rulesRes] =
-      await Promise.all([
+    const [channelsRes, monitorsRes, projectsRes, rulesRes] = await Promise.all(
+      [
         listChannelsFn(),
-        listPoliciesFn(),
         listMonitorsFn(),
         listSentryProjectsFn(),
         listAlertRulesFn(),
-      ]);
+      ],
+    );
     return {
       channels: channelsRes.channels,
-      policies: policiesRes.policies,
       monitors: monitorsRes.monitors,
       projects: projectsRes.projects,
       rules: rulesRes.rules,
@@ -125,7 +112,6 @@ export const Route = createFileRoute("/app/notifications")({
 export default function Notifications() {
   const {
     channels: initialChannels,
-    policies: initialPolicies,
     monitors: initialMonitors,
     projects: initialProjects,
     rules: initialRules,
@@ -133,14 +119,12 @@ export default function Notifications() {
 
   const [activeTab, setActiveTab] = useState<Tab>('channels');
   const [channels, setChannels] = useState<Channel[]>(initialChannels);
-  const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
   const [monitors] = useState<Monitor[]>(initialMonitors);
   const [projects] = useState<Project[]>(initialProjects);
   const [rules, setRules] = useState<AlertRule[]>(initialRules);
   const [error, setError] = useState<string | null>(null);
 
   const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
-  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
 
@@ -151,13 +135,10 @@ export default function Notifications() {
   const [emailFrom, setEmailFrom] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
 
-  const [monitorId, setMonitorId] = useState(initialMonitors?.[0]?.id || "");
-  const [channelId, setChannelId] = useState(initialChannels?.[0]?.id || "");
-  const [threshold, setThreshold] = useState("3");
-  const [notifyOnRecovery, setNotifyOnRecovery] = useState(true);
-
   const [ruleName, setRuleName] = useState('');
+  const [ruleSourceType, setRuleSourceType] = useState('issue');
   const [ruleProjectId, setRuleProjectId] = useState('');
+  const [ruleMonitorId, setRuleMonitorId] = useState('');
   const [ruleEnvironment, setRuleEnvironment] = useState('');
   const [ruleTriggerType, setRuleTriggerType] = useState('new_issue');
   const [ruleChannelId, setRuleChannelId] = useState(
@@ -176,10 +157,6 @@ export default function Notifications() {
   const deleteChannel = useServerFn(deleteChannelFn);
   const listChannels = useServerFn(listChannelsFn);
 
-  const createPolicy = useServerFn(createPolicyFn);
-  const deletePolicy = useServerFn(deletePolicyFn);
-  const listPolicies = useServerFn(listPoliciesFn);
-
   const createRule = useServerFn(createAlertRuleFn);
   const updateRule = useServerFn(updateAlertRuleFn);
   const deleteRule = useServerFn(deleteAlertRuleFn);
@@ -188,7 +165,9 @@ export default function Notifications() {
 
   const resetRuleForm = () => {
     setRuleName('');
+    setRuleSourceType('issue');
     setRuleProjectId('');
+    setRuleMonitorId('');
     setRuleEnvironment('');
     setRuleTriggerType('new_issue');
     setRuleChannelId(channels?.[0]?.id || '');
@@ -206,7 +185,9 @@ export default function Notifications() {
   const openEditRule = (rule: AlertRule) => {
     setEditingRule(rule);
     setRuleName(rule.name);
+    setRuleSourceType(rule.sourceType);
     setRuleProjectId(rule.projectId || '');
+    setRuleMonitorId(rule.monitorId || '');
     setRuleEnvironment(rule.environment || '');
     setRuleTriggerType(rule.triggerType);
     setRuleChannelId(rule.channelId);
@@ -252,8 +233,7 @@ export default function Notifications() {
       }
       const res = await listChannels();
       setChannels(res.channels);
-      if (!channelId && res.channels.length) {
-        setChannelId(res.channels[0].id);
+      if (res.channels.length) {
         setRuleChannelId(res.channels[0].id);
       }
       setUrl("");
@@ -268,27 +248,7 @@ export default function Notifications() {
     }
   };
 
-  const onCreatePolicy = async (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    try {
-      await createPolicy({
-        data: {
-          monitor_id: monitorId,
-          channel_id: channelId,
-          threshold_failures: Number(threshold),
-          notify_on_recovery: notifyOnRecovery ? 1 : 0,
-        },
-      });
-      const res = await listPolicies();
-      setPolicies(res.policies);
-      setThreshold("3");
-      setNotifyOnRecovery(true);
-      setIsPolicyModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
+
 
   const onSaveRule = async (event: FormEvent) => {
     event.preventDefault();
@@ -318,7 +278,11 @@ export default function Notifications() {
           data: {
             id: editingRule.id,
             name: ruleName,
-            projectId: ruleProjectId || null,
+            sourceType: ruleSourceType,
+            projectId:
+              ruleSourceType === 'issue' ? ruleProjectId || null : null,
+            monitorId:
+              ruleSourceType === 'monitor' ? ruleMonitorId || null : null,
             environment: ruleEnvironment || null,
             triggerType: ruleTriggerType,
             channelId: ruleChannelId,
@@ -331,8 +295,11 @@ export default function Notifications() {
         await createRule({
           data: {
             name: ruleName,
-            sourceType: 'issue',
-            projectId: ruleProjectId || null,
+            sourceType: ruleSourceType,
+            projectId:
+              ruleSourceType === 'issue' ? ruleProjectId || null : null,
+            monitorId:
+              ruleSourceType === 'monitor' ? ruleMonitorId || null : null,
             environment: ruleEnvironment || null,
             triggerType: ruleTriggerType as
               | 'new_issue'
@@ -362,18 +329,7 @@ export default function Notifications() {
     try {
       await deleteChannel({ data: { id } });
       setChannels((prev) => prev.filter((c) => c.id !== id));
-      setPolicies((prev) => prev.filter((p) => p.channelId !== id));
       setRules((prev) => prev.filter((r) => r.channelId !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
-
-  const onDeletePolicy = async (id: string) => {
-    setError(null);
-    try {
-      await deletePolicy({ data: { id } });
-      setPolicies((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -437,11 +393,6 @@ export default function Notifications() {
               Add Channel
             </button>
           )}
-          {activeTab === 'policies' && (
-            <button onClick={() => setIsPolicyModalOpen(true)}>
-              Add Policy
-            </button>
-          )}
           {activeTab === 'rules' && (
             <button
               onClick={() => {
@@ -465,14 +416,6 @@ export default function Notifications() {
           style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
         >
           Channels ({channels.length})
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'policies' ? '' : 'outline'}
-          onClick={() => setActiveTab('policies')}
-          style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-        >
-          Policies ({policies.length})
         </button>
         <button
           type="button"
@@ -517,45 +460,6 @@ export default function Notifications() {
         </div>
       )}
 
-      {activeTab === 'policies' && (
-        <div className="card">
-          <div className="card-title">Monitor Policies</div>
-          <p className="muted mb-4">
-            Policies route monitor incidents to notification channels.
-          </p>
-          <div className="list">
-            {policies.length ? (
-              policies.map((policy) => {
-                const config = JSON.parse(policy.channelConfig);
-                const channelLabel =
-                  config.label || config.url || config.to || 'Channel';
-                return (
-                  <div key={policy.id} className="list-row">
-                    <div>
-                      <div className="list-title">{policy.monitorName}</div>
-                      <div className="muted">
-                        [{policy.channelType}] {channelLabel} ·{' '}
-                        {policy.thresholdFailures} fails
-                        {policy.notifyOnRecovery ? ' · recovery' : ''}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="outline"
-                      onClick={() => onDeletePolicy(policy.id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="muted">No notification policies yet.</div>
-            )}
-          </div>
-        </div>
-      )}
-
       {activeTab === 'rules' && (
         <div className="card">
           <div className="card-title">Issue Alert Rules</div>
@@ -584,9 +488,11 @@ export default function Notifications() {
                         <span className="pill tiny">
                           {getTriggerLabel(rule.triggerType)}
                         </span>{' '}
-                        · {getProjectName(rule.projectId)}
-                        {rule.environment ? ` (${rule.environment})` : ''} · [
-                        {rule.channelType}] {channelLabel}
+                        ·{' '}
+                        {rule.sourceType === 'monitor'
+                          ? `Monitor: ${rule.monitorName || 'Unknown'}`
+                          : `${getProjectName(rule.projectId)}${rule.environment ? ` (${rule.environment})` : ''}`}{' '}
+                        · [{rule.channelType}] {channelLabel}
                       </div>
                       <div className="muted" style={{ fontSize: '0.8rem' }}>
                         Last triggered:{' '}
@@ -708,77 +614,6 @@ export default function Notifications() {
       </Modal>
 
       <Modal
-        isOpen={isPolicyModalOpen}
-        onClose={() => setIsPolicyModalOpen(false)}
-        title="Create Monitor Policy"
-      >
-        <form className="form" onSubmit={onCreatePolicy}>
-          <label htmlFor="policy-monitor">Monitor</label>
-          <select
-            id="policy-monitor"
-            value={monitorId}
-            onChange={(e) => setMonitorId(e.target.value)}
-            required
-          >
-            <option value="">Select monitor</option>
-            {monitors.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-
-          <label htmlFor="policy-channel">Channel</label>
-          <select
-            id="policy-channel"
-            value={channelId}
-            onChange={(e) => setChannelId(e.target.value)}
-            required
-          >
-            <option value="">Select channel</option>
-            {channels.map((ch) => {
-              const display = getChannelDisplay(ch);
-              return (
-                <option key={ch.id} value={ch.id}>
-                  [{ch.type}] {display.title}
-                </option>
-              );
-            })}
-          </select>
-
-          <label htmlFor="policy-threshold">Failure threshold</label>
-          <input
-            id="policy-threshold"
-            type="number"
-            min="1"
-            max="10"
-            value={threshold}
-            onChange={(e) => setThreshold(e.target.value)}
-          />
-
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={notifyOnRecovery}
-              onChange={(e) => setNotifyOnRecovery(e.target.checked)}
-            />
-            Notify on recovery
-          </label>
-
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="submit">Save Policy</button>
-            <button
-              type="button"
-              className="outline"
-              onClick={() => setIsPolicyModalOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      <Modal
         isOpen={isRuleModalOpen}
         onClose={() => {
           setIsRuleModalOpen(false);
@@ -796,32 +631,71 @@ export default function Notifications() {
             required
           />
 
-          <div className="grid two">
+          <label htmlFor="rule-source-type">Source Type</label>
+          <select
+            id="rule-source-type"
+            value={ruleSourceType}
+            onChange={(e) => {
+              const newSourceType = e.target.value;
+              setRuleSourceType(newSourceType);
+              if (newSourceType === 'monitor') {
+                setRuleTriggerType('monitor_down');
+              } else {
+                setRuleTriggerType('new_issue');
+              }
+            }}
+          >
+            <option value="issue">Issue</option>
+            <option value="monitor">Monitor</option>
+          </select>
+
+          {ruleSourceType === 'issue' && (
+            <div className="grid two">
+              <div>
+                <label htmlFor="rule-project">Project (optional)</label>
+                <select
+                  id="rule-project"
+                  value={ruleProjectId}
+                  onChange={(e) => setRuleProjectId(e.target.value)}
+                >
+                  <option value="">All projects</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="rule-environment">Environment (optional)</label>
+                <input
+                  id="rule-environment"
+                  value={ruleEnvironment}
+                  onChange={(e) => setRuleEnvironment(e.target.value)}
+                  placeholder="production"
+                />
+              </div>
+            </div>
+          )}
+
+          {ruleSourceType === 'monitor' && (
             <div>
-              <label htmlFor="rule-project">Project (optional)</label>
+              <label htmlFor="rule-monitor">Monitor</label>
               <select
-                id="rule-project"
-                value={ruleProjectId}
-                onChange={(e) => setRuleProjectId(e.target.value)}
+                id="rule-monitor"
+                value={ruleMonitorId}
+                onChange={(e) => setRuleMonitorId(e.target.value)}
+                required
               >
-                <option value="">All projects</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
+                <option value="">Select a monitor</option>
+                {monitors.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
                   </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label htmlFor="rule-environment">Environment (optional)</label>
-              <input
-                id="rule-environment"
-                value={ruleEnvironment}
-                onChange={(e) => setRuleEnvironment(e.target.value)}
-                placeholder="production"
-              />
-            </div>
-          </div>
+          )}
 
           <label htmlFor="rule-trigger">Trigger</label>
           <select
@@ -829,7 +703,11 @@ export default function Notifications() {
             value={ruleTriggerType}
             onChange={(e) => setRuleTriggerType(e.target.value)}
           >
-            {TRIGGER_TYPES.map((t) => (
+            {TRIGGER_TYPES.filter((t) =>
+              ruleSourceType === 'monitor'
+                ? ['monitor_down', 'monitor_recovery'].includes(t.value)
+                : !['monitor_down', 'monitor_recovery'].includes(t.value),
+            ).map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>

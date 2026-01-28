@@ -9,8 +9,8 @@ import {
   createAlertRule,
   updateAlertRule,
   deleteAlertRule,
-  listAlertRuleFires,
   toggleAlertRule,
+  listAlertRuleFires,
 } from "../repositories/alert-rules";
 import { notificationChannelExists } from "../repositories/notification-channels";
 import { requireTeam } from "../lib/auth-middleware";

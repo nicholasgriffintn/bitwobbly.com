@@ -1,0 +1,1 @@
+ALTER TABLE `alert_rules` ADD `monitor_id` text REFERENCES monitors(id);
