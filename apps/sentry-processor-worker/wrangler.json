@@ -40,6 +40,12 @@
         "max_batch_size": 10,
         "max_batch_timeout": 5
       }
+    ],
+    "producers": [
+      {
+        "binding": "ALERT_JOBS",
+        "queue": "bitwobbly-alert-jobs"
+      }
     ]
   }
 }

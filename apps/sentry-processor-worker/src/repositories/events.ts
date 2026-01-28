@@ -2,6 +2,12 @@ import { schema, nowIso, randomId } from "@bitwobbly/shared";
 import { eq, and } from "drizzle-orm";
 import type { DB } from "../lib/db";
 
+export interface UpsertIssueResult {
+  issueId: string;
+  isNewIssue: boolean;
+  wasResolved: boolean;
+}
+
 export async function upsertIssue(
   db: DB,
   projectId: string,
@@ -11,7 +17,7 @@ export async function upsertIssue(
     level: string;
     culprit?: string | null;
   },
-): Promise<string> {
+): Promise<UpsertIssueResult> {
   const existing = await db
     .select()
     .from(schema.sentryIssues)
@@ -24,16 +30,30 @@ export async function upsertIssue(
     .limit(1);
 
   if (existing[0]) {
+    const wasResolved =
+      existing[0].status === "resolved" || existing[0].status === "ignored";
     const now = Math.floor(Date.now() / 1000);
+
+    const updates: Record<string, unknown> = {
+      lastSeenAt: now,
+      eventCount: existing[0].eventCount + 1,
+    };
+
+    if (wasResolved) {
+      updates.status = "unresolved";
+      updates.resolvedAt = null;
+    }
+
     await db
       .update(schema.sentryIssues)
-      .set({
-        lastSeenAt: now,
-        eventCount: existing[0].eventCount + 1,
-      })
+      .set(updates)
       .where(eq(schema.sentryIssues.id, existing[0].id));
 
-    return existing[0].id;
+    return {
+      issueId: existing[0].id,
+      isNewIssue: false,
+      wasResolved,
+    };
   }
 
   const id = randomId("iss");
@@ -55,7 +75,11 @@ export async function upsertIssue(
     createdAt: nowIso(),
   });
 
-  return id;
+  return {
+    issueId: id,
+    isNewIssue: true,
+    wasResolved: false,
+  };
 }
 
 export async function insertEvent(

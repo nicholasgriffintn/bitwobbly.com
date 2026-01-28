@@ -168,6 +168,54 @@ export const notificationPolicies = sqliteTable("notification_policies", {
   createdAt: text("created_at").notNull(),
 });
 
+export const alertRules = sqliteTable('alert_rules', {
+  id: text('id').primaryKey(),
+  teamId: text('team_id')
+    .notNull()
+    .references(() => teams.id),
+  name: text('name').notNull(),
+  enabled: integer('enabled').notNull().default(1),
+  sourceType: text('source_type').notNull(),
+  projectId: text('project_id'),
+  environment: text('environment'),
+  triggerType: text('trigger_type').notNull(),
+  conditionsJson: text('conditions_json'),
+  thresholdJson: text('threshold_json'),
+  channelId: text('channel_id')
+    .notNull()
+    .references(() => notificationChannels.id),
+  actionIntervalSeconds: integer('action_interval_seconds')
+    .notNull()
+    .default(3600),
+  lastTriggeredAt: integer('last_triggered_at'),
+  ownerId: text('owner_id'),
+
+  createdAt: text('created_at').notNull(),
+});
+
+export const alertRuleStates = sqliteTable('alert_rule_states', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id')
+    .notNull()
+    .references(() => alertRules.id),
+  issueId: text('issue_id').notNull(),
+  status: text('status').notNull(),
+  triggeredAt: integer('triggered_at').notNull(),
+  resolvedAt: integer('resolved_at'),
+});
+
+export const alertRuleFires = sqliteTable('alert_rule_fires', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id')
+    .notNull()
+    .references(() => alertRules.id),
+  issueId: text('issue_id'),
+  eventId: text('event_id'),
+  severity: text('severity').notNull(),
+  triggerReason: text('trigger_reason').notNull(),
+  firedAt: integer('fired_at').notNull(),
+});
+
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -374,6 +422,12 @@ export type NotificationChannel = typeof notificationChannels.$inferSelect;
 export type NewNotificationChannel = typeof notificationChannels.$inferInsert;
 export type NotificationPolicy = typeof notificationPolicies.$inferSelect;
 export type NewNotificationPolicy = typeof notificationPolicies.$inferInsert;
+export type AlertRule = typeof alertRules.$inferSelect;
+export type NewAlertRule = typeof alertRules.$inferInsert;
+export type AlertRuleState = typeof alertRuleStates.$inferSelect;
+export type NewAlertRuleState = typeof alertRuleStates.$inferInsert;
+export type AlertRuleFire = typeof alertRuleFires.$inferSelect;
+export type NewAlertRuleFire = typeof alertRuleFires.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;

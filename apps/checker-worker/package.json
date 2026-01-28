@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev --local --persist-to ../../.data",
     "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

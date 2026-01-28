@@ -319,36 +319,42 @@ function IssueTracking() {
           
           return (
             <div>
-              {/* Projects grouped by component */}
-              {projectsWithComponents.map(([componentId, projectList]) => 
-                renderProjectGroup(componentId, projectList)
+              {projectsWithComponents.map(([componentId, projectList]) =>
+                renderProjectGroup(componentId, projectList),
               )}
-              
-              {/* Projects without components */}
+
               {projectsWithoutComponents.length > 0 && (
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.5rem',
-                    marginBottom: '0.75rem',
-                    paddingBottom: '0.5rem',
-                    borderBottom: '1px solid var(--border)'
-                  }}>
-                    <span style={{ 
-                      fontWeight: '600', 
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.875rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      marginBottom: '0.75rem',
+                      paddingBottom: '0.5rem',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: '600',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.875rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
                       No Component
                     </span>
-                    <span className="pill small" style={{ 
-                      backgroundColor: 'var(--surface-1)',
-                      color: 'var(--text-secondary)'
-                    }}>
-                      {projectsWithoutComponents.length} project{projectsWithoutComponents.length !== 1 ? 's' : ''}
+                    <span
+                      className="pill small"
+                      style={{
+                        backgroundColor: 'var(--surface-1)',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      {projectsWithoutComponents.length} project
+                      {projectsWithoutComponents.length !== 1 ? 's' : ''}
                     </span>
                   </div>
                   <div className="list">
@@ -362,7 +368,9 @@ function IssueTracking() {
                               {project.platform && (
                                 <>
                                   {' · '}
-                                  <span className="pill small">{project.platform}</span>
+                                  <span className="pill small">
+                                    {project.platform}
+                                  </span>
                                 </>
                               )}
                             </div>

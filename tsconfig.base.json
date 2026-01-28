@@ -8,7 +8,6 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types"],
     "resolveJsonModule": true,
-    "noEmit": true,
-    "noExplicitAny": true
+    "noEmit": true
   }
 }

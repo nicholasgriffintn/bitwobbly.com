@@ -11,6 +11,70 @@ export interface UptimeMetrics {
   p99LatencyMs: number;
 }
 
+export interface CheckJob {
+  monitor_id: string;
+  team_id: string;
+  url: string;
+  timeout_ms?: number;
+  failure_threshold?: number;
+  monitor_type?: string;
+  external_config?: string;
+}
+
+export interface MonitorAlertJob {
+  type: "monitor";
+  alert_id: string;
+  team_id: string;
+  monitor_id: string;
+  status: "up" | "down";
+  reason?: string;
+  incident_id?: string;
+}
+
+export interface IssueAlertJob {
+  type: "issue";
+  alert_id: string;
+  team_id: string;
+  rule_id: string;
+  issue_id: string;
+  event_id?: string;
+  severity: "critical" | "warning" | "resolved";
+  trigger_type: string;
+  trigger_value?: number;
+  threshold?: number;
+  project_id: string;
+  environment?: string;
+}
+
+export type AlertJob = MonitorAlertJob | IssueAlertJob;
+
+export type AlertTriggerType =
+  | "new_issue"
+  | "issue_regression"
+  | "event_threshold"
+  | "user_threshold"
+  | "status_change"
+  | "high_priority";
+
+export interface AlertThreshold {
+  type: "static" | "percent_change";
+  windowSeconds: number;
+  metric: "count" | "count_unique_users" | "avg_events_per_hour";
+  critical: number;
+  warning?: number;
+  resolved?: number;
+  comparisonWindow?: "1h" | "1d" | "1w" | "30d";
+}
+
+export interface AlertConditions {
+  level?: ("error" | "warning" | "info" | "debug")[];
+  environment?: string[];
+  tags?: Record<string, string>;
+  issueAge?: string;
+  release?: string;
+  eventType?: ("error" | "default")[];
+}
+
 export interface MetricDataPoint {
   timestamp: string;
   uptimePercentage: number;

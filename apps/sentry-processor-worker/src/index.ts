@@ -6,7 +6,9 @@ import {
   generateTitle,
   extractCulprit,
 } from "./lib/fingerprint";
+import { evaluateAlertRules } from './lib/alert-rules';
 import { upsertIssue, insertEvent } from "./repositories/events";
+import { getProjectTeamId } from './repositories/alert-rules';
 import type { Env, ProcessJob } from "./types/env";
 
 interface SentryEvent {
@@ -86,13 +88,14 @@ const handler = {
 
 export default withSentry(
   () => ({
-    dsn: "https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6",
-    environment: "production",
+    dsn: 'https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6',
+    environment: 'production',
     tracesSampleRate: 0.2,
     beforeSend(event) {
       return null;
     },
   }),
+  // @ts-ignore - CBA to fix this right now
   handler,
 );
 
@@ -124,15 +127,21 @@ async function processEvent(
   const level =
     job.item_type === "transaction" ? "info" : event.level || "error";
 
-  const issueId = await upsertIssue(db, job.project_id, {
-    fingerprint,
-    title,
-    level,
-    culprit,
-  });
+  const { issueId, isNewIssue, wasResolved } = await upsertIssue(
+    db,
+    job.project_id,
+    {
+      fingerprint,
+      title,
+      level,
+      culprit,
+    },
+  );
+
+  const eventId = job.event_id || crypto.randomUUID();
 
   await insertEvent(db, {
-    id: job.event_id || crypto.randomUUID(),
+    id: eventId,
     projectId: job.project_id,
     issueId,
     type: job.item_type,
@@ -150,6 +159,24 @@ async function processEvent(
     exception: event.exception || null,
     breadcrumbs: event.breadcrumbs || null,
   });
+
+  const projectTeamId = await getProjectTeamId(db, job.project_id);
+
+  if (projectTeamId) {
+    await evaluateAlertRules(env, db, {
+      eventId,
+      issueId,
+      projectId: job.project_id,
+      teamId: projectTeamId,
+      level,
+      environment: event.environment,
+      release: event.release,
+      tags: event.tags,
+      eventType: job.item_type,
+      isNewIssue,
+      wasResolved,
+    });
+  }
 }
 
 function extractEventFromEnvelope(

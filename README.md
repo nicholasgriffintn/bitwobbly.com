@@ -8,14 +8,11 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ### Incomplete Features
 
+- **Unified monitor alerts**: Add `sourceType: "monitor"` rules to replace notificationPolicies and phase out the old system
 - **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
 - **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Cognito supports this but custom does not.
 - **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Both cognito and custom auth are affected. Cognito supports this but custom does not.
 - **MFA support** -- No multi-factor authentication options for user accounts. Cognito supports this but custom does not.
-
-### Missing Integrations
-
-- **Configure notifications for issues** -- We don't trigger notifications on issues from the issue tracking integration yet.
 
 ### Nice-to-Haves
 
@@ -24,6 +21,12 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 - **Monitor response validation** -- Only HTTP status is checked. Body content matching, certificate expiry checks, and DNS monitoring would add value.
 - **API keys** -- No programmatic API access for users (settings page placeholder exists).
 - **Add more notification channels** -- Support for SMS, Slack, PagerDuty, etc. Maybe a bit of AI calling for incident response?
+- **More control of alerts** -- Support more advanced rules and features, like:
+- **Anomaly detection**: Dynamic thresholds using historical data patterns (requires background job for model training)
+- **Session-based triggers**: Percent of sessions affected, crash-free rate
+- **Alert preview**: Show which issues would have triggered in last 24h
+- **Digests**: Batch multiple alerts into periodic summary emails
+- **Mute/snooze**: Temporarily silence rules for maintenance windows
 
 
 ## Architecture

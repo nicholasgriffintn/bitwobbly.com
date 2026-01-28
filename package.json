@@ -15,6 +15,7 @@
     "lint": "turbo run lint",
     "lint:monorepo": "sherif",
     "typecheck": "turbo run typecheck",
+    "cf-typegen": "pnpm run -r cf-typegen",
     "build": "turbo run build",
     "build:staging": "turbo run build:staging",
     "test": "turbo run test",

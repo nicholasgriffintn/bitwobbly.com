@@ -1,6 +1,9 @@
+import type { IssueAlertJob } from "@bitwobbly/shared";
+
 export interface Env {
   DB: D1Database;
   SENTRY_RAW: R2Bucket;
+  ALERT_JOBS: Queue<IssueAlertJob>;
 }
 
 export interface ProcessJob {
