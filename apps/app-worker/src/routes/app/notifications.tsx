@@ -55,7 +55,7 @@ type AlertRule = {
   createdAt: string;
   channelType: string;
   channelConfig: string;
-  monitorName?: string;
+  monitorName: string | null;
 };
 
 type Tab = 'channels' | 'rules';
@@ -270,7 +270,9 @@ export default function Notifications() {
       : null;
 
     const conditions =
-      ruleFilterLevel.length > 0 ? { level: ruleFilterLevel } : null;
+      ruleSourceType === 'issue' && ruleFilterLevel.length > 0
+        ? { level: ruleFilterLevel }
+        : null;
 
     try {
       if (editingRule) {
@@ -307,7 +309,9 @@ export default function Notifications() {
               | 'event_threshold'
               | 'user_threshold'
               | 'status_change'
-              | 'high_priority',
+              | 'high_priority'
+              | 'monitor_down'
+              | 'monitor_recovery',
             channelId: ruleChannelId,
             actionIntervalSeconds: Number(ruleActionInterval),
             threshold,
@@ -640,6 +644,7 @@ export default function Notifications() {
               setRuleSourceType(newSourceType);
               if (newSourceType === 'monitor') {
                 setRuleTriggerType('monitor_down');
+                setRuleFilterLevel([]);
               } else {
                 setRuleTriggerType('new_issue');
               }
@@ -790,30 +795,32 @@ export default function Notifications() {
             </fieldset>
           )}
 
-          <fieldset className="fieldset">
-            <legend>Filters (optional)</legend>
-            <label>Error levels</label>
-            <div className="checkbox-group">
-              {['error', 'warning', 'info', 'debug'].map((level) => (
-                <label key={level} className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={ruleFilterLevel.includes(level)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setRuleFilterLevel([...ruleFilterLevel, level]);
-                      } else {
-                        setRuleFilterLevel(
-                          ruleFilterLevel.filter((l) => l !== level),
-                        );
-                      }
-                    }}
-                  />
-                  {level}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          {ruleSourceType === 'issue' && (
+            <fieldset className="fieldset">
+              <legend>Filters (optional)</legend>
+              <label>Error levels</label>
+              <div className="checkbox-group">
+                {['error', 'warning', 'info', 'debug'].map((level) => (
+                  <label key={level} className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={ruleFilterLevel.includes(level)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setRuleFilterLevel([...ruleFilterLevel, level]);
+                        } else {
+                          setRuleFilterLevel(
+                            ruleFilterLevel.filter((l) => l !== level),
+                          );
+                        }
+                      }}
+                    />
+                    {level}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           <label htmlFor="rule-channel">Notification Channel</label>
           <select

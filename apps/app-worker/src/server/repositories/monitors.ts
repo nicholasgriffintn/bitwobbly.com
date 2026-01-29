@@ -86,8 +86,8 @@ export async function createMonitor(
 
 export async function deleteMonitor(db: DB, teamId: string, monitorId: string) {
   await db
-    .delete(schema.notificationPolicies)
-    .where(eq(schema.notificationPolicies.monitorId, monitorId));
+    .delete(schema.alertRules)
+    .where(eq(schema.alertRules.monitorId, monitorId));
 
   await db
     .delete(schema.componentMonitors)

@@ -47,6 +47,8 @@ const CreateAlertRuleSchema = z.object({
     "user_threshold",
     "status_change",
     "high_priority",
+    "monitor_down",
+    "monitor_recovery",
   ]),
   conditions: ConditionsSchema.optional().nullable(),
   threshold: ThresholdSchema.optional().nullable(),
@@ -69,6 +71,8 @@ const UpdateAlertRuleSchema = z.object({
       "user_threshold",
       "status_change",
       "high_priority",
+      "monitor_down",
+      "monitor_recovery",
     ])
     .optional(),
   conditions: ConditionsSchema.optional().nullable(),

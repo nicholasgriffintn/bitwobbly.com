@@ -67,11 +67,11 @@ export async function deleteNotificationChannel(
   channelId: string,
 ) {
   await db
-    .delete(schema.notificationPolicies)
+    .delete(schema.alertRules)
     .where(
       and(
-        eq(schema.notificationPolicies.teamId, teamId),
-        eq(schema.notificationPolicies.channelId, channelId),
+        eq(schema.alertRules.teamId, teamId),
+        eq(schema.alertRules.channelId, channelId),
       ),
     );
   await db
