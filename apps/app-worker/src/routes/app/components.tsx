@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { Modal } from "@/components/Modal";
 import { ComponentMetrics } from "@/components/ComponentMetrics";
+import { toTitleCase } from '@/utils/format';
 import { listMonitorsFn } from "@/server/functions/monitors";
 import {
   listComponentsFn,
@@ -151,8 +152,8 @@ export default function Components() {
   };
 
   return (
-    <div className="page">
-      <div className="page-header mb-6">
+    <div className="page page-stack">
+      <div className="page-header">
         <div>
           <h2>Components</h2>
           <p>
@@ -177,20 +178,20 @@ export default function Components() {
                     <div className="list-title">
                       {component.name}
                       {component.currentStatus &&
-                        component.currentStatus !== "operational" && (
+                        component.currentStatus !== 'operational' && (
                           <span
                             className={`status-pill ${component.currentStatus}`}
-                            style={{ marginLeft: "0.5rem" }}
+                            style={{ marginLeft: '0.5rem' }}
                           >
-                            {component.currentStatus}
+                            {toTitleCase(component.currentStatus)}
                           </span>
                         )}
                     </div>
                     <div className="muted">
-                      {component.description || "No description"}
-                      {" · "}
+                      {component.description || 'No description'}
+                      {' · '}
                       {component.monitorIds.length} monitor
-                      {component.monitorIds.length !== 1 ? "s" : ""} linked
+                      {component.monitorIds.length !== 1 ? 's' : ''} linked
                     </div>
                   </div>
                   <div className="button-row">
@@ -206,8 +207,8 @@ export default function Components() {
                       }
                     >
                       {expandedComponentId === component.id
-                        ? "Hide"
-                        : "Metrics"}
+                        ? 'Hide'
+                        : 'Metrics'}
                     </button>
                     <button
                       type="button"
@@ -218,7 +219,7 @@ export default function Components() {
                         )
                       }
                     >
-                      {expandedId === component.id ? "Hide" : "Link"} monitors
+                      {expandedId === component.id ? 'Hide' : 'Link'} monitors
                     </button>
                     <button
                       type="button"
@@ -229,7 +230,7 @@ export default function Components() {
                     </button>
                     <button
                       type="button"
-                      className="outline"
+                      className="outline button-danger"
                       onClick={() => onDelete(component.id)}
                     >
                       Delete
@@ -238,7 +239,7 @@ export default function Components() {
                 </div>
 
                 {expandedComponentId === component.id && (
-                  <div style={{ marginTop: "1rem" }}>
+                  <div style={{ marginTop: '1rem' }}>
                     <ComponentMetrics
                       componentId={component.id}
                       componentName={component.name}
@@ -306,7 +307,7 @@ export default function Components() {
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Core API services"
           />
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="submit">Create Component</button>
             <button
               type="button"
@@ -340,7 +341,7 @@ export default function Components() {
             value={editDescription}
             onChange={(event) => setEditDescription(event.target.value)}
           />
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="submit">Save Changes</button>
             <button
               type="button"

@@ -4,6 +4,7 @@ import { listMonitorsFn } from '@/server/functions/monitors';
 import { listStatusPagesFn } from '@/server/functions/status-pages';
 import { listOpenIncidentsFn } from '@/server/functions/incidents';
 import { listChannelsFn } from '@/server/functions/notification-channels';
+import { toTitleCase } from '@/utils/format';
 
 export const Route = createFileRoute('/app/')({
   component: Overview,
@@ -44,8 +45,8 @@ function Overview() {
     monitors.length > 0 && channels.length > 0 && pages.length > 0;
 
   return (
-    <div className="page">
-      <div className="page-header mb-6">
+    <div className="page page-stack">
+      <div className="page-header">
         <div>
           <h2>System overview</h2>
           <p>Watch the fleet and keep stakeholders informed.</p>
@@ -62,7 +63,7 @@ function Overview() {
         </div>
       </div>
 
-      <div className="card mb-3">
+      <div className="card">
         <div className="flex items-center gap-3">
           <span
             className={`status-indicator ${overallStatus} w-3 h-3 rounded-full`}
@@ -91,7 +92,7 @@ function Overview() {
         </div>
       </div>
 
-      <div className="grid metrics mb-6">
+      <div className="grid metrics">
         <div className="card">
           <div className="metric-label">Monitors up</div>
           <div className="metric-value" style={{ color: 'var(--green)' }}>
@@ -125,7 +126,7 @@ function Overview() {
       </div>
 
       {!hasCompletedSetup && (
-        <div className="grid two mb-6">
+        <div className="grid two">
           <div className="card">
             <div className="card-title">Getting started</div>
             <div className="list">
@@ -161,12 +162,12 @@ function Overview() {
                 </div>
                 {monitors.length === 0 ? (
                   <Link to="/app/monitors">
-                    <button type="button" className="outline">
+                    <button type="button" className="outline button-success">
                       Add first
                     </button>
                   </Link>
                 ) : (
-                  <span className="pill small">done</span>
+                  <span className="pill small">Done</span>
                 )}
               </div>
               <div className="list-row">
@@ -176,12 +177,12 @@ function Overview() {
                 </div>
                 {channels.length === 0 ? (
                   <Link to="/app/notifications">
-                    <button type="button" className="outline">
+                    <button type="button" className="outline button-success">
                       Add first
                     </button>
                   </Link>
                 ) : (
-                  <span className="pill small">done</span>
+                  <span className="pill small">Done</span>
                 )}
               </div>
               <div className="list-row">
@@ -191,12 +192,12 @@ function Overview() {
                 </div>
                 {pages.length === 0 ? (
                   <Link to="/app/status-pages">
-                    <button type="button" className="outline">
+                    <button type="button" className="outline button-success">
                       Add first
                     </button>
                   </Link>
                 ) : (
-                  <span className="pill small">done</span>
+                  <span className="pill small">Done</span>
                 )}
               </div>
             </div>
@@ -205,7 +206,7 @@ function Overview() {
       )}
 
       {incidents.length > 0 && (
-        <div className="card mb-1.5">
+        <div className="card">
           <div className="card-title">Active incidents</div>
           <div className="list">
             {incidents.slice(0, 3).map((incident) => (
@@ -217,7 +218,7 @@ function Overview() {
                       className={`status-pill ${incident.status}`}
                       style={{ marginLeft: '0.5rem' }}
                     >
-                      {incident.status}
+                      {toTitleCase(incident.status)}
                     </span>
                   </div>
                   <div className="muted">
@@ -236,7 +237,7 @@ function Overview() {
         </div>
       )}
 
-      <div className="grid two mb-1.5">
+      <div className="grid two">
         <div className="card">
           <div className="card-title">Recent monitors</div>
           <div className="list">
@@ -250,7 +251,7 @@ function Overview() {
                   <span
                     className={`status ${monitor.state?.lastStatus || 'unknown'}`}
                   >
-                    {monitor.state?.lastStatus || 'unknown'}
+                    {toTitleCase(monitor.state?.lastStatus || 'unknown')}
                   </span>
                 </div>
               ))

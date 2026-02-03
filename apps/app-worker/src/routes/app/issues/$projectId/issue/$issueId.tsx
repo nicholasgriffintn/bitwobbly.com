@@ -8,6 +8,10 @@ import {
   getSentryEventPayloadFn,
   getSentryIssueFn,
 } from "@/server/functions/sentry";
+import { toTitleCase } from "@/utils/format";
+
+const supportsResolution = (level: string) =>
+  level === "error" || level === "warning";
 
 type Event = {
   id: string;
@@ -62,6 +66,7 @@ export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
 function IssueDetail() {
   const { projectId } = Route.useParams();
   const { events, issue } = Route.useLoaderData();
+  const issueSupportsResolution = supportsResolution(issue.level);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [eventPayload, setEventPayload] = useState<string | null>(null);
   const [isLoadingPayload, setIsLoadingPayload] = useState(false);
@@ -105,13 +110,17 @@ function IssueDetail() {
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="card-title">Issue Details</div>
         <div style={{ padding: "1rem" }}>
-          <div style={{ marginBottom: "0.5rem" }}>
-            <strong>Status:</strong>{" "}
-            <span className="pill small">{issue.status}</span>
-          </div>
+          {issueSupportsResolution && (
+            <div style={{ marginBottom: "0.5rem" }}>
+              <strong>Status:</strong>{" "}
+              <span className="pill small">{toTitleCase(issue.status)}</span>
+            </div>
+          )}
           <div style={{ marginBottom: "0.5rem" }}>
             <strong>Level:</strong>{" "}
-            <span className={`status ${issue.level}`}>{issue.level}</span>
+            <span className={`status ${issue.level}`}>
+              {toTitleCase(issue.level)}
+            </span>
           </div>
           <div style={{ marginBottom: "0.5rem" }}>
             <strong>Event Count:</strong> {issue.eventCount}

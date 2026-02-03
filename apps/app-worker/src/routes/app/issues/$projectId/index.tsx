@@ -18,6 +18,10 @@ import {
 import { EventMetrics } from "@/components/EventMetrics";
 import { EventVolumeChart } from "@/components/EventVolumeChart";
 import { SDKDistributionChart } from "@/components/SDKDistributionChart";
+import { toTitleCase } from '@/utils/format';
+
+const supportsResolution = (level: string) =>
+  level === 'error' || level === 'warning';
 
 type Issue = {
   id: string;
@@ -308,12 +312,14 @@ function ProjectIssues() {
                     <div style={{ flex: 1 }}>
                       <div className="list-title">
                         {issue.title}
-                        <span
-                          className="pill small"
-                          style={{ marginLeft: '0.5rem' }}
-                        >
-                          {issue.status}
-                        </span>
+                        {supportsResolution(issue.level) && (
+                          <span
+                            className="pill small"
+                            style={{ marginLeft: '0.5rem' }}
+                          >
+                            {toTitleCase(issue.status)}
+                          </span>
+                        )}
                       </div>
                       <div className="muted" style={{ marginTop: '0.25rem' }}>
                         <span className={`status ${issue.level}`}>
@@ -334,12 +340,20 @@ function ProjectIssues() {
                       </div>
                     </div>
                     <div className="button-row">
-                      {(issue.level === 'error' || issue.level === 'warning') &&
+                      <Link
+                        to="/app/issues/$projectId/issue/$issueId"
+                        params={{ projectId, issueId: issue.id }}
+                      >
+                        <button type="button" className="outline">
+                          View
+                        </button>
+                      </Link>
+                      {supportsResolution(issue.level) &&
                         (issue.status === 'unresolved' ? (
                           <>
                             <button
                               type="button"
-                              className="outline"
+                              className="outline button-success"
                               onClick={() =>
                                 handleStatusChange(issue.id, 'resolved')
                               }
@@ -349,7 +363,7 @@ function ProjectIssues() {
                             </button>
                             <button
                               type="button"
-                              className="outline"
+                              className="outline button-warning"
                               onClick={() =>
                                 handleStatusChange(issue.id, 'ignored')
                               }
@@ -370,14 +384,6 @@ function ProjectIssues() {
                             Reopen
                           </button>
                         ))}
-                      <Link
-                        to="/app/issues/$projectId/issue/$issueId"
-                        params={{ projectId, issueId: issue.id }}
-                      >
-                        <button type="button" className="outline">
-                          View
-                        </button>
-                      </Link>
                     </div>
                   </div>
                 </div>
@@ -525,7 +531,7 @@ function ProjectIssues() {
                                   className="pill small"
                                   style={{ marginLeft: '0.5rem' }}
                                 >
-                                  {stat.environment}
+                                  {toTitleCase(stat.environment)}
                                 </span>
                               )}
                             </div>

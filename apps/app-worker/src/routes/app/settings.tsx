@@ -15,6 +15,7 @@ import {
   getCurrentTeamFn,
 } from '@/server/functions/teams';
 import { seedDemoDataFn } from '@/server/functions/demo';
+import { toTitleCase } from '@/utils/format';
 
 type TeamMember = {
   userId: string;
@@ -91,8 +92,6 @@ export default function Settings() {
     (t) => t.id === (user?.currentTeamId || user?.teamId),
   );
   const isOwner = currentUserTeam?.role === 'owner';
-
-  console.log({ currentUserTeam, isOwner });
 
   const refreshMembers = async () => {
     try {
@@ -237,8 +236,8 @@ export default function Settings() {
   };
 
   return (
-    <div className="page">
-      <div className="page-header mb-6">
+    <div className="page page-stack">
+      <div className="page-header">
         <div>
           <h1>Team Settings</h1>
           <p>Manage your team members, invitations, and settings.</p>
@@ -268,7 +267,7 @@ export default function Settings() {
                   </button>
                   <button
                     type="button"
-                    className="outline"
+                    className="outline button-danger"
                     onClick={() => setIsDeleteTeamModalOpen(true)}
                   >
                     Delete Team
@@ -294,7 +293,7 @@ export default function Settings() {
               </div>
               <button
                 type="button"
-                className="outline"
+                className="outline button-warning"
                 onClick={onSeedDemoData}
                 disabled={isSeedingDemo}
               >
@@ -314,7 +313,9 @@ export default function Settings() {
                 <div style={{ flex: 1 }}>
                   <div className="list-title">{member.email}</div>
                   <div className="muted">
-                    <span className="pill small">{member.role}</span>
+                    <span className="pill small">
+                      {toTitleCase(member.role)}
+                    </span>
                     {' · '}
                     Joined {new Date(member.joinedAt).toLocaleDateString()}
                   </div>
@@ -330,7 +331,7 @@ export default function Settings() {
                     </button>
                     <button
                       type="button"
-                      className="outline"
+                      className="outline button-danger"
                       onClick={() => onRemoveMember(member.userId)}
                     >
                       Remove
@@ -354,7 +355,7 @@ export default function Settings() {
           {isOwner && (
             <button
               type="button"
-              className="outline"
+              className="outline button-success"
               onClick={() => setIsCreateInviteModalOpen(true)}
               style={{
                 marginLeft: 'auto',
@@ -383,7 +384,9 @@ export default function Settings() {
                       </div>
                       <div className="muted">
                         {invite.email && `For ${invite.email} · `}
-                        <span className="pill small">{invite.role}</span>
+                        <span className="pill small">
+                          {toTitleCase(invite.role)}
+                        </span>
                         {' · '}
                         {isExpired ? (
                           <span style={{ color: '#dc3545' }}>Expired</span>
@@ -403,7 +406,7 @@ export default function Settings() {
                         </button>
                         <button
                           type="button"
-                          className="outline"
+                          className="outline button-warning"
                           onClick={() => onRevokeInvite(invite.inviteCode)}
                         >
                           Revoke
@@ -547,7 +550,9 @@ export default function Settings() {
             />
 
             <div className="button-row" style={{ marginTop: '1rem' }}>
-              <button type="submit">Create Invite</button>
+              <button type="submit" className="button-success">
+                Create Invite
+              </button>
               <button
                 type="button"
                 className="outline"
@@ -572,11 +577,16 @@ export default function Settings() {
             projects associated with this team.
           </p>
           <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="button" className="outline" onClick={onDeleteTeam}>
+            <button
+              type="button"
+              className="outline button-danger"
+              onClick={onDeleteTeam}
+            >
               Delete Team
             </button>
             <button
               type="button"
+              className="outline"
               onClick={() => setIsDeleteTeamModalOpen(false)}
             >
               Cancel

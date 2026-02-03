@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Modal } from "@/components/Modal";
+import { toTitleCase } from '@/utils/format';
 import { listMonitorsFn } from "@/server/functions/monitors";
 import { listSentryProjectsFn } from '@/server/functions/sentry';
 import {
@@ -385,8 +386,8 @@ export default function Notifications() {
   };
 
   return (
-    <div className="page">
-      <div className="page-header mb-6">
+    <div className="page page-stack">
+      <div className="page-header">
         <div>
           <h2>Notifications</h2>
           <p>Route incidents and issues to webhooks or email.</p>
@@ -410,7 +411,7 @@ export default function Notifications() {
         </div>
       </div>
 
-      {error && <div className="card error mb-4">{error}</div>}
+      {error && <div className="card error">{error}</div>}
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <button
@@ -441,15 +442,25 @@ export default function Notifications() {
                 return (
                   <div key={channel.id} className="list-row">
                     <div>
-                      <div className="list-title">
-                        <span className="pill small">{channel.type}</span>{' '}
-                        {display.title}
+                      <div
+                        className="list-title"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span className="pill small">
+                          {toTitleCase(channel.type)}
+                        </span>
+                        <span>{display.title}</span>
                       </div>
                       <div className="muted">{display.subtitle}</div>
                     </div>
                     <button
                       type="button"
-                      className="outline"
+                      className="outline button-danger"
                       onClick={() => onDeleteChannel(channel.id)}
                     >
                       Remove
@@ -489,14 +500,14 @@ export default function Notifications() {
                         {rule.name}
                       </div>
                       <div className="muted">
-                        <span className="pill tiny">
+                        <span className="pill small">
                           {getTriggerLabel(rule.triggerType)}
                         </span>{' '}
                         ·{' '}
                         {rule.sourceType === 'monitor'
                           ? `Monitor: ${rule.monitorName || 'Unknown'}`
                           : `${getProjectName(rule.projectId)}${rule.environment ? ` (${rule.environment})` : ''}`}{' '}
-                        · [{rule.channelType}] {channelLabel}
+                        · [{toTitleCase(rule.channelType)}] {channelLabel}
                       </div>
                       <div className="muted" style={{ fontSize: '0.8rem' }}>
                         Last triggered:{' '}
@@ -504,26 +515,23 @@ export default function Notifications() {
                       </div>
                     </div>
                     <div className="button-row">
-                      <label className="toggle">
-                        <input
-                          type="checkbox"
-                          checked={!!rule.enabled}
-                          onChange={(e) =>
-                            onToggleRule(rule.id, e.target.checked)
-                          }
-                        />
-                        <span className="slider"></span>
-                      </label>
                       <button
                         type="button"
-                        className="outline small"
+                        className="outline"
                         onClick={() => openEditRule(rule)}
                       >
                         Edit
                       </button>
                       <button
                         type="button"
-                        className="outline small"
+                        className={`outline ${rule.enabled ? 'button-warning' : 'button-success'}`}
+                        onClick={() => onToggleRule(rule.id, !rule.enabled)}
+                      >
+                        {rule.enabled ? 'Disable' : 'Enable'}
+                      </button>
+                      <button
+                        type="button"
+                        className="outline button-danger"
                         onClick={() => onDeleteRule(rule.id)}
                       >
                         Delete
@@ -815,7 +823,7 @@ export default function Notifications() {
                         }
                       }}
                     />
-                    {level}
+                    {toTitleCase(level)}
                   </label>
                 ))}
               </div>

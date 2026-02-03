@@ -281,6 +281,18 @@ select {
   font-size: 12px;
 }
 
+.pill.success {
+  border-color: rgba(26, 143, 95, 0.35);
+  color: var(--success);
+  background: rgba(26, 143, 95, 0.08);
+}
+
+.pill.muted {
+  border-color: rgba(111, 98, 85, 0.25);
+  color: var(--muted);
+  background: rgba(111, 98, 85, 0.06);
+}
+
 .dot {
   width: 8px;
   height: 8px;
@@ -293,6 +305,11 @@ select {
   flex-direction: column;
   gap: 24px;
   animation: fadeIn 0.5s ease;
+}
+
+.page-stack {
+  display: grid;
+  gap: 20px;
 }
 
 .page-header {
@@ -337,6 +354,79 @@ button.outline {
   border: 1px solid var(--stroke);
   color: var(--ink);
   box-shadow: none;
+}
+
+button.outline:hover {
+  background: var(--bg);
+  transform: none;
+  box-shadow: none;
+}
+
+button.outline.button-info {
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #1e40af;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+button.outline.button-info:hover {
+  background: rgba(59, 130, 246, 0.16);
+}
+
+button.outline.button-success {
+  border-color: rgba(26, 143, 95, 0.35);
+  color: var(--success);
+  background: rgba(26, 143, 95, 0.08);
+}
+
+button.outline.button-success:hover {
+  background: rgba(26, 143, 95, 0.16);
+}
+
+button.outline.button-warning {
+  border-color: rgba(179, 87, 42, 0.35);
+  color: var(--warning);
+  background: rgba(179, 87, 42, 0.08);
+}
+
+button.outline.button-warning:hover {
+  background: rgba(179, 87, 42, 0.16);
+}
+
+button.outline.button-danger {
+  border-color: rgba(240, 74, 47, 0.4);
+  color: var(--primary-dark);
+  background: rgba(240, 74, 47, 0.08);
+}
+
+button.outline.button-danger:hover {
+  background: rgba(240, 74, 47, 0.16);
+}
+
+button.button-warning {
+  background: var(--warning);
+  box-shadow: 0 12px 20px rgba(179, 87, 42, 0.22);
+}
+
+button.button-warning:hover {
+  box-shadow: 0 16px 30px rgba(179, 87, 42, 0.28);
+}
+
+button.button-success {
+  background: var(--success);
+  box-shadow: 0 12px 20px rgba(26, 143, 95, 0.24);
+}
+
+button.button-success:hover {
+  box-shadow: 0 16px 30px rgba(26, 143, 95, 0.3);
+}
+
+button.button-danger {
+  background: var(--primary-dark);
+  box-shadow: 0 12px 20px rgba(196, 55, 32, 0.25);
+}
+
+button.button-danger:hover {
+  box-shadow: 0 16px 30px rgba(196, 55, 32, 0.3);
 }
 
 .button-row {

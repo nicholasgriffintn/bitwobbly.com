@@ -199,8 +199,8 @@ export default function StatusPages() {
   };
 
   return (
-    <div className="page">
-      <div className="page-header mb-6">
+    <div className="page page-stack">
+      <div className="page-header">
         <div>
           <h2>Status pages</h2>
           <p>Publish uptime updates for your customers.</p>
@@ -244,7 +244,7 @@ export default function StatusPages() {
                           setExpandedPageId(isExpanded ? null : page.id)
                         }
                       >
-                        {isExpanded ? "Hide" : "Components"}
+                        {isExpanded ? 'Hide' : 'Components'}
                       </button>
                       <button
                         type="button"
@@ -255,7 +255,7 @@ export default function StatusPages() {
                       </button>
                       <button
                         type="button"
-                        className="outline"
+                        className="outline button-danger"
                         onClick={() => onDelete(page.id)}
                       >
                         Delete
@@ -265,7 +265,7 @@ export default function StatusPages() {
 
                   {isExpanded && (
                     <div className="nested-list">
-                      <div className="muted" style={{ marginBottom: "0.5rem" }}>
+                      <div className="muted" style={{ marginBottom: '0.5rem' }}>
                         Link components to display on this status page:
                       </div>
                       {components.length ? (
@@ -331,8 +331,8 @@ export default function StatusPages() {
 
           <div
             style={{
-              marginTop: "1rem",
-              marginBottom: "0.5rem",
+              marginTop: '1rem',
+              marginBottom: '0.5rem',
               fontWeight: 600,
             }}
           >
@@ -349,18 +349,18 @@ export default function StatusPages() {
           />
 
           <label htmlFor="brand-color">Brand Color</label>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <input
               id="brand-color"
               type="color"
               value={brandColor}
               onChange={(event) => setBrandColor(event.target.value)}
               style={{
-                height: "2rem",
-                width: "4rem",
-                padding: "0",
-                border: "none",
-                borderRadius: "4px",
+                height: '2rem',
+                width: '4rem',
+                padding: '0',
+                border: 'none',
+                borderRadius: '4px',
               }}
             />
             <input
@@ -379,10 +379,10 @@ export default function StatusPages() {
             onChange={(event) => setCustomCss(event.target.value)}
             placeholder=".status-page { background: #f8f9fa; }"
             rows={4}
-            style={{ fontFamily: "monospace", fontSize: "0.875rem" }}
+            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
           />
 
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="submit">Create Status Page</button>
             <button
               type="button"
@@ -418,8 +418,8 @@ export default function StatusPages() {
 
           <div
             style={{
-              marginTop: "1rem",
-              marginBottom: "0.5rem",
+              marginTop: '1rem',
+              marginBottom: '0.5rem',
               fontWeight: 600,
             }}
           >
@@ -436,18 +436,18 @@ export default function StatusPages() {
           />
 
           <label htmlFor="edit-brand-color">Brand Color</label>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <input
               id="edit-brand-color"
               type="color"
               value={editBrandColor}
               onChange={(event) => setEditBrandColor(event.target.value)}
               style={{
-                height: "2rem",
-                width: "4rem",
-                padding: "0",
-                border: "none",
-                borderRadius: "4px",
+                height: '2rem',
+                width: '4rem',
+                padding: '0',
+                border: 'none',
+                borderRadius: '4px',
               }}
             />
             <input
@@ -466,10 +466,10 @@ export default function StatusPages() {
             onChange={(event) => setEditCustomCss(event.target.value)}
             placeholder=".status-page { background: #f8f9fa; }"
             rows={4}
-            style={{ fontFamily: "monospace", fontSize: "0.875rem" }}
+            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
           />
 
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="submit">Save Changes</button>
             <button
               type="button"

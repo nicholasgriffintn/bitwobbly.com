@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Modal } from "@/components/Modal";
+import { toTitleCase } from "@/utils/format";
 import { listStatusPagesFn } from "@/server/functions/status-pages";
 import {
   listIncidentsFn,
@@ -180,8 +181,8 @@ export default function Incidents() {
   };
 
   return (
-    <div className="page">
-      <div className="page-header mb-6">
+    <div className="page page-stack">
+      <div className="page-header">
         <div>
           <h2>Incidents</h2>
           <p>Track and communicate service disruptions.</p>
@@ -207,7 +208,7 @@ export default function Incidents() {
                         className={`status-pill ${incident.status}`}
                         style={{ marginLeft: "0.5rem" }}
                       >
-                        {incident.status}
+                        {toTitleCase(incident.status)}
                       </span>
                     </div>
                     <div className="muted">
@@ -222,7 +223,7 @@ export default function Incidents() {
                     {incident.status !== "resolved" && (
                       <button
                         type="button"
-                        className="outline"
+                        className="outline button-warning"
                         onClick={() => openUpdateModal(incident)}
                       >
                         Update
@@ -230,7 +231,7 @@ export default function Incidents() {
                     )}
                     <button
                       type="button"
-                      className="outline"
+                      className="outline button-danger"
                       onClick={() => onDelete(incident.id)}
                     >
                       Delete
@@ -244,7 +245,9 @@ export default function Incidents() {
                       <div key={update.id} className="timeline-item">
                         <span className={`status-dot ${update.status}`} />
                         <div>
-                          <div className="timeline-status">{update.status}</div>
+                          <div className="timeline-status">
+                            {toTitleCase(update.status)}
+                          </div>
                           <div className="timeline-message">
                             {update.message}
                           </div>

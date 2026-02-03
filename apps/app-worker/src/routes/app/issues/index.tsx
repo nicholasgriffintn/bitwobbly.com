@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Modal } from "@/components/Modal";
 import { PlatformSelect } from '@/components/PlatformSelect';
 import { CopyButton } from '@/components/CopyButton';
+import { toTitleCase } from '@/utils/format';
 import {
   listSentryProjectsFn,
   createSentryProjectFn,
@@ -189,28 +190,35 @@ function IssueTracking() {
     const component = components.find(c => c.id === groupName);
     return (
       <div key={groupName} style={{ marginBottom: '1.5rem' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '0.5rem',
-          flexWrap: 'wrap',
-          marginBottom: '0.75rem',
-          paddingBottom: '0.5rem',
-          borderBottom: '1px solid var(--border)'
-        }}>
-          <span style={{ 
-            fontWeight: '600', 
-            color: 'var(--text-secondary)',
-            fontSize: '0.875rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            marginBottom: '0.75rem',
+            paddingBottom: '0.5rem',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <span
+            style={{
+              fontWeight: '600',
+              color: 'var(--text-secondary)',
+              fontSize: '0.875rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
             {component?.name || 'Unknown Component'}
           </span>
-          <span className="pill small" style={{ 
-            backgroundColor: 'var(--surface-1)',
-            color: 'var(--text-secondary)'
-          }}>
+          <span
+            className="pill small"
+            style={{
+              backgroundColor: 'var(--surface-1)',
+              color: 'var(--text-secondary)',
+            }}
+          >
             {projectList.length} project{projectList.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -225,7 +233,9 @@ function IssueTracking() {
                     {project.platform && (
                       <>
                         {' · '}
-                        <span className="pill small">{project.platform}</span>
+                        <span className="pill small">
+                          {toTitleCase(project.platform)}
+                        </span>
                       </>
                     )}
                   </div>
@@ -248,16 +258,15 @@ function IssueTracking() {
                   </button>
                   <button
                     type="button"
-                    className="outline"
+                    className="outline button-success"
                     onClick={() => showDsn(project.id)}
                   >
                     Show DSN
                   </button>
                   <button
                     type="button"
-                    className="outline"
+                    className="outline button-danger"
                     onClick={() => showDeleteModal(project)}
-                    style={{ color: '#dc3545' }}
                   >
                     Delete
                   </button>
@@ -313,111 +322,116 @@ function IssueTracking() {
 
       <div className="card">
         <div className="card-title">Projects</div>
-        {projects.length ? (() => {
-          const groupedProjects = groupProjectsByComponent();
-          const projectsWithComponents = Array.from(groupedProjects.entries());
-          const projectsWithoutComponents = projects.filter(p => !p.componentId);
-          
-          return (
-            <div>
-              {projectsWithComponents.map(([componentId, projectList]) =>
-                renderProjectGroup(componentId, projectList),
-              )}
+        {projects.length ? (
+          (() => {
+            const groupedProjects = groupProjectsByComponent();
+            const projectsWithComponents = Array.from(
+              groupedProjects.entries(),
+            );
+            const projectsWithoutComponents = projects.filter(
+              (p) => !p.componentId,
+            );
 
-              {projectsWithoutComponents.length > 0 && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      flexWrap: 'wrap',
-                      marginBottom: '0.75rem',
-                      paddingBottom: '0.5rem',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <span
+            return (
+              <div>
+                {projectsWithComponents.map(([componentId, projectList]) =>
+                  renderProjectGroup(componentId, projectList),
+                )}
+
+                {projectsWithoutComponents.length > 0 && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div
                       style={{
-                        fontWeight: '600',
-                        color: 'var(--text-secondary)',
-                        fontSize: '0.875rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        flexWrap: 'wrap',
+                        marginBottom: '0.75rem',
+                        paddingBottom: '0.5rem',
+                        borderBottom: '1px solid var(--border)',
                       }}
                     >
-                      No Component
-                    </span>
-                    <span
-                      className="pill small"
-                      style={{
-                        backgroundColor: 'var(--surface-1)',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
-                      {projectsWithoutComponents.length} project
-                      {projectsWithoutComponents.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="list">
-                    {projectsWithoutComponents.map((project) => (
-                      <div key={project.id} className="list-item-expanded">
-                        <div className="list-row">
-                          <div style={{ flex: 1 }}>
-                            <div className="list-title">{project.name}</div>
-                            <div className="muted">
-                              Project ID: {project.sentryProjectId}
-                              {project.platform && (
-                                <>
-                                  {' · '}
-                                  <span className="pill small">
-                                    {project.platform}
-                                  </span>
-                                </>
-                              )}
+                      <span
+                        style={{
+                          fontWeight: '600',
+                          color: 'var(--text-secondary)',
+                          fontSize: '0.875rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        No Component
+                      </span>
+                      <span
+                        className="pill small"
+                        style={{
+                          backgroundColor: 'var(--surface-1)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      >
+                        {projectsWithoutComponents.length} project
+                        {projectsWithoutComponents.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="list">
+                      {projectsWithoutComponents.map((project) => (
+                        <div key={project.id} className="list-item-expanded">
+                          <div className="list-row">
+                            <div style={{ flex: 1 }}>
+                              <div className="list-title">{project.name}</div>
+                              <div className="muted">
+                                Project ID: {project.sentryProjectId}
+                                {project.platform && (
+                                  <>
+                                    {' · '}
+                                    <span className="pill small">
+                                      {toTitleCase(project.platform)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="button-row">
+                              <Link
+                                to="/app/issues/$projectId"
+                                params={{ projectId: project.id }}
+                              >
+                                <button type="button" className="outline">
+                                  View Issues
+                                </button>
+                              </Link>
+                              <button
+                                type="button"
+                                className="outline"
+                                onClick={() => showEditModal(project)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="outline button-success"
+                                onClick={() => showDsn(project.id)}
+                              >
+                                Show DSN
+                              </button>
+                              <button
+                                type="button"
+                                className="outline button-danger"
+                                onClick={() => showDeleteModal(project)}
+                              >
+                                Delete
+                              </button>
                             </div>
                           </div>
-                          <div className="button-row">
-                            <Link
-                              to="/app/issues/$projectId"
-                              params={{ projectId: project.id }}
-                            >
-                              <button type="button" className="outline">
-                                View Issues
-                              </button>
-                            </Link>
-                            <button
-                              type="button"
-                              className="outline"
-                              onClick={() => showEditModal(project)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="outline"
-                              onClick={() => showDsn(project.id)}
-                            >
-                              Show DSN
-                            </button>
-                            <button
-                              type="button"
-                              className="outline"
-                              onClick={() => showDeleteModal(project)}
-                              style={{ color: '#dc3545' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          );
-        })() : (
+                )}
+              </div>
+            );
+          })()
+        ) : (
           <div className="muted">No projects configured.</div>
         )}
       </div>
@@ -508,7 +522,10 @@ function IssueTracking() {
 
           {components.length > 0 && (
             <>
-              <label htmlFor="edit-project-component" style={{ marginTop: '1rem' }}>
+              <label
+                htmlFor="edit-project-component"
+                style={{ marginTop: '1rem' }}
+              >
                 Linked component (optional)
               </label>
               <select
@@ -639,7 +656,7 @@ function IssueTracking() {
               type="button"
               onClick={onDelete}
               disabled={isLoading}
-              style={{ backgroundColor: '#dc3545' }}
+              className="button-danger"
             >
               {isLoading ? 'Deleting...' : 'Delete Project'}
             </button>

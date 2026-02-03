@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { MetricsChart } from "@/components/MetricsChart";
 import { Modal } from "@/components/Modal";
+import { toTitleCase } from '@/utils/format';
 import {
   listMonitorsFn,
   createMonitorFn,
@@ -248,8 +249,8 @@ function Monitors() {
   };
 
   return (
-    <div className="page">
-      <div className="page-header mb-6">
+    <div className="page page-stack">
+      <div className="page-header">
         <div>
           <h2>Monitors</h2>
           <p>Track availability, latency, and incident thresholds.</p>
@@ -265,22 +266,22 @@ function Monitors() {
         <div
           className="card-title"
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "1rem",
-            flexWrap: "wrap",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap',
           }}
         >
           Monitors
           <button
             type="button"
-            className="outline"
+            className="outline button-info"
             onClick={onTriggerScheduler}
             title="Manually trigger monitor checks (dev mode)"
             style={{
-              marginLeft: "auto",
-              fontSize: "0.875rem",
-              padding: "0.25rem 0.75rem",
+              marginLeft: 'auto',
+              fontSize: '0.875rem',
+              padding: '0.25rem 0.75rem',
             }}
           >
             Check Now
@@ -298,37 +299,39 @@ function Monitors() {
                         {!monitor.enabled && (
                           <span
                             className="pill small"
-                            style={{ marginLeft: "0.5rem" }}
+                            style={{ marginLeft: '0.5rem' }}
                           >
-                            paused
+                            Paused
                           </span>
                         )}
                       </div>
                       {monitor.url && (
                         <div className="muted">{monitor.url}</div>
                       )}
-                      <div className="muted" style={{ marginTop: "0.25rem" }}>
+                      <div className="muted" style={{ marginTop: '0.25rem' }}>
                         <span
-                          className={`status ${monitor.state?.lastStatus || "unknown"}`}
+                          className={`status ${monitor.state?.lastStatus || 'unknown'}`}
                         >
-                          {monitor.state?.lastStatus || "unknown"}
+                          {toTitleCase(monitor.state?.lastStatus || 'unknown')}
                         </span>
-                        {" · "}
-                        <span className="pill small">{monitor.type}</span>
-                        {(monitor.type === "http" ||
-                          monitor.type === "external") && (
+                        {' · '}
+                        <span className="pill small">
+                          {toTitleCase(monitor.type)}
+                        </span>
+                        {(monitor.type === 'http' ||
+                          monitor.type === 'external') && (
                           <>
-                            {" · "}
-                            {monitor.intervalSeconds}s interval ·{" "}
-                            {monitor.timeoutMs}ms timeout ·{" "}
+                            {' · '}
+                            {monitor.intervalSeconds}s interval ·{' '}
+                            {monitor.timeoutMs}ms timeout ·{' '}
                             {monitor.failureThreshold} failures
                           </>
                         )}
                       </div>
                     </div>
                     <div className="button-row">
-                      {(monitor.type === "http" ||
-                        monitor.type === "external") && (
+                      {(monitor.type === 'http' ||
+                        monitor.type === 'external') && (
                         <button
                           type="button"
                           className="outline"
@@ -341,11 +344,11 @@ function Monitors() {
                           }
                         >
                           {expandedMonitorId === monitor.id
-                            ? "Hide"
-                            : "Metrics"}
+                            ? 'Hide'
+                            : 'Metrics'}
                         </button>
                       )}
-                      {monitor.type === "manual" && (
+                      {monitor.type === 'manual' && (
                         <button
                           type="button"
                           className="outline"
@@ -361,19 +364,19 @@ function Monitors() {
                       >
                         Edit
                       </button>
-                      {(monitor.type === "http" ||
-                        monitor.type === "external") && (
+                      {(monitor.type === 'http' ||
+                        monitor.type === 'external') && (
                         <button
                           type="button"
-                          className="outline"
+                          className={`outline ${monitor.enabled ? 'button-warning' : 'button-success'}`}
                           onClick={() => toggleEnabled(monitor)}
                         >
-                          {monitor.enabled ? "Pause" : "Resume"}
+                          {monitor.enabled ? 'Pause' : 'Resume'}
                         </button>
                       )}
                       <button
                         type="button"
-                        className="outline"
+                        className="outline button-danger"
                         onClick={() => onDelete(monitor.id)}
                       >
                         Delete
@@ -382,7 +385,7 @@ function Monitors() {
                   </div>
 
                   {expandedMonitorId === monitor.id && (
-                    <div style={{ marginTop: "1rem" }}>
+                    <div style={{ marginTop: '1rem' }}>
                       <MetricsChart monitorId={monitor.id} />
                     </div>
                   )}
@@ -404,21 +407,21 @@ function Monitors() {
           <div className="form">
             <div
               style={{
-                padding: "1rem",
-                marginBottom: "1rem",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "4px",
-                border: "2px solid #28a745",
+                padding: '1rem',
+                marginBottom: '1rem',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '4px',
+                border: '2px solid #28a745',
               }}
             >
               <div
                 style={{
-                  marginBottom: "0.75rem",
-                  color: "#28a745",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  fontSize: "1rem",
+                  marginBottom: '0.75rem',
+                  color: '#28a745',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '1rem',
                   fontWeight: 600,
                 }}
               >
@@ -427,21 +430,21 @@ function Monitors() {
               </div>
               <p
                 style={{
-                  margin: "0 0 1rem 0",
-                  padding: "0.5rem",
-                  backgroundColor: "#fff3cd",
-                  border: "1px solid #ffc107",
-                  borderRadius: "4px",
-                  color: "#856404",
-                  fontSize: "0.875rem",
+                  margin: '0 0 1rem 0',
+                  padding: '0.5rem',
+                  backgroundColor: '#fff3cd',
+                  border: '1px solid #ffc107',
+                  borderRadius: '4px',
+                  color: '#856404',
+                  fontSize: '0.875rem',
                 }}
               >
                 <strong>⚠️</strong> Save this webhook URL and token securely.
                 You will not be able to see it again.
               </p>
 
-              <div style={{ marginBottom: "0.75rem" }}>
-                <label style={{ fontWeight: 600, fontSize: "0.875rem" }}>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                   Webhook URL
                 </label>
                 <input
@@ -449,16 +452,16 @@ function Monitors() {
                   value={`${window.location.origin}/api/webhooks/${createdMonitorId}`}
                   onClick={(e) => e.currentTarget.select()}
                   style={{
-                    fontFamily: "monospace",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    width: "100%",
+                    fontFamily: 'monospace',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    width: '100%',
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, fontSize: "0.875rem" }}>
+                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                   Token
                 </label>
                 <input
@@ -466,17 +469,17 @@ function Monitors() {
                   value={webhookToken}
                   onClick={(e) => e.currentTarget.select()}
                   style={{
-                    fontFamily: "monospace",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    width: "100%",
+                    fontFamily: 'monospace',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    width: '100%',
                   }}
                 />
                 <p
                   className="muted"
-                  style={{ margin: "0.5rem 0 0 0", fontSize: "0.75rem" }}
+                  style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem' }}
                 >
-                  POST to the URL with JSON:{" "}
+                  POST to the URL with JSON:{' '}
                   {`{ "token": "...", "status": "up|down|degraded", "message": "..." }`}
                 </p>
               </div>
@@ -484,6 +487,7 @@ function Monitors() {
             <div className="button-row">
               <button
                 type="button"
+                className="button-success"
                 onClick={async () => {
                   await refreshMonitors();
                   closeCreateModal();
@@ -516,7 +520,7 @@ function Monitors() {
               required
             />
 
-            {monitorType === "http" && (
+            {monitorType === 'http' && (
               <>
                 <label htmlFor="monitor-url">URL</label>
                 <input
@@ -529,14 +533,14 @@ function Monitors() {
               </>
             )}
 
-            {monitorType === "webhook" && (
+            {monitorType === 'webhook' && (
               <p className="muted">
                 A webhook token will be generated. External services will push
                 status updates to your webhook endpoint.
               </p>
             )}
 
-            {monitorType === "external" && (
+            {monitorType === 'external' && (
               <>
                 <label htmlFor="monitor-url">Status URL</label>
                 <input
@@ -549,7 +553,7 @@ function Monitors() {
               </>
             )}
 
-            {monitorType === "external" && (
+            {monitorType === 'external' && (
               <>
                 <label htmlFor="external-service">Service Type</label>
                 <select
@@ -568,14 +572,14 @@ function Monitors() {
               </>
             )}
 
-            {monitorType === "manual" && (
+            {monitorType === 'manual' && (
               <p className="muted">
                 Manual monitors require you to set the status manually from the
                 monitor list.
               </p>
             )}
 
-            {monitorType !== "webhook" && monitorType !== "manual" && (
+            {monitorType !== 'webhook' && monitorType !== 'manual' && (
               <div className="grid three">
                 <div>
                   <label htmlFor="monitor-interval">Interval (sec)</label>
@@ -612,7 +616,7 @@ function Monitors() {
                 </div>
               </div>
             )}
-            <div className="button-row" style={{ marginTop: "1rem" }}>
+            <div className="button-row" style={{ marginTop: '1rem' }}>
               <button type="submit">Create Monitor</button>
               <button
                 type="button"
@@ -640,8 +644,8 @@ function Monitors() {
             required
           />
 
-          {(editingMonitorType === "http" ||
-            editingMonitorType === "external") && (
+          {(editingMonitorType === 'http' ||
+            editingMonitorType === 'external') && (
             <>
               <label htmlFor="edit-url">URL</label>
               <input
@@ -653,7 +657,7 @@ function Monitors() {
             </>
           )}
 
-          {editingMonitorType === "external" && (
+          {editingMonitorType === 'external' && (
             <>
               <label htmlFor="edit-external-service">Service Type</label>
               <select
@@ -671,8 +675,8 @@ function Monitors() {
             </>
           )}
 
-          {editingMonitorType !== "webhook" &&
-            editingMonitorType !== "manual" && (
+          {editingMonitorType !== 'webhook' &&
+            editingMonitorType !== 'manual' && (
               <div className="grid three">
                 <div>
                   <label htmlFor="edit-interval">Interval (sec)</label>
@@ -710,7 +714,7 @@ function Monitors() {
               </div>
             )}
 
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="submit">Save Changes</button>
             <button type="button" className="outline" onClick={cancelEditing}>
               Cancel
@@ -744,7 +748,7 @@ function Monitors() {
             placeholder="Optional status message"
           />
 
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="submit">Update Status</button>
             <button
               type="button"
