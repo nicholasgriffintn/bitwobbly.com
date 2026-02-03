@@ -117,6 +117,7 @@ export async function updateAlertRule(
   if (input.name !== undefined) updates.name = input.name;
   if (input.enabled !== undefined) updates.enabled = input.enabled;
   if (input.projectId !== undefined) updates.projectId = input.projectId;
+  if (input.monitorId !== undefined) updates.monitorId = input.monitorId;
   if (input.environment !== undefined) updates.environment = input.environment;
   if (input.triggerType !== undefined) updates.triggerType = input.triggerType;
   if (input.conditionsJson !== undefined)

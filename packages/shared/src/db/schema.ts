@@ -49,7 +49,7 @@ export const statusPages = sqliteTable("status_pages", {
   teamId: text("team_id")
     .notNull()
     .references(() => teams.id),
-  slug: text("slug").notNull(),
+  slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   isPublic: integer("is_public").notNull().default(1),
   logoUrl: text("logo_url"),

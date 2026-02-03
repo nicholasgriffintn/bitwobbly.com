@@ -1,15 +1,57 @@
 import { redirect } from '@tanstack/react-router';
-import { schema, type DB } from '@bitwobbly/shared';
+import { randomId, schema, type DB } from '@bitwobbly/shared';
 import { eq, and } from 'drizzle-orm';
 
 import { useAppSession } from './session';
 
-export async function requireAuth(): Promise<string> {
+export async function requireAuth(db?: DB): Promise<string> {
   const session = await useAppSession();
-  const userId = session.data.userId;
+  const { userId, sessionToken } = session.data;
 
   if (!userId) {
     throw redirect({ to: '/login' });
+  }
+
+  if (db) {
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    if (!sessionToken) {
+      const newSessionToken = randomId('sess');
+      const expiresAt = nowSec + 30 * 24 * 60 * 60;
+
+      await db.insert(schema.sessions).values({
+        id: newSessionToken,
+        userId,
+        expiresAt,
+      });
+
+      await session.update({
+        ...session.data,
+        sessionToken: newSessionToken,
+      });
+    } else {
+      const sessions = await db
+        .select()
+        .from(schema.sessions)
+        .where(eq(schema.sessions.id, sessionToken))
+        .limit(1);
+
+      const validSession = sessions[0];
+      const isValid =
+        validSession &&
+        validSession.userId === userId &&
+        validSession.expiresAt > nowSec;
+
+      if (!isValid) {
+        if (validSession) {
+          await db
+            .delete(schema.sessions)
+            .where(eq(schema.sessions.id, sessionToken));
+        }
+        await session.clear();
+        throw redirect({ to: '/login' });
+      }
+    }
   }
 
   return userId;
@@ -18,7 +60,7 @@ export async function requireAuth(): Promise<string> {
 export async function requireTeam(
   db: DB,
 ): Promise<{ userId: string; teamId: string }> {
-  const userId = await requireAuth();
+  const userId = await requireAuth(db);
 
   const users = await db
     .select()

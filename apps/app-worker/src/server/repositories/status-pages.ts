@@ -83,13 +83,27 @@ async function getComponentHistoricalData(
     return result;
   }
 
-  const responseJSON = (await response.json()) as {
-    data?: Array<{
-      status: string;
-      timestamp: number | string;
-    }>;
+  const responseJSON: unknown = await response.json();
+  const rawData: Array<{ status: string; timestamp: number | string }> = [];
+
+  const isRecord = (value: unknown): value is Record<string, unknown> => {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
   };
-  const rawData = responseJSON.data || [];
+
+  if (isRecord(responseJSON) && Array.isArray(responseJSON.data)) {
+    for (const row of responseJSON.data) {
+      if (!isRecord(row)) continue;
+      const status = typeof row.status === "string" ? row.status : null;
+      const timestamp =
+        typeof row.timestamp === "number" || typeof row.timestamp === "string"
+          ? row.timestamp
+          : null;
+
+      if (status && timestamp !== null) {
+        rawData.push({ status, timestamp });
+      }
+    }
+  }
 
   const dayBuckets = new Map<
     string,
@@ -175,6 +189,16 @@ export async function createStatusPage(
     custom_css?: string;
   },
 ) {
+  const existing = await db
+    .select({ id: schema.statusPages.id })
+    .from(schema.statusPages)
+    .where(eq(schema.statusPages.slug, input.slug))
+    .limit(1);
+
+  if (existing.length) {
+    throw new Error("Status page slug is already in use");
+  }
+
   const id = randomId("sp");
   await db.insert(schema.statusPages).values({
     id,
@@ -219,6 +243,18 @@ export async function getStatusPageBySlug(
   return rows[0] || null;
 }
 
+export async function publicStatusPageExistsBySlug(db: DB, slug: string) {
+  const page = await db
+    .select({ id: schema.statusPages.id })
+    .from(schema.statusPages)
+    .where(
+      and(eq(schema.statusPages.slug, slug), eq(schema.statusPages.isPublic, 1)),
+    )
+    .limit(1);
+
+  return page.length > 0;
+}
+
 export async function updateStatusPage(
   db: DB,
   teamId: string,
@@ -231,6 +267,18 @@ export async function updateStatusPage(
     custom_css?: string | null;
   },
 ) {
+  if (input.slug !== undefined) {
+    const existing = await db
+      .select({ id: schema.statusPages.id })
+      .from(schema.statusPages)
+      .where(eq(schema.statusPages.slug, input.slug))
+      .limit(1);
+
+    if (existing.length && existing[0].id !== statusPageId) {
+      throw new Error("Status page slug is already in use");
+    }
+  }
+
   const updates: Record<string, string | null> = {};
   if (input.name !== undefined) updates.name = input.name;
   if (input.slug !== undefined) updates.slug = input.slug;
@@ -333,12 +381,43 @@ export async function rebuildStatusSnapshot(
   slug: string,
   accountId?: string,
   apiToken?: string,
+  options?: {
+    teamId?: string;
+    includePrivate?: boolean;
+  },
 ): Promise<StatusSnapshot | null> {
-  const pageRows = await db
-    .select()
-    .from(schema.statusPages)
-    .where(eq(schema.statusPages.slug, slug))
-    .limit(1);
+  const includePrivate = options?.includePrivate ?? false;
+  let pageRows: Array<typeof schema.statusPages.$inferSelect> = [];
+
+  if (options?.teamId) {
+    pageRows = await db
+      .select()
+      .from(schema.statusPages)
+      .where(
+        and(
+          eq(schema.statusPages.teamId, options.teamId),
+          eq(schema.statusPages.slug, slug),
+        ),
+      )
+      .limit(1);
+  } else if (includePrivate) {
+    pageRows = await db
+      .select()
+      .from(schema.statusPages)
+      .where(eq(schema.statusPages.slug, slug))
+      .limit(1);
+  } else {
+    pageRows = await db
+      .select()
+      .from(schema.statusPages)
+      .where(
+        and(
+          eq(schema.statusPages.slug, slug),
+          eq(schema.statusPages.isPublic, 1),
+        ),
+      )
+      .limit(1);
+  }
 
   const page = pageRows[0];
   if (!page) return null;

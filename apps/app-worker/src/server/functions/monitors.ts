@@ -8,13 +8,13 @@ import {
   deleteMonitor,
   listMonitors,
   updateMonitor,
-  updateMonitorStatus,
   getMonitorById,
 } from "../repositories/monitors";
 import { getMonitorMetrics } from "../repositories/metrics";
 import { clampInt } from "../lib/utils";
 import { requireTeam } from "../lib/auth-middleware";
 import { generateWebhookToken, hashWebhookToken } from '@bitwobbly/shared';
+import { processMonitorStatusUpdate } from "../lib/monitor-transitions";
 
 const CreateMonitorSchema = z
   .object({
@@ -193,13 +193,27 @@ export const setManualMonitorStatusFn = createServerFn({ method: "POST" })
     const vars = env;
     const db = getDb(vars.DB);
 
-    await updateMonitorStatus(
+    const monitor = await getMonitorById(db, teamId, data.monitorId);
+    if (!monitor) {
+      throw new Error("Monitor not found");
+    }
+
+    if (monitor.type !== "manual") {
+      throw new Error("Only manual monitors can be updated with this endpoint");
+    }
+
+    await processMonitorStatusUpdate({
       db,
-      teamId,
-      data.monitorId,
-      data.status,
-      data.message,
-    );
+      kv: vars.KV,
+      alertJobs: vars.ALERT_JOBS,
+      monitor: {
+        id: monitor.id,
+        teamId: monitor.teamId,
+        failureThreshold: monitor.failureThreshold,
+      },
+      status: data.status,
+      reason: data.message,
+    });
 
     return { ok: true };
   });

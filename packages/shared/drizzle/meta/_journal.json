@@ -50,6 +50,13 @@
       "when": 1769562765623,
       "tag": "0006_perfect_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1769752500000,
+      "tag": "0007_hushed_lightspeed",
+      "breakpoints": true
     }
   ]
 }

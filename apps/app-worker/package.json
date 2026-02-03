@@ -10,6 +10,7 @@
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test src/**/*.test.ts",
     "db:migrate:local": "wrangler d1 migrations apply bitwobbly_db --local --persist-to ../../.data",
     "db:migrate:remote": "wrangler d1 migrations apply bitwobbly_db --remote"
   },

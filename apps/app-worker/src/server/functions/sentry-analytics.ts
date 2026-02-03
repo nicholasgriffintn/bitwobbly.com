@@ -22,7 +22,7 @@ import {
 export const getEventVolumeBySDKFn = createServerFn({ method: "GET" })
   .inputValidator((data: { startDate: string; endDate: string }) => data)
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
@@ -32,7 +32,7 @@ export const getEventVolumeBySDKFn = createServerFn({ method: "GET" })
 
 export const getClockDriftStatsFn = createServerFn({ method: "GET" }).handler(
   async () => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
@@ -44,7 +44,7 @@ export const getClockDriftStatsFn = createServerFn({ method: "GET" }).handler(
 export const getItemTypeDistributionFn = createServerFn({ method: "GET" })
   .inputValidator((data: { startDate: string; endDate: string }) => data)
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const config = {
       accountId: env.CLOUDFLARE_ACCOUNT_ID,
       authToken: env.CLOUDFLARE_API_TOKEN,
@@ -57,7 +57,7 @@ export const getErrorRateByReleaseFn = createServerFn({ method: "GET" })
     (data: { projectId: string; startDate: string; endDate: string }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
     const project = await getSentryProject(db, teamId, data.projectId);
@@ -85,7 +85,7 @@ export const getErrorRateByReleaseFn = createServerFn({ method: "GET" })
 export const getTopErrorMessagesFn = createServerFn({ method: "GET" })
   .inputValidator((data: { projectId: string; limit?: number }) => data)
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
     const project = await getSentryProject(db, teamId, data.projectId);
@@ -110,7 +110,7 @@ export const getEventVolumeTimeseriesFn = createServerFn({ method: "GET" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
     const project = await getSentryProject(db, teamId, data.projectId);
@@ -133,7 +133,7 @@ export const getEventVolumeStatsFn = createServerFn({ method: "GET" })
     (data: { projectId: string; startDate: string; endDate: string }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
     const project = await getSentryProject(db, teamId, data.projectId);
@@ -170,7 +170,7 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
     }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
     const project = await getSentryProject(db, teamId, data.projectId);
@@ -202,7 +202,7 @@ export const getSDKDistributionFn = createServerFn({ method: "GET" })
     (data: { projectId: string; startDate: string; endDate: string }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAuth();
+    await requireAuth(getDb(env.DB));
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
     const project = await getSentryProject(db, teamId, data.projectId);

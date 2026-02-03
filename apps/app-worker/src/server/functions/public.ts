@@ -3,7 +3,9 @@ import { env } from "cloudflare:workers";
 import { notFound } from "@tanstack/react-router";
 
 import { getDb } from "../lib/db";
+import { isStatusSnapshot } from "../lib/type-guards";
 import {
+  publicStatusPageExistsBySlug,
   rebuildStatusSnapshot,
   StatusSnapshot,
 } from "../repositories/status-pages";
@@ -21,15 +23,17 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
       throw new Error("Rate limit exceeded");
     }
 
-    const cached = (await vars.KV.get(
-      `status:${data.slug}`,
-      "json",
-    )) as StatusSnapshot | null;
-    if (cached) {
+    const db = getDb(vars.DB);
+    const exists = await publicStatusPageExistsBySlug(db, data.slug);
+    if (!exists) {
+      throw notFound();
+    }
+
+    const cached = await vars.KV.get(`status:${data.slug}`, "json");
+    if (isStatusSnapshot(cached)) {
       return cached;
     }
 
-    const db = getDb(vars.DB);
     const snapshot = await rebuildStatusSnapshot(
       db,
       vars.KV,

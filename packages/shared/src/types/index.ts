@@ -12,6 +12,7 @@ export interface UptimeMetrics {
 }
 
 export interface CheckJob {
+  job_id?: string;
   monitor_id: string;
   team_id: string;
   url: string;

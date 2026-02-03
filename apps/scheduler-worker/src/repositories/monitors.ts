@@ -1,9 +1,8 @@
-import { schema } from "@bitwobbly/shared";
-import { eq, and, lte, inArray, or } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import { schema, type DB } from "@bitwobbly/shared";
+import { eq, and, lte, or } from "drizzle-orm";
 
 export async function getDueMonitors(
-  db: DrizzleD1Database,
+  db: DB,
   nowSec: number,
   limit: number,
 ) {
@@ -35,7 +34,7 @@ export async function getDueMonitors(
 }
 
 export async function claimMonitor(
-  db: DrizzleD1Database,
+  db: DB,
   monitorId: string,
   nowSec: number,
   lockUntil: number,
@@ -55,7 +54,7 @@ export async function claimMonitor(
 }
 
 export async function updateMonitorNextRun(
-  db: DrizzleD1Database,
+  db: DB,
   monitorId: string,
   nextRunAt: number,
   lockUntil: number,
@@ -76,7 +75,7 @@ export async function updateMonitorNextRun(
 }
 
 export async function unlockMonitor(
-  db: DrizzleD1Database,
+  db: DB,
   monitorId: string,
   lockUntil: number,
 ) {

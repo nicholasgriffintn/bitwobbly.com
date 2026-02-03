@@ -137,7 +137,7 @@ export async function getMonitorById(
   monitorId: string,
 ) {
   const monitors = await db
-    .select({ id: schema.monitors.id })
+    .select()
     .from(schema.monitors)
     .where(
       and(
@@ -231,4 +231,62 @@ export async function getMonitorByWebhookToken(
     .limit(1);
 
   return monitors[0] || null;
+}
+
+export async function getMonitorStateById(db: DB, monitorId: string) {
+  const rows = await db
+    .select()
+    .from(schema.monitorState)
+    .where(eq(schema.monitorState.monitorId, monitorId))
+    .limit(1);
+
+  return rows[0] || null;
+}
+
+export async function upsertMonitorStateFromStatusUpdate(
+  db: DB,
+  monitorId: string,
+  input: {
+    nowSec: number;
+    status: "up" | "down" | "degraded";
+    consecutiveFailures: number;
+    lastError?: string | null;
+  },
+) {
+  await db
+    .insert(schema.monitorState)
+    .values({
+      monitorId,
+      lastCheckedAt: input.nowSec,
+      lastStatus: input.status,
+      lastLatencyMs: null,
+      consecutiveFailures: input.consecutiveFailures,
+      lastError: input.lastError ?? null,
+      incidentOpen: 0,
+      updatedAt: nowIso(),
+    })
+    .onConflictDoUpdate({
+      target: schema.monitorState.monitorId,
+      set: {
+        lastCheckedAt: input.nowSec,
+        lastStatus: input.status,
+        consecutiveFailures: input.consecutiveFailures,
+        lastError: input.lastError ?? null,
+        updatedAt: nowIso(),
+      },
+    });
+}
+
+export async function setMonitorIncidentOpen(
+  db: DB,
+  monitorId: string,
+  open: boolean,
+) {
+  await db
+    .update(schema.monitorState)
+    .set({
+      incidentOpen: open ? 1 : 0,
+      updatedAt: nowIso(),
+    })
+    .where(eq(schema.monitorState.monitorId, monitorId));
 }

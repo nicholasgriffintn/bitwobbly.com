@@ -22,12 +22,20 @@ export async function signUpHandler(
     'requiresEmailVerification' in result &&
     result.requiresEmailVerification
   ) {
-    await session.update({ email: result.user.email });
+    await session.update({
+      email: result.user.email,
+      sessionToken: undefined,
+      userId: undefined,
+    });
     return result;
   }
 
-  await adapter.createSession(result.user.id);
-  await session.update({ userId: result.user.id, email: result.user.email });
+  const { sessionToken } = await adapter.createSession(result.user.id);
+  await session.update({
+    userId: result.user.id,
+    email: result.user.email,
+    sessionToken,
+  });
 
   return result;
 }
@@ -47,6 +55,8 @@ export async function signInHandler(
     await session.update({
       email: result.email,
       cognitoSession: result.session,
+      sessionToken: undefined,
+      userId: undefined,
     });
     return { requiresMFA: true, session: result.session, email: result.email };
   }
@@ -55,6 +65,8 @@ export async function signInHandler(
     await session.update({
       email: result.email,
       cognitoSession: result.session,
+      sessionToken: undefined,
+      userId: undefined,
     });
     return {
       requiresMFASetup: true,
@@ -65,12 +77,20 @@ export async function signInHandler(
   }
 
   if ("requiresEmailVerification" in result) {
-    await session.update({ email: result.email });
+    await session.update({
+      email: result.email,
+      sessionToken: undefined,
+      userId: undefined,
+    });
     return { requiresEmailVerification: true, email: result.email };
   }
 
   if ("requiresPasswordReset" in result) {
-    await session.update({ email: result.email });
+    await session.update({
+      email: result.email,
+      sessionToken: undefined,
+      userId: undefined,
+    });
     return { requiresPasswordReset: true, email: result.email };
   }
 
@@ -78,6 +98,8 @@ export async function signInHandler(
     await session.update({
       email: result.email,
       cognitoSession: result.session,
+      sessionToken: undefined,
+      userId: undefined,
     });
     return {
       requiresNewPassword: true,
@@ -90,6 +112,8 @@ export async function signInHandler(
     await session.update({
       email: result.email,
       cognitoSession: result.session,
+      sessionToken: undefined,
+      userId: undefined,
     });
     return {
       unsupportedChallenge: true,
@@ -98,18 +122,29 @@ export async function signInHandler(
     };
   }
 
-  await adapter.createSession(result.user.id);
+  const { sessionToken } = await adapter.createSession(result.user.id);
 
   await session.update({
     userId: result.user.id,
     email: result.user.email,
+    sessionToken,
   });
 
   return { success: true, session: result.session };
 }
 
-export async function signOutHandler() {
+export async function signOutHandler(adapter?: AuthAdapter) {
   const session = await useAppSession();
+  const sessionToken = session.data.sessionToken;
+
+  if (adapter && sessionToken) {
+    try {
+      await adapter.deleteSession(sessionToken);
+    } catch {
+      // Ignore deletion errors during sign-out; cookie state is still cleared.
+    }
+  }
+
   await session.clear();
 
   return;
@@ -118,9 +153,28 @@ export async function signOutHandler() {
 export async function getCurrentUserHandler(adapter: AuthAdapter) {
   const session = await useAppSession();
   const userId = session.data.userId;
+  const sessionToken = session.data.sessionToken;
+
   if (!userId) {
     return null;
   }
+
+  if (!sessionToken) {
+    const created = await adapter.createSession(userId);
+    await session.update({
+      userId,
+      email: session.data.email,
+      cognitoSession: session.data.cognitoSession,
+      sessionToken: created.sessionToken,
+    });
+  } else {
+    const valid = await adapter.validateSession(sessionToken);
+    if (!valid || valid.userId !== userId) {
+      await session.clear();
+      return null;
+    }
+  }
+
   return await adapter.getUserById(userId);
 }
 
@@ -143,11 +197,12 @@ export async function verifyMFAHandler(adapter: AuthAdapter, code: string) {
     email,
   });
 
-  await adapter.createSession(user.id);
+  const { sessionToken } = await adapter.createSession(user.id);
   await session.update({
     userId: user.id,
     email: user.email,
     cognitoSession: undefined,
+    sessionToken,
   });
 
   return { user };
@@ -197,11 +252,12 @@ export async function verifyMFASetupHandler(
     email,
   });
 
-  await adapter.createSession(user.id);
+  const { sessionToken } = await adapter.createSession(user.id);
   await session.update({
     userId: user.id,
     email: user.email,
     cognitoSession: undefined,
+    sessionToken,
   });
 
   return { user };
@@ -229,11 +285,12 @@ export async function newPasswordHandler(
     newPassword,
   });
 
-  await adapter.createSession(user.id);
+  const { sessionToken } = await adapter.createSession(user.id);
   await session.update({
     userId: user.id,
     email: user.email,
     cognitoSession: undefined,
+    sessionToken,
   });
 
   return { user };

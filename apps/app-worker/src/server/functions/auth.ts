@@ -129,7 +129,23 @@ export const signInFn = createServerFn({ method: "POST" })
 
 export const signOutFn = createServerFn({ method: "POST" }).handler(
   async () => {
-    await signOutHandler();
+    const adapter = createAuthAdapter({
+      provider: env.AUTH_PROVIDER || "custom",
+      db: getDb(env.DB),
+      cognito:
+        env.AUTH_PROVIDER === "cognito"
+          ? {
+              region: env.COGNITO_REGION!,
+              userPoolId: env.COGNITO_USER_POOL_ID!,
+              clientId: env.COGNITO_CLIENT_ID!,
+              clientSecret: env.COGNITO_CLIENT_SECRET!,
+              accessKeyId: env.COGNITO_ACCESS_KEY_ID!,
+              secretAccessKey: env.COGNITO_SECRET_ACCESS_KEY!,
+            }
+          : undefined,
+    });
+
+    await signOutHandler(adapter);
     throw redirect({ to: "/login" });
   },
 );

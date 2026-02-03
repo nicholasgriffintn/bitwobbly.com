@@ -186,6 +186,27 @@ export async function createIncident(
   return { id };
 }
 
+export async function findOpenIncidentForMonitor(
+  db: DB,
+  teamId: string,
+  monitorId: string,
+): Promise<string | null> {
+  const rows = await db
+    .select({ id: schema.incidents.id })
+    .from(schema.incidents)
+    .where(
+      and(
+        eq(schema.incidents.teamId, teamId),
+        eq(schema.incidents.monitorId, monitorId),
+        ne(schema.incidents.status, "resolved"),
+      ),
+    )
+    .orderBy(desc(schema.incidents.startedAt))
+    .limit(1);
+
+  return rows[0]?.id ?? null;
+}
+
 export async function addIncidentUpdate(
   db: DB,
   teamId: string,

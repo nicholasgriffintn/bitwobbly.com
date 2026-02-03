@@ -1,80 +1,59 @@
 import { withSentry } from "@sentry/cloudflare";
 
 import { getDb } from "./lib/db";
+import { extractJsonFromEnvelope } from "./lib/envelope";
 import {
   computeFingerprint,
   generateTitle,
   extractCulprit,
 } from "./lib/fingerprint";
 import { evaluateAlertRules } from './lib/alert-rules';
-import { upsertIssue, insertEvent } from "./repositories/events";
+import { parseProcessJob } from "./lib/process-job";
+import {
+  parseClientReportPayload,
+  parseSentryEvent,
+  parseSessionPayload,
+} from "./lib/sentry-payloads";
+import {
+  upsertIssue,
+  insertEvent,
+  insertSession,
+  insertClientReport,
+} from "./repositories/events";
 import { getProjectTeamId } from './repositories/alert-rules';
 import type { Env, ProcessJob } from "./types/env";
 
-interface SentryEvent {
-  level?: string;
-  message?: string;
-  release?: string;
-  environment?: string;
-  user?: {
-    id?: string;
-    username?: string;
-    email?: string;
-    ip_address?: string;
-  };
-  tags?: Record<string, string>;
-  contexts?: {
-    device?: { [key: string]: {} };
-    os?: { [key: string]: {} };
-    runtime?: { [key: string]: {} };
-    browser?: { [key: string]: {} };
-    app?: { [key: string]: {} };
-  };
-  request?: {
-    url?: string;
-    method?: string;
-    headers?: Record<string, string>;
-    data?: {};
-  };
-  exception?: {
-    values?: Array<{
-      type?: string;
-      value?: string;
-      mechanism?: { [key: string]: {} };
-      stacktrace?: { [key: string]: {} };
-    }>;
-  };
-  breadcrumbs?: Array<{
-    timestamp?: string;
-    type?: string;
-    category?: string;
-    message?: string;
-    level?: string;
-    data?: { [key: string]: {} };
-  }>;
-}
-
 const handler = {
-  async queue(batch: MessageBatch<ProcessJob>, env: Env): Promise<void> {
+  async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
     const db = getDb(env.DB);
 
     for (const msg of batch.messages) {
       try {
+        const job = parseProcessJob(msg.body);
+        if (!job) {
+          console.error(
+            "[SENTRY-PROCESSOR] Invalid job payload, skipping",
+            msg.body,
+          );
+          msg.ack();
+          continue;
+        }
+
         if (
-          msg.body.item_type === 'event' ||
-          msg.body.item_type === 'transaction'
+          job.item_type === 'event' ||
+          job.item_type === 'transaction'
         ) {
-          await processEvent(msg.body, env, db);
+          await processEvent(job, env, db);
         } else if (
-          msg.body.item_type === 'session' ||
-          msg.body.item_type === 'sessions'
+          job.item_type === 'session' ||
+          job.item_type === 'sessions'
         ) {
-          await processSession(msg.body, env, db);
-        } else if (msg.body.item_type === 'client_report') {
-          await processClientReport(msg.body, env, db);
+          await processSession(job, env, db);
+        } else if (job.item_type === 'client_report') {
+          await processClientReport(job, env, db);
         } else {
           console.error(
-            `[SENTRY-PROCESSOR] Skipping unsupported type: ${msg.body.item_type}`,
+            `[SENTRY-PROCESSOR] Skipping unsupported type: ${job.item_type}`,
           );
         }
 
@@ -86,7 +65,7 @@ const handler = {
   },
 };
 
-export default withSentry(
+export default withSentry<Env, unknown>(
   () => ({
     dsn: 'https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6',
     environment: 'production',
@@ -95,7 +74,6 @@ export default withSentry(
       return null;
     },
   }),
-  // @ts-ignore - CBA to fix this right now
   handler,
 );
 
@@ -111,11 +89,12 @@ async function processEvent(
   }
 
   const envelopeBytes = await obj.arrayBuffer();
-  const event = extractEventFromEnvelope(
+  const raw = extractJsonFromEnvelope(
     new Uint8Array(envelopeBytes),
     job.item_index,
   );
 
+  const event = parseSentryEvent(raw);
   if (!event) {
     console.error("[SENTRY-PROCESSOR] Could not extract event from envelope");
     return;
@@ -179,59 +158,48 @@ async function processEvent(
   }
 }
 
-function extractEventFromEnvelope(
-  data: Uint8Array,
-  itemIndex: number,
-): SentryEvent | null {
-  const decoder = new TextDecoder();
-  let offset = 0;
-
-  const headerEnd = data.indexOf(0x0a);
-  if (headerEnd === -1) return null;
-
-  offset = headerEnd + 1;
-
-  let currentItem = 0;
-  while (offset < data.length) {
-    const itemHeaderEnd = data.indexOf(0x0a, offset);
-    if (itemHeaderEnd === -1) break;
-
-    const itemHeaderJson = decoder.decode(data.slice(offset, itemHeaderEnd));
-    const itemHeader = JSON.parse(itemHeaderJson);
-    offset = itemHeaderEnd + 1;
-
-    let length: number;
-    let payload: Uint8Array;
-
-    if (itemHeader.length !== undefined) {
-      length = itemHeader.length;
-      payload = data.slice(offset, offset + length);
-      offset += length + 1;
-    } else {
-      const payloadEnd = data.indexOf(0x0a, offset);
-      if (payloadEnd === -1) {
-        payload = data.slice(offset);
-        offset = data.length;
-      } else {
-        payload = data.slice(offset, payloadEnd);
-        offset = payloadEnd + 1;
-      }
-      length = payload.length;
-    }
-
-    if (currentItem === itemIndex) {
-      try {
-        const payloadText = decoder.decode(payload);
-        return JSON.parse(payloadText);
-      } catch {
-        return null;
-      }
-    }
-
-    currentItem++;
+function toUnixSeconds(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
   }
 
-  return null;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) {
+      return Math.floor(parsed / 1000);
+    }
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      return numeric > 1e12 ? Math.floor(numeric / 1000) : Math.floor(numeric);
+    }
+  }
+
+  return fallback;
+}
+
+function normaliseSessionStatus(status?: string): string {
+  if (!status) return "unknown";
+  const value = status.toLowerCase();
+  if (
+    value === "ok" ||
+    value === "errored" ||
+    value === "abnormal" ||
+    value === "exited" ||
+    value === "crashed"
+  ) {
+    return value;
+  }
+  return "unknown";
+}
+
+function deriveAggregateStatus(
+  aggregate: Record<string, unknown>,
+): string {
+  if ((getNumber(aggregate, "crashed") ?? 0) !== 0) return "crashed";
+  if ((getNumber(aggregate, "errored") ?? 0) !== 0) return "errored";
+  if ((getNumber(aggregate, "abnormal") ?? 0) !== 0) return "abnormal";
+  if ((getNumber(aggregate, "exited") ?? 0) !== 0) return "exited";
+  return "ok";
 }
 
 async function processSession(
@@ -246,15 +214,67 @@ async function processSession(
   }
 
   const envelopeBytes = await obj.arrayBuffer();
-  const sessionData = extractEventFromEnvelope(
+  const raw = extractJsonFromEnvelope(
     new Uint8Array(envelopeBytes),
     job.item_index,
   );
 
+  const sessionData = parseSessionPayload(raw);
   if (!sessionData) {
     console.error('[SENTRY-PROCESSOR] Could not extract session from envelope');
     return;
   }
+
+  const release = sessionData.release || sessionData.attrs?.release || null;
+  const environment =
+    sessionData.environment || sessionData.attrs?.environment || null;
+
+  if (Array.isArray(sessionData.aggregates) && sessionData.aggregates.length) {
+    for (let index = 0; index < sessionData.aggregates.length; index += 1) {
+      const aggregate = sessionData.aggregates[index];
+      const started = toUnixSeconds(aggregate.started, job.received_at);
+      const errorsRaw = aggregate.errors ?? aggregate.errored ?? aggregate.crashed;
+      const errors =
+        typeof errorsRaw === "number" && Number.isFinite(errorsRaw)
+          ? Math.max(0, Math.floor(errorsRaw))
+          : 0;
+
+      await insertSession(db, {
+        projectId: job.project_id,
+        sessionId: `${job.manifest_id}:${job.item_index}:${index}`,
+        distinctId:
+          typeof aggregate.did === "string" ? aggregate.did : null,
+        status: deriveAggregateStatus(aggregate),
+        errors,
+        started,
+        duration:
+          typeof aggregate.duration === "number" ? aggregate.duration : null,
+        release,
+        environment,
+        userAgent: null,
+        receivedAt: job.received_at,
+      });
+    }
+    return;
+  }
+
+  await insertSession(db, {
+    projectId: job.project_id,
+    sessionId: sessionData.sid || `${job.manifest_id}:${job.item_index}`,
+    distinctId: sessionData.did || null,
+    status: normaliseSessionStatus(sessionData.status),
+    errors:
+      typeof sessionData.errors === "number" && Number.isFinite(sessionData.errors)
+        ? Math.max(0, Math.floor(sessionData.errors))
+        : 0,
+    started: toUnixSeconds(sessionData.started, job.received_at),
+    duration:
+      typeof sessionData.duration === "number" ? sessionData.duration : null,
+    release,
+    environment,
+    userAgent: sessionData.user_agent || sessionData.userAgent || null,
+    receivedAt: job.received_at,
+  });
 }
 
 async function processClientReport(
@@ -269,15 +289,40 @@ async function processClientReport(
   }
 
   const envelopeBytes = await obj.arrayBuffer();
-  const reportData = extractEventFromEnvelope(
+  const raw = extractJsonFromEnvelope(
     new Uint8Array(envelopeBytes),
     job.item_index,
   );
 
+  const reportData = parseClientReportPayload(raw);
   if (!reportData) {
     console.error(
       '[SENTRY-PROCESSOR] Could not extract client report from envelope',
     );
     return;
   }
+
+  const discardedEvents = Array.isArray(reportData.discarded_events)
+    ? reportData.discarded_events
+        .filter(
+          (entry) =>
+            entry &&
+            typeof entry.reason === "string" &&
+            typeof entry.category === "string" &&
+            typeof entry.quantity === "number" &&
+            Number.isFinite(entry.quantity),
+        )
+        .map((entry) => ({
+          reason: entry.reason!,
+          category: entry.category!,
+          quantity: Math.max(0, Math.floor(entry.quantity!)),
+        }))
+    : [];
+
+  await insertClientReport(db, {
+    projectId: job.project_id,
+    timestamp: toUnixSeconds(reportData.timestamp, job.received_at),
+    discardedEvents,
+    receivedAt: job.received_at,
+  });
 }

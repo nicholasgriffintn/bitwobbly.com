@@ -64,6 +64,7 @@ export const createStatusPageFn = createServerFn({ method: "POST" })
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
+      { teamId, includePrivate: true },
     );
 
     return { ok: true, ...created };
@@ -102,6 +103,7 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
       newSlug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
+      { teamId, includePrivate: true },
     );
 
     if (updates.slug && updates.slug !== page.slug) {
@@ -143,6 +145,7 @@ export const rebuildStatusPageFn = createServerFn({ method: "POST" })
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
+      { teamId, includePrivate: true },
     );
     return { ok: true, snapshot };
   });

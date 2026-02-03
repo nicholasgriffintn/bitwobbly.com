@@ -3,6 +3,7 @@ import { withSentry } from "@sentry/cloudflare";
 import { getDb } from "./lib/db";
 import { parseEnvelope } from "./lib/envelope";
 import { buildManifests } from "./lib/manifest";
+import { isProjectCache } from "./lib/guards";
 import { validateDsn } from "./repositories/auth";
 import type { Env } from "./types/env";
 
@@ -40,8 +41,8 @@ const handler = {
       let project: { id: string; teamId: string } | null = null;
 
       const cached = await env.KV.get(cacheKey, "json");
-      if (cached) {
-        project = cached as { id: string; teamId: string };
+      if (isProjectCache(cached)) {
+        project = cached;
       } else {
         const db = getDb(env.DB);
         project = await validateDsn(db, sentryProjectId, publicKey);

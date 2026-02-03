@@ -8,6 +8,12 @@ import type { schema } from "@bitwobbly/shared";
 import type { DB } from "./db";
 import type { Env } from "../types/env";
 import {
+  extractUserId,
+  normaliseLevel,
+  parseAlertConditions,
+  parseAlertThreshold,
+} from "./alert-rule-parsers";
+import {
   getActiveRulesForProject,
   countEventsInWindow,
   getEventsInWindow,
@@ -50,14 +56,11 @@ export async function evaluateAlertRules(
 
     if (!triggerMatches(rule, context)) continue;
 
-    const conditions = rule.conditionsJson
-      ? (JSON.parse(rule.conditionsJson) as AlertConditions)
-      : null;
+    const conditions = parseAlertConditions(rule.conditionsJson);
     if (conditions && !conditionsMatch(conditions, context)) continue;
 
-    const threshold = rule.thresholdJson
       ? (JSON.parse(rule.thresholdJson) as AlertThreshold)
-      : null;
+    const threshold = parseAlertThreshold(rule.thresholdJson);
 
     let severity: "critical" | "warning" | "resolved" = "critical";
     let triggerValue: number | undefined;
@@ -117,13 +120,10 @@ function conditionsMatch(
   conditions: AlertConditions,
   context: EventContext,
 ): boolean {
-  if (
-    conditions.level?.length &&
-    !conditions.level.includes(
-      context.level as "error" | "warning" | "info" | "debug",
-    )
-  ) {
-    return false;
+  if (conditions.level?.length) {
+    const lvl = normaliseLevel(context.level);
+    if (!lvl) return false;
+    if (!conditions.level.includes(lvl)) return false;
   }
 
   if (conditions.environment?.length && context.environment) {
@@ -134,9 +134,7 @@ function conditionsMatch(
 
   if (conditions.eventType?.length) {
     const eventType = context.eventType === "transaction" ? "default" : "error";
-    if (!conditions.eventType.includes(eventType as "error" | "default")) {
-      return false;
-    }
+    if (!conditions.eventType.includes(eventType)) return false;
   }
 
   if (conditions.tags && context.tags) {
@@ -207,12 +205,7 @@ async function countUniqueUsersInWindow(
 
   const uniqueUsers = new Set<string>();
   for (const event of events) {
-    const user = event.user as {
-      id?: string;
-      email?: string;
-      ip_address?: string;
-    } | null;
-    const userId = user?.id || user?.email || user?.ip_address;
+    const userId = extractUserId(event.user);
     if (userId) {
       uniqueUsers.add(userId);
     }

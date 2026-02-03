@@ -10,10 +10,11 @@ import {
   updateMonitorNextRun,
   unlockMonitor,
 } from "./repositories/monitors";
+import { cleanupExpiredSessions } from './repositories/sessions';
 
 const handler = {
   async scheduled(
-    event: ScheduledEvent,
+    event: ScheduledController,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
@@ -24,6 +25,17 @@ const handler = {
         const nowSec = Math.floor(Date.now() / 1000);
         const lockTtlSec = 90;
         const maxBatches = 5;
+
+        try {
+          const cleanedSessions = await cleanupExpiredSessions(db, nowSec);
+          if (cleanedSessions > 0) {
+            console.log(
+              `[SCHEDULER] cleaned ${cleanedSessions} expired session(s)`,
+            );
+          }
+        } catch (error) {
+          console.error('[SCHEDULER] session cleanup failed', error);
+        }
 
         for (let batchIndex = 0; batchIndex < maxBatches; batchIndex += 1) {
           const due = await getDueMonitors(db, nowSec, 200);
@@ -39,6 +51,11 @@ const handler = {
             }
 
             try {
+              if (!m.url) {
+                ctx.waitUntil(unlockMonitor(db, m.id, lockUntil));
+                continue;
+              }
+
               const msg: CheckJob = {
                 job_id: randomId('job'),
                 team_id: m.teamId,

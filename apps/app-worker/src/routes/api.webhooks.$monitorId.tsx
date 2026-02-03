@@ -5,9 +5,9 @@ import { env } from "cloudflare:workers";
 import { getDb } from "@/server/lib/db";
 import {
   getMonitorByWebhookToken,
-  updateMonitorStatus,
 } from "@/server/repositories/monitors";
 import { hashWebhookToken } from "@bitwobbly/shared";
+import { processMonitorStatusUpdate } from "@/server/lib/monitor-transitions";
 
 const WebhookPayloadSchema = z.object({
   status: z.enum(["up", "down", "degraded"]),
@@ -61,13 +61,18 @@ export const Route = createFileRoute("/api/webhooks/$monitorId")({
             );
           }
 
-          await updateMonitorStatus(
+          await processMonitorStatusUpdate({
             db,
-            monitor.teamId,
-            params.monitorId,
-            data.status,
-            data.message,
-          );
+            kv: vars.KV,
+            alertJobs: vars.ALERT_JOBS,
+            monitor: {
+              id: monitor.id,
+              teamId: monitor.teamId,
+              failureThreshold: monitor.failureThreshold,
+            },
+            status: data.status,
+            reason: data.message,
+          });
 
           return Response.json({ ok: true });
         } catch (error) {

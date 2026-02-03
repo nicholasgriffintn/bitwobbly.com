@@ -39,6 +39,7 @@ const CreateAlertRuleSchema = z.object({
   enabled: z.number().optional(),
   sourceType: z.enum(["issue", "monitor"]),
   projectId: z.string().optional().nullable(),
+  monitorId: z.string().optional().nullable(),
   environment: z.string().optional().nullable(),
   triggerType: z.enum([
     "new_issue",
@@ -55,6 +56,22 @@ const CreateAlertRuleSchema = z.object({
   channelId: z.string(),
   actionIntervalSeconds: z.number().min(300).max(86400).optional(),
   ownerId: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (data.sourceType === "monitor" && !data.monitorId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "monitorId is required for monitor rules",
+      path: ["monitorId"],
+    });
+  }
+
+  if (data.sourceType === "issue" && data.monitorId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "monitorId is not valid for issue rules",
+      path: ["monitorId"],
+    });
+  }
 });
 
 const UpdateAlertRuleSchema = z.object({
@@ -62,6 +79,7 @@ const UpdateAlertRuleSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   enabled: z.number().optional(),
   projectId: z.string().optional().nullable(),
+  monitorId: z.string().optional().nullable(),
   environment: z.string().optional().nullable(),
   triggerType: z
     .enum([
@@ -122,6 +140,7 @@ export const createAlertRuleFn = createServerFn({ method: "POST" })
       enabled: data.enabled,
       sourceType: data.sourceType,
       projectId: data.projectId,
+      monitorId: data.monitorId,
       environment: data.environment,
       triggerType: data.triggerType,
       conditionsJson: data.conditions ? JSON.stringify(data.conditions) : null,
@@ -157,6 +176,7 @@ export const updateAlertRuleFn = createServerFn({ method: "POST" })
       name: data.name,
       enabled: data.enabled,
       projectId: data.projectId,
+      monitorId: data.monitorId,
       environment: data.environment,
       triggerType: data.triggerType,
       conditionsJson: data.conditions ? JSON.stringify(data.conditions) : null,

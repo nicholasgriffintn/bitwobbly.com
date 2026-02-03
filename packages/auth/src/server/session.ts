@@ -5,9 +5,10 @@ type SessionData = {
   userId?: string;
   email?: string;
   cognitoSession?: string;
+  sessionToken?: string;
 };
 
-export function useAppSession() {
+export function useAppSession(): ReturnType<typeof useSession<SessionData>> {
   const vars = env;
 
   if (!vars.SESSION_SECRET) {

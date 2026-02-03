@@ -17,13 +17,12 @@ import {
   upsertMonitorState,
 } from "./repositories/monitor-state";
 import type { Env } from "./types/env";
-
-type TransitionRequest = {
-  team_id: string;
-  monitor_id: string;
-  status: "up" | "down";
-  reason?: string;
-};
+import { jsonResponse } from "./lib/responses";
+import {
+  parseTransitionRequest,
+  type TransitionRequest,
+} from "./lib/transition-request";
+import { isRecord } from "./lib/guards";
 
 type DOState = {
   open_incident_id?: string;
@@ -43,12 +42,16 @@ class IncidentCoordinatorBase implements DurableObject {
     if (req.method !== "POST" || url.pathname !== "/transition")
       return new Response("Not found", { status: 404 });
 
-    const input = (await req.json()) as TransitionRequest;
+    const body = await req.json();
+    const input = parseTransitionRequest(body);
+    if (!input) {
+      return jsonResponse({ ok: false, error: "Invalid request body" }, 400);
+    }
     const current = (await this.state.storage.get<DOState>("s")) || {};
 
     if (input.status === "down") {
       if (current.open_incident_id)
-        return json({
+        return jsonResponse({
           ok: true,
           incident_id: current.open_incident_id,
           action: "noop_already_open",
@@ -69,11 +72,11 @@ class IncidentCoordinatorBase implements DurableObject {
         KV: this.env.KV,
       });
 
-      return json({ ok: true, incident_id: incidentId, action: "opened" });
+      return jsonResponse({ ok: true, incident_id: incidentId, action: "opened" });
     }
 
     if (!current.open_incident_id)
-      return json({ ok: true, action: "noop_no_open_incident" });
+      return jsonResponse({ ok: true, action: "noop_no_open_incident" });
 
     const incidentId = current.open_incident_id;
     await resolveIncident({ DB: this.env.DB }, input.monitor_id, incidentId);
@@ -84,7 +87,7 @@ class IncidentCoordinatorBase implements DurableObject {
       KV: this.env.KV,
     });
 
-    return json({ ok: true, incident_id: incidentId, action: "resolved" });
+    return jsonResponse({ ok: true, incident_id: incidentId, action: "resolved" });
   }
 }
 
@@ -194,6 +197,7 @@ async function handleCheck(
   if (status === 'down' && nextFailures >= threshold && !prevIncidentOpen) {
     const incidentId = await transitionViaDO(env, job, 'down', reason);
     await enqueueAlert(env, {
+      type: "monitor",
       alert_id: randomId('al'),
       team_id: job.team_id,
       monitor_id: job.monitor_id,
@@ -207,6 +211,7 @@ async function handleCheck(
   if (status === 'up' && prevIncidentOpen) {
     const incidentId = await transitionViaDO(env, job, 'up');
     await enqueueAlert(env, {
+      type: "monitor",
       alert_id: randomId('al'),
       team_id: job.team_id,
       monitor_id: job.monitor_id,
@@ -256,8 +261,9 @@ async function transitionViaDO(
       }),
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { incident_id?: string };
-    return data.incident_id || null;
+    const data: unknown = await res.json();
+    if (!isRecord(data)) return null;
+    return typeof data.incident_id === "string" ? data.incident_id : null;
   } catch {
     return null;
   }
@@ -301,10 +307,14 @@ async function checkExternalService(
         };
       }
 
-      const data = (await res.json()) as {
-        status?: { indicator?: string };
-      };
-      const indicator = data?.status?.indicator;
+      const data: unknown = await res.json();
+      let indicator: string | undefined;
+      if (isRecord(data) && isRecord(data.status)) {
+        indicator =
+          typeof data.status.indicator === "string"
+            ? data.status.indicator
+            : undefined;
+      }
 
       if (indicator === "none" || indicator === "minor") {
         return {
@@ -331,7 +341,7 @@ async function checkExternalService(
 
     return { status, reason, latency_ms };
   } catch (e: unknown) {
-    const error = e;
+    const error = e instanceof Error ? e : null;
     return {
       status: "down",
       reason:
@@ -343,12 +353,6 @@ async function checkExternalService(
   } finally {
     clearTimeout(t);
   }
-}
-
-function json(data: unknown): Response {
-  return new Response(JSON.stringify(data), {
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
 }
 
 export const IncidentCoordinator = instrumentDurableObjectWithSentry(

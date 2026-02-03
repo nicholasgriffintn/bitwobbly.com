@@ -6,27 +6,48 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ## Plan of Completion
 
-### Incomplete Features
+#### Phase 0
 
-- **Session cleanup** -- The `sessions` table has an `expires_at` column but no scheduled cleanup or validation logic runs against it.
-- **Email verification** -- No email verification flow exists. Users can sign up with any email and start using the system immediately. Cognito supports this but custom does not.
-- **Password reset** -- No password reset flow exists. Users cannot recover access if they forget their password. Both cognito and custom auth are affected. Cognito supports this but custom does not.
-- **MFA support** -- No multi-factor authentication options for user accounts. Cognito supports this but custom does not.
+- Enforce unique slugs per team and globally safe public routing; validate `is_public` for `/status/$slug`.
+- Fix monitor rule API contracts (`monitorId` in create/update validators and repository writes).
+- Route webhook/manual status transitions through the same incident + alert pipeline as checker events.
+- Add idempotency guards for queue handlers (dedupe keys for alert jobs and sentry event writes).
+- Add strict authn/authz checks on all mutable server functions, and apply API rate limiter on authenticated API surfaces.
+- Turn on baseline observability (logs, traces, queue failure metrics, dead-letter queues).
 
-### Nice-to-Haves
+#### Phase 1
 
-- **Add private and internal status pages** -- Support for private status pages (protected by basic auth or login) and internal status pages (only visible to logged-in users).
-- **Add other integrations to trigger notifications** -- Support for more integrations that can trigger alarms such as increased views on the status pages or other systems externally.
-- **Monitor response validation** -- Only HTTP status is checked. Body content matching, certificate expiry checks, and DNS monitoring would add value.
-- **API keys** -- No programmatic API access for users (settings page placeholder exists).
-- **Add more notification channels** -- Support for SMS, Slack, PagerDuty, etc. Maybe a bit of AI calling for incident response?
-- **More control of alerts** -- Support more advanced rules and features, like:
-- **Anomaly detection**: Dynamic thresholds using historical data patterns (requires background job for model training)
-- **Session-based triggers**: Percent of sessions affected, crash-free rate
-- **Alert preview**: Show which issues would have triggered in last 24h
-- **Digests**: Batch multiple alerts into periodic summary emails
-- **Mute/snooze**: Temporarily silence rules for maintenance windows
+- Expand monitor types: HTTP assertions, keyword/body match, TLS expiry, DNS, TCP, ping, cron heartbeat, browser checks.
+- Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
+- Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
+- Add status page access modes: public, private (password), and internal (team-only).
+- Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
+- Add SLO/Uptime reporting with exportable monthly reports and historical availability APIs.
 
+#### Phase 2
+
+- Persist and query sessions/client reports; expose crash-free session and release health views.
+- Improve grouping with stacktrace-based fingerprinting rules, frame normalisation, and configurable overrides.
+- Track issue ownership and workflow (`assigned`, `snoozed`, `ignored until`, `resolved in release`, `regressed`).
+- Add source maps and symbolication pipeline with secure upload endpoints and retention controls.
+- Add search and faceting over tags, release, environment, user, transaction, and time windows.
+- Add performance primitives: transaction summaries, Apdex-style score, and slow span hotspots.
+
+#### Phase 3
+
+- Add channels: Slack, PagerDuty, Opsgenie, Teams, SMS, voice, and generic webhook signatures.
+- Add advanced alert conditions: anomaly bands, error budget burn, crash-free drop, composite multi-signal rules.
+- Add rule simulation and preview against historical data before enabling.
+- Add on-call routing, escalation policies, and acknowledgement workflows.
+- Add automation hooks for incident creation, enrichment, and post-incident follow-up tasks.
+
+#### Phase 4
+
+- Add retention policies and tiered storage lifecycle (hot D1, warm R2, archival exports).
+- Add indexing and query optimisation for large issue/event volumes; benchmark queue and storage throughput.
+- Add backups and disaster recovery drills for D1, KV, and R2.
+- Add compliance controls (PII scrubbing, data residency options, audit event stream).
+- Add billing and quota controls (event volume limits, monitor limits, alert overage handling).
 
 ## Architecture
 

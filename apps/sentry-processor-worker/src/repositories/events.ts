@@ -139,3 +139,59 @@ export async function insertEvent(
     createdAt: nowIso(),
   });
 }
+
+export async function insertSession(
+  db: DB,
+  data: {
+    projectId: string;
+    sessionId: string;
+    distinctId?: string | null;
+    status: string;
+    errors?: number;
+    started: number;
+    duration?: number | null;
+    release?: string | null;
+    environment?: string | null;
+    userAgent?: string | null;
+    receivedAt: number;
+  },
+) {
+  await db.insert(schema.sentrySessions).values({
+    id: randomId("ses"),
+    projectId: data.projectId,
+    sessionId: data.sessionId,
+    distinctId: data.distinctId || null,
+    status: data.status,
+    errors: data.errors ?? 0,
+    started: data.started,
+    duration: data.duration ?? null,
+    release: data.release || null,
+    environment: data.environment || null,
+    userAgent: data.userAgent || null,
+    receivedAt: data.receivedAt,
+    createdAt: nowIso(),
+  });
+}
+
+export async function insertClientReport(
+  db: DB,
+  data: {
+    projectId: string;
+    timestamp: number;
+    discardedEvents?: Array<{
+      reason: string;
+      category: string;
+      quantity: number;
+    }> | null;
+    receivedAt: number;
+  },
+) {
+  await db.insert(schema.sentryClientReports).values({
+    id: randomId("cr"),
+    projectId: data.projectId,
+    timestamp: data.timestamp,
+    discardedEvents: data.discardedEvents || null,
+    receivedAt: data.receivedAt,
+    createdAt: nowIso(),
+  });
+}
