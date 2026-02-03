@@ -5,7 +5,7 @@ import { LoginForm, SignUpForm } from "@bitwobbly/auth/components";
 import Brand from "@/components/Brand";
 import { getCurrentUserFn } from "@/server/functions/auth";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/Login")({
   beforeLoad: async () => {
     const { user } = await getCurrentUserFn();
     if (user) {

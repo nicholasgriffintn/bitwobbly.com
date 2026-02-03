@@ -109,6 +109,7 @@ function PublicStatusPage() {
             padding: 0.75rem;
             border-radius: 4px;
             background: #f9fafb;
+            gap: 0.75rem;
           }
 
           .component-name {
@@ -120,6 +121,7 @@ function PublicStatusPage() {
             font-size: 0.875rem;
             color: #6b7280;
             margin-top: 0.25rem;
+            overflow-wrap: anywhere;
           }
 
           .status-indicator {
@@ -170,6 +172,7 @@ function PublicStatusPage() {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            overflow-wrap: anywhere;
           }
 
           .incident-status-badge {
@@ -226,6 +229,7 @@ function PublicStatusPage() {
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.5rem;
+            gap: 0.5rem;
           }
 
           .update-status {
@@ -243,6 +247,7 @@ function PublicStatusPage() {
           .update-message {
             color: #374151;
             line-height: 1.5;
+            overflow-wrap: anywhere;
           }
 
           .overall-status {
@@ -311,6 +316,38 @@ function PublicStatusPage() {
             justify-content: space-between;
             font-size: 0.75rem;
             color: #9ca3af;
+          }
+
+          @media (max-width: 768px) {
+            .status-page {
+              padding: 1.25rem 0.875rem;
+            }
+
+            .status-header {
+              margin-bottom: 2rem;
+            }
+
+            .status-title {
+              font-size: 1.625rem;
+            }
+
+            .status-section {
+              padding: 1rem;
+              border-radius: 12px;
+            }
+
+            .component-item {
+              align-items: flex-start;
+            }
+
+            .incident-title {
+              flex-wrap: wrap;
+            }
+
+            .update-header {
+              flex-wrap: wrap;
+              align-items: flex-start;
+            }
           }
 
           ${page.custom_css || ""}

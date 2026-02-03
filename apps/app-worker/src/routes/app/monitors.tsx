@@ -264,7 +264,12 @@ function Monitors() {
       <div className="card">
         <div
           className="card-title"
-          style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+            flexWrap: "wrap",
+          }}
         >
           Monitors
           <button

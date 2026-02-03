@@ -193,6 +193,7 @@ function IssueTracking() {
           display: 'flex', 
           alignItems: 'center', 
           gap: '0.5rem',
+          flexWrap: 'wrap',
           marginBottom: '0.75rem',
           paddingBottom: '0.5rem',
           borderBottom: '1px solid var(--border)'
@@ -330,6 +331,7 @@ function IssueTracking() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.5rem',
+                      flexWrap: 'wrap',
                       marginBottom: '0.75rem',
                       paddingBottom: '0.5rem',
                       borderBottom: '1px solid var(--border)',
