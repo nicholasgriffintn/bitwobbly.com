@@ -6,8 +6,7 @@ import { getDb } from "@/server/lib/db";
 import {
   getMonitorByWebhookToken,
 } from "@/server/repositories/monitors";
-import { hashWebhookToken } from "@bitwobbly/shared";
-import { processMonitorStatusUpdate } from "@/server/lib/monitor-transitions";
+import { hashWebhookToken, randomId } from "@bitwobbly/shared";
 
 const WebhookPayloadSchema = z.object({
   status: z.enum(["up", "down", "degraded"]),
@@ -61,17 +60,16 @@ export const Route = createFileRoute("/api/webhooks/$monitorId")({
             );
           }
 
-          await processMonitorStatusUpdate({
-            db,
-            kv: vars.KV,
-            alertJobs: vars.ALERT_JOBS,
-            monitor: {
-              id: monitor.id,
-              teamId: monitor.teamId,
-              failureThreshold: monitor.failureThreshold,
-            },
-            status: data.status,
-            reason: data.message,
+          await vars.CHECK_JOBS.send({
+            job_id: randomId("job"),
+            team_id: monitor.teamId,
+            monitor_id: monitor.id,
+            monitor_type: "webhook",
+            url: monitor.url || "",
+            timeout_ms: Number(monitor.timeoutMs) || 8000,
+            failure_threshold: Number(monitor.failureThreshold) || 3,
+            reported_status: data.status,
+            reported_reason: data.message,
           });
 
           return Response.json({ ok: true });

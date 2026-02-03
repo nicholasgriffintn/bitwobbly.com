@@ -5,7 +5,7 @@ import {
   computeFingerprint,
   extractCulprit,
   generateTitle,
-} from "./fingerprint";
+} from "./fingerprint.ts";
 
 test("respects custom fingerprint from SDK payload", () => {
   const fingerprint = computeFingerprint({

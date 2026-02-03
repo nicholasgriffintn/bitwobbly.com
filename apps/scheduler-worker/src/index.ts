@@ -89,7 +89,7 @@ const handler = {
   },
 };
 
-export default Sentry.withSentry(
+export default Sentry.withSentry<Env>(
   () => ({
     dsn: 'https://a2ada73c0a154eb5b035f850d8e0d505@ingest.bitwobbly.com/4',
     environment: 'production',

@@ -9,9 +9,13 @@ import {
   deleteStatusPage,
   listStatusPages,
   getStatusPageById,
-  rebuildStatusSnapshot,
   getStatusPageBySlug,
 } from "../repositories/status-pages";
+import {
+  getPublicStatusSnapshotCacheKey,
+  getTeamStatusSnapshotCacheKey,
+} from "../lib/status-snapshot-cache";
+import { rebuildStatusSnapshot } from "../services/status-snapshots";
 import { requireTeam } from "../lib/auth-middleware";
 
 const CreateStatusPageSchema = z.object({
@@ -107,9 +111,11 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
     );
 
     if (updates.slug && updates.slug !== page.slug) {
-      await vars.KV.delete(`status:${page.slug}`);
+      await vars.KV.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug));
+      await vars.KV.delete(getPublicStatusSnapshotCacheKey(page.slug));
     }
 
+    await vars.KV.delete(getPublicStatusSnapshotCacheKey(newSlug));
     return { ok: true };
   });
 
@@ -124,7 +130,8 @@ export const deleteStatusPageFn = createServerFn({ method: "POST" })
     if (!page) throw new Error("Status page not found");
 
     await deleteStatusPage(db, teamId, data.id);
-    await vars.KV.delete(`status:${page.slug}`);
+    await vars.KV.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug));
+    await vars.KV.delete(getPublicStatusSnapshotCacheKey(page.slug));
 
     return { ok: true };
   });

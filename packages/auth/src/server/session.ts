@@ -11,12 +11,14 @@ type SessionData = {
 export function useAppSession(): ReturnType<typeof useSession<SessionData>> {
   const vars = env;
 
+  // @ts-ignore
   if (!vars.SESSION_SECRET) {
     throw new Error('SESSION_SECRET is not set');
   }
 
   return useSession<SessionData>({
     name: 'app-session',
+    // @ts-ignore
     password: vars.SESSION_SECRET,
     cookie: {
       secure: true,

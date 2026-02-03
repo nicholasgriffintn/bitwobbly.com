@@ -1,9 +1,9 @@
-export function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, {}> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function getString(
-  obj: Record<string, unknown>,
+  obj: Record<string, {}>,
   key: string,
 ): string | undefined {
   const v = obj[key];
@@ -11,7 +11,7 @@ export function getString(
 }
 
 export function getNumber(
-  obj: Record<string, unknown>,
+  obj: Record<string, {}>,
   key: string,
 ): number | undefined {
   const v = obj[key];
@@ -19,11 +19,11 @@ export function getNumber(
 }
 
 export function getArray(
-  obj: Record<string, unknown>,
+  obj: Record<string, {}>,
   key: string,
-): unknown[] | undefined {
+): {}[] | undefined {
   const v = obj[key];
-  return Array.isArray(v) ? v : undefined;
+  return Array.isArray(v) ? (v as {}[]) : undefined;
 }
 
 export function safeJsonParse(value: string): unknown | null {
@@ -55,4 +55,3 @@ export function parseStringRecord(
   }
   return out;
 }
-

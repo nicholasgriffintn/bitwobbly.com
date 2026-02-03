@@ -7,11 +7,11 @@
   "workers_dev": false,
   "preview_urls": false,
   "observability": {
-    "enabled": false,
-    "head_sampling_rate": 1,
+    "enabled": true,
+    "head_sampling_rate": 0.01,
     "logs": {
-      "enabled": false,
-      "head_sampling_rate": 1,
+      "enabled": true,
+      "head_sampling_rate": 0.01,
       "invocation_logs": false
     }
   },
@@ -38,7 +38,9 @@
       {
         "queue": "bitwobbly-sentry-events",
         "max_batch_size": 10,
-        "max_batch_timeout": 5
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "bitwobbly-sentry-events-dlq"
       }
     ],
     "producers": [

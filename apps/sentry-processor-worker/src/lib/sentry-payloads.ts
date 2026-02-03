@@ -17,25 +17,25 @@ export interface SentryEvent {
   };
   tags?: Record<string, string>;
   contexts?: {
-    device?: Record<string, unknown>;
-    os?: Record<string, unknown>;
-    runtime?: Record<string, unknown>;
-    browser?: Record<string, unknown>;
-    app?: Record<string, unknown>;
+    device?: Record<string, {}>;
+    os?: Record<string, {}>;
+    runtime?: Record<string, {}>;
+    browser?: Record<string, {}>;
+    app?: Record<string, {}>;
   };
   request?: {
     url?: string;
     method?: string;
     headers?: Record<string, string>;
-    data?: Record<string, unknown>;
+    data?: Record<string, {}>;
   };
   exception?: {
     values?: Array<{
       type?: string;
       value?: string;
-      mechanism?: Record<string, unknown>;
+      mechanism?: Record<string, {}>;
       stacktrace?: {
-        frames?: Array<Record<string, unknown>>;
+        frames?: Array<Record<string, {}>>;
       };
     }>;
   };
@@ -45,7 +45,7 @@ export interface SentryEvent {
     category?: string;
     message?: string;
     level?: string;
-    data?: Record<string, unknown>;
+    data?: Record<string, {}>;
   }>;
 }
 
@@ -127,7 +127,7 @@ export function parseSentryEvent(value: unknown): SentryEvent | null {
         if (isRecord(v.stacktrace)) {
           const stacktrace: NonNullable<NonNullable<SentryEvent["exception"]>["values"]>[number]["stacktrace"] = {};
           if (Array.isArray(v.stacktrace.frames)) {
-            const frames: Array<Record<string, unknown>> = [];
+            const frames: Array<Record<string, {}>> = [];
             for (const frame of v.stacktrace.frames) {
               if (isRecord(frame)) frames.push(frame);
             }
@@ -277,4 +277,3 @@ export function parseClientReportPayload(
 
   return out;
 }
-

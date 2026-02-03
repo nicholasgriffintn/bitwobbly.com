@@ -15,6 +15,7 @@ import {
   getProjectById,
   getAlertRulesForMonitor,
 } from './repositories/alert-rules';
+import { acquireQueueDedupe } from "./repositories/queue-dedupe";
 
 const handler = {
   async queue(batch: MessageBatch<AlertJob>, env: Env): Promise<void> {
@@ -23,6 +24,13 @@ const handler = {
     for (const msg of batch.messages) {
       try {
         const job = msg.body;
+
+        const ok = await acquireQueueDedupe(db, `alert:${job.alert_id}`);
+        if (!ok) {
+          msg.ack();
+          continue;
+        }
+
         if (job.type === "issue") {
           await handleIssueAlert(job, env, db);
         } else {
@@ -37,7 +45,7 @@ const handler = {
   },
 };
 
-export default withSentry(
+export default withSentry<Env, AlertJob>(
   () => ({
     dsn: "https://9f74b921b8364cf6af59cbe1a3aa0747@ingest.bitwobbly.com/3",
     environment: "production",

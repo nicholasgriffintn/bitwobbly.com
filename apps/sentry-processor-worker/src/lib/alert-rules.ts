@@ -59,7 +59,6 @@ export async function evaluateAlertRules(
     const conditions = parseAlertConditions(rule.conditionsJson);
     if (conditions && !conditionsMatch(conditions, context)) continue;
 
-      ? (JSON.parse(rule.thresholdJson) as AlertThreshold)
     const threshold = parseAlertThreshold(rule.thresholdJson);
 
     let severity: "critical" | "warning" | "resolved" = "critical";

@@ -104,6 +104,27 @@ export async function getComponentById(
   return components[0] || null;
 }
 
+export async function listComponentMonitorIds(db: DB, componentId: string) {
+  const rows = await db
+    .select({ monitorId: schema.componentMonitors.monitorId })
+    .from(schema.componentMonitors)
+    .where(eq(schema.componentMonitors.componentId, componentId));
+  return rows.map((row) => row.monitorId);
+}
+
+export async function listComponentMonitorStates(db: DB, componentId: string) {
+  return db
+    .select({
+      lastStatus: schema.monitorState.lastStatus,
+    })
+    .from(schema.componentMonitors)
+    .innerJoin(
+      schema.monitorState,
+      eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId),
+    )
+    .where(eq(schema.componentMonitors.componentId, componentId));
+}
+
 export async function linkMonitorToComponent(
   db: DB,
   teamId: string,

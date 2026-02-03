@@ -13,7 +13,8 @@ export async function rebuildAllSnapshots(env: {
       name: schema.statusPages.name,
       teamId: schema.statusPages.teamId,
     })
-    .from(schema.statusPages);
+    .from(schema.statusPages)
+    .where(eq(schema.statusPages.isPublic, 1));
 
   for (const p of pages) {
     await rebuildStatusSnapshot(env, p.id, p.slug, p.name, p.teamId);
@@ -119,18 +120,18 @@ async function rebuildStatusSnapshot(
       id: i.id,
       title: i.title,
       status: i.status,
-      started_at: i.started_at,
-      resolved_at: i.resolved_at,
+      started_at: i.startedAt,
+      resolved_at: i.resolvedAt,
       updates: (byId.get(i.id) || []).map((u) => ({
         id: u.id,
         message: u.message,
         status: u.status,
-        created_at: u.created_at,
+        created_at: u.createdAt,
       })),
     })),
   };
 
-  await env.KV.put(`status:${slug}`, JSON.stringify(snapshot), {
+  await env.KV.put(`status:public:${slug}`, JSON.stringify(snapshot), {
     expirationTtl: 60,
   });
 }

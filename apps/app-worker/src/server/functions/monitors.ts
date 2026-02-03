@@ -13,8 +13,7 @@ import {
 import { getMonitorMetrics } from "../repositories/metrics";
 import { clampInt } from "../lib/utils";
 import { requireTeam } from "../lib/auth-middleware";
-import { generateWebhookToken, hashWebhookToken } from '@bitwobbly/shared';
-import { processMonitorStatusUpdate } from "../lib/monitor-transitions";
+import { generateWebhookToken, hashWebhookToken, randomId } from '@bitwobbly/shared';
 
 const CreateMonitorSchema = z
   .object({
@@ -202,17 +201,16 @@ export const setManualMonitorStatusFn = createServerFn({ method: "POST" })
       throw new Error("Only manual monitors can be updated with this endpoint");
     }
 
-    await processMonitorStatusUpdate({
-      db,
-      kv: vars.KV,
-      alertJobs: vars.ALERT_JOBS,
-      monitor: {
-        id: monitor.id,
-        teamId: monitor.teamId,
-        failureThreshold: monitor.failureThreshold,
-      },
-      status: data.status,
-      reason: data.message,
+    await vars.CHECK_JOBS.send({
+      job_id: randomId("job"),
+      team_id: monitor.teamId,
+      monitor_id: monitor.id,
+      monitor_type: "manual",
+      url: monitor.url || "",
+      timeout_ms: Number(monitor.timeoutMs) || 8000,
+      failure_threshold: Number(monitor.failureThreshold) || 3,
+      reported_status: data.status,
+      reported_reason: data.message,
     });
 
     return { ok: true };

@@ -13,6 +13,7 @@ import {
   listAlertRuleFires,
 } from "../repositories/alert-rules";
 import { notificationChannelExists } from "../repositories/notification-channels";
+import { getMonitorById } from "../repositories/monitors";
 import { requireTeam } from "../lib/auth-middleware";
 
 const ThresholdSchema = z.object({
@@ -62,6 +63,14 @@ const CreateAlertRuleSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: "monitorId is required for monitor rules",
       path: ["monitorId"],
+    });
+  }
+
+  if (data.sourceType === "monitor" && data.projectId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "projectId is not valid for monitor rules",
+      path: ["projectId"],
     });
   }
 
@@ -135,6 +144,13 @@ export const createAlertRuleFn = createServerFn({ method: "POST" })
     );
     if (!channelExists) throw new Error("Notification channel not found");
 
+    if (data.sourceType === "monitor" && data.monitorId) {
+      const monitor = await getMonitorById(db, teamId, data.monitorId);
+      if (!monitor) {
+        throw new Error("Monitor not found");
+      }
+    }
+
     const created = await createAlertRule(db, teamId, {
       name: data.name,
       enabled: data.enabled,
@@ -163,6 +179,26 @@ export const updateAlertRuleFn = createServerFn({ method: "POST" })
     const existing = await getAlertRuleById(db, teamId, data.id);
     if (!existing) throw new Error("Alert rule not found");
 
+    if (
+      existing.sourceType === "monitor" &&
+      data.projectId !== undefined &&
+      data.projectId !== null
+    ) {
+      throw new Error("projectId is not valid for monitor rules");
+    }
+
+    if (
+      existing.sourceType === "issue" &&
+      data.monitorId !== undefined &&
+      data.monitorId !== null
+    ) {
+      throw new Error("monitorId is not valid for issue rules");
+    }
+
+    if (existing.sourceType === "monitor" && data.monitorId === null) {
+      throw new Error("monitorId is required for monitor rules");
+    }
+
     if (data.channelId) {
       const channelExists = await notificationChannelExists(
         db,
@@ -170,6 +206,13 @@ export const updateAlertRuleFn = createServerFn({ method: "POST" })
         data.channelId,
       );
       if (!channelExists) throw new Error("Notification channel not found");
+    }
+
+    if (data.monitorId !== undefined && data.monitorId !== null) {
+      const monitor = await getMonitorById(db, teamId, data.monitorId);
+      if (!monitor) {
+        throw new Error("Monitor not found");
+      }
     }
 
     await updateAlertRule(db, teamId, data.id, {

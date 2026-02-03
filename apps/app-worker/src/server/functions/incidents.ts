@@ -13,7 +13,7 @@ import {
 import {
   clearStatusPageCache,
   clearAllStatusPageCaches,
-} from "../repositories/status-pages";
+} from "../services/status-snapshots";
 import { requireTeam } from "../lib/auth-middleware";
 
 const CreateIncidentSchema = z.object({

@@ -8,6 +8,15 @@ export interface UpsertIssueResult {
   wasResolved: boolean;
 }
 
+export async function eventExists(db: DB, eventId: string): Promise<boolean> {
+  const existing = await db
+    .select({ id: schema.sentryEvents.id })
+    .from(schema.sentryEvents)
+    .where(eq(schema.sentryEvents.id, eventId))
+    .limit(1);
+  return Boolean(existing.length);
+}
+
 export async function upsertIssue(
   db: DB,
   projectId: string,
@@ -114,7 +123,7 @@ export async function insertEvent(
       url?: string;
       method?: string;
       headers?: Record<string, string>;
-      data?: {};
+      data?: { [key: string]: {} };
     } | null;
     exception?: {
       values?: Array<{
@@ -134,10 +143,13 @@ export async function insertEvent(
     }> | null;
   },
 ) {
-  await db.insert(schema.sentryEvents).values({
-    ...data,
-    createdAt: nowIso(),
-  });
+  await db
+    .insert(schema.sentryEvents)
+    .values({
+      ...data,
+      createdAt: nowIso(),
+    })
+    .onConflictDoNothing();
 }
 
 export async function insertSession(

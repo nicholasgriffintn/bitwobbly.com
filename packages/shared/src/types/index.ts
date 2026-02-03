@@ -20,6 +20,8 @@ export interface CheckJob {
   failure_threshold?: number;
   monitor_type?: string;
   external_config?: string;
+  reported_status?: "up" | "down" | "degraded";
+  reported_reason?: string;
 }
 
 export interface MonitorAlertJob {

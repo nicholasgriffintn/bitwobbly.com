@@ -19,8 +19,8 @@ import {
 } from "../repositories/components";
 import {
   getStatusPageById,
-  clearAllStatusPageCaches,
 } from "../repositories/status-pages";
+import { clearAllStatusPageCaches, clearStatusPageCache } from "../services/status-snapshots";
 import {
   getComponentUptimeMetrics,
   getComponentMetrics,
@@ -145,7 +145,7 @@ export const linkToPageFn = createServerFn({ method: "POST" })
       data.sortOrder || 0,
     );
 
-    await vars.KV.delete(`status:${page.slug}`);
+    await clearStatusPageCache(db, vars.KV, teamId, page.id);
 
     return { ok: true };
   });
@@ -169,7 +169,7 @@ export const unlinkFromPageFn = createServerFn({ method: "POST" })
       data.componentId,
     );
 
-    await vars.KV.delete(`status:${page.slug}`);
+    await clearStatusPageCache(db, vars.KV, teamId, page.id);
 
     return { ok: true };
   });

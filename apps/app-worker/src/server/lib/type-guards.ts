@@ -1,4 +1,4 @@
-import type { StatusSnapshot } from "../repositories/status-pages";
+import type { StatusSnapshot } from "../services/status-snapshots";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -15,4 +15,3 @@ export function isStatusSnapshot(value: unknown): value is StatusSnapshot {
   if (!Array.isArray(value.incidents)) return false;
   return true;
 }
-

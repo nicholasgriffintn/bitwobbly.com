@@ -3,6 +3,7 @@ import {
   integer,
   sqliteTable,
   primaryKey,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 export const teams = sqliteTable("teams", {
@@ -44,19 +45,28 @@ export const monitorState = sqliteTable("monitor_state", {
   updatedAt: text("updated_at").notNull(),
 });
 
-export const statusPages = sqliteTable("status_pages", {
-  id: text("id").primaryKey(),
-  teamId: text("team_id")
-    .notNull()
-    .references(() => teams.id),
-  slug: text("slug").notNull().unique(),
-  name: text("name").notNull(),
-  isPublic: integer("is_public").notNull().default(1),
-  logoUrl: text("logo_url"),
-  brandColor: text("brand_color").default("#007bff"),
-  customCss: text("custom_css"),
-  createdAt: text("created_at").notNull(),
-});
+export const statusPages = sqliteTable(
+  "status_pages",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    isPublic: integer("is_public").notNull().default(1),
+    logoUrl: text("logo_url"),
+    brandColor: text("brand_color").default("#007bff"),
+    customCss: text("custom_css"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    teamSlugUnique: uniqueIndex("status_pages_team_slug_unique").on(
+      table.teamId,
+      table.slug,
+    ),
+  }),
+);
 
 export const components = sqliteTable("components", {
   id: text("id").primaryKey(),
@@ -224,6 +234,11 @@ export const sessions = sqliteTable("sessions", {
   expiresAt: integer("expires_at").notNull(),
 });
 
+export const queueDedupe = sqliteTable("queue_dedupe", {
+  key: text("key").primaryKey(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const userTeams = sqliteTable(
   "user_teams",
   {
@@ -334,7 +349,7 @@ export const sentryEvents = sqliteTable("sentry_events", {
     url?: string;
     method?: string;
     headers?: Record<string, string>;
-    data?: {};
+    data?: { [key: string]: {} };
   }>(),
   exception: text("exception", { mode: "json" }).$type<{
     values?: Array<{

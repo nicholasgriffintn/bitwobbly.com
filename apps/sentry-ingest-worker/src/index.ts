@@ -128,7 +128,7 @@ const handler = {
   },
 };
 
-export default withSentry(
+export default withSentry<Env>(
   () => ({
     dsn: "https://0b3358d7860a4be0909f9cebdff553b7@ingest.bitwobbly.com/5",
     environment: "production",

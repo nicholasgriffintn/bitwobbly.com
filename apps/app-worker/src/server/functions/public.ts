@@ -4,14 +4,23 @@ import { notFound } from "@tanstack/react-router";
 
 import { getDb } from "../lib/db";
 import { isStatusSnapshot } from "../lib/type-guards";
+import { getPublicStatusSnapshotCacheKey } from "../lib/status-snapshot-cache";
 import {
   publicStatusPageExistsBySlug,
-  rebuildStatusSnapshot,
-  StatusSnapshot,
 } from "../repositories/status-pages";
+import { rebuildStatusSnapshot, type StatusSnapshot } from "../services/status-snapshots";
+
+const PublicStatusSchema = {
+  slug: /^[a-z0-9-]{2,60}$/,
+};
 
 export const getPublicStatusFn = createServerFn({ method: "GET" })
-  .inputValidator((data: { slug: string }) => data)
+  .inputValidator((data: { slug: string }) => {
+    if (!PublicStatusSchema.slug.test(data.slug)) {
+      throw new Error("Invalid slug");
+    }
+    return data;
+  })
   .handler(async ({ data }): Promise<StatusSnapshot> => {
     const vars = env;
 
@@ -29,7 +38,10 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
       throw notFound();
     }
 
-    const cached = await vars.KV.get(`status:${data.slug}`, "json");
+    const cached = await vars.KV.get(
+      getPublicStatusSnapshotCacheKey(data.slug),
+      "json",
+    );
     if (isStatusSnapshot(cached)) {
       return cached;
     }

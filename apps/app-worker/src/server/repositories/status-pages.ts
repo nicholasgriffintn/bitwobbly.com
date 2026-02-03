@@ -1,175 +1,6 @@
 import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
 import { eq, and } from "drizzle-orm";
 
-import { listOpenIncidents, listRecentResolvedIncidents } from "./incidents.js";
-
-interface DayStatus {
-  date: string;
-  status: "operational" | "degraded" | "down" | "unknown";
-  uptimePercentage: number;
-}
-
-async function getComponentHistoricalData(
-  accountId: string,
-  apiToken: string,
-  monitorIds: string[],
-  days: number,
-): Promise<DayStatus[]> {
-  if (monitorIds.length === 0) {
-    const result: DayStatus[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      result.push({
-        date: date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        status: "operational",
-        uptimePercentage: 100,
-      });
-    }
-    return result;
-  }
-
-  const endTime = new Date();
-  const startTime = new Date(endTime.getTime() - days * 24 * 60 * 60 * 1000);
-  const startTimestamp = Math.floor(startTime.getTime() / 1000);
-  const endTimestamp = Math.floor(endTime.getTime() / 1000);
-
-  const monitorIdsClause = monitorIds
-    .map((id) => `'${id.replace(/'/g, "''")}'`)
-    .join(", ");
-
-  const query = `
-    SELECT
-      blob3 as status,
-      timestamp
-    FROM "bitwobbly-monitor-analytics"
-    WHERE blob2 IN (${monitorIdsClause})
-      AND timestamp >= toDateTime(${startTimestamp})
-      AND timestamp <= toDateTime(${endTimestamp})
-    ORDER BY timestamp ASC
-  `;
-
-  const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
-  const response = await fetch(API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-    },
-    body: query,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(
-      `Analytics Engine query failed (${response.status}):`,
-      errorText,
-    );
-    const result: DayStatus[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      result.push({
-        date: date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        status: "unknown",
-        uptimePercentage: 0,
-      });
-    }
-    return result;
-  }
-
-  const responseJSON: unknown = await response.json();
-  const rawData: Array<{ status: string; timestamp: number | string }> = [];
-
-  const isRecord = (value: unknown): value is Record<string, unknown> => {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-  };
-
-  if (isRecord(responseJSON) && Array.isArray(responseJSON.data)) {
-    for (const row of responseJSON.data) {
-      if (!isRecord(row)) continue;
-      const status = typeof row.status === "string" ? row.status : null;
-      const timestamp =
-        typeof row.timestamp === "number" || typeof row.timestamp === "string"
-          ? row.timestamp
-          : null;
-
-      if (status && timestamp !== null) {
-        rawData.push({ status, timestamp });
-      }
-    }
-  }
-
-  const dayBuckets = new Map<
-    string,
-    { up_count: number; down_count: number }
-  >();
-
-  for (const row of rawData) {
-    const ts =
-      typeof row.timestamp === "string"
-        ? new Date(row.timestamp).getTime()
-        : row.timestamp * 1000;
-    const date = new Date(ts);
-    const dayKey = date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-
-    if (!dayBuckets.has(dayKey)) {
-      dayBuckets.set(dayKey, { up_count: 0, down_count: 0 });
-    }
-
-    const bucket = dayBuckets.get(dayKey)!;
-    if (row.status === "up") {
-      bucket.up_count++;
-    } else if (row.status === "down") {
-      bucket.down_count++;
-    }
-  }
-
-  const result: DayStatus[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const dayKey = date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-
-    const bucket = dayBuckets.get(dayKey);
-    if (bucket) {
-      const total = bucket.up_count + bucket.down_count;
-      const uptimePercentage =
-        total > 0 ? (bucket.up_count / total) * 100 : 100;
-      let status: "operational" | "degraded" | "down" = "operational";
-      if (uptimePercentage < 50) {
-        status = "down";
-      } else if (uptimePercentage < 99) {
-        status = "degraded";
-      }
-      result.push({
-        date: dayKey,
-        status,
-        uptimePercentage,
-      });
-    } else {
-      result.push({
-        date: dayKey,
-        status: "unknown",
-        uptimePercentage: 100,
-      });
-    }
-  }
-
-  return result;
-}
-
 export async function listStatusPages(db: DB, teamId: string) {
   return await db
     .select()
@@ -189,10 +20,22 @@ export async function createStatusPage(
     custom_css?: string;
   },
 ) {
+  const existingInTeam = await db
+    .select({ id: schema.statusPages.id })
+    .from(schema.statusPages)
+    .where(
+      and(eq(schema.statusPages.teamId, teamId), eq(schema.statusPages.slug, input.slug)),
+    )
+    .limit(1);
+
+  if (existingInTeam.length) {
+    throw new Error("Status page slug is already in use");
+  }
+
   const existing = await db
     .select({ id: schema.statusPages.id })
     .from(schema.statusPages)
-    .where(eq(schema.statusPages.slug, input.slug))
+    .where(and(eq(schema.statusPages.slug, input.slug), eq(schema.statusPages.isPublic, 1)))
     .limit(1);
 
   if (existing.length) {
@@ -243,6 +86,17 @@ export async function getStatusPageBySlug(
   return rows[0] || null;
 }
 
+export async function getPublicStatusPageBySlug(db: DB, slug: string) {
+  const rows = await db
+    .select()
+    .from(schema.statusPages)
+    .where(and(eq(schema.statusPages.slug, slug), eq(schema.statusPages.isPublic, 1)))
+    .limit(2);
+
+  if (rows.length !== 1) return null;
+  return rows[0];
+}
+
 export async function publicStatusPageExistsBySlug(db: DB, slug: string) {
   const page = await db
     .select({ id: schema.statusPages.id })
@@ -250,9 +104,9 @@ export async function publicStatusPageExistsBySlug(db: DB, slug: string) {
     .where(
       and(eq(schema.statusPages.slug, slug), eq(schema.statusPages.isPublic, 1)),
     )
-    .limit(1);
+    .limit(2);
 
-  return page.length > 0;
+  return page.length === 1;
 }
 
 export async function updateStatusPage(
@@ -268,10 +122,27 @@ export async function updateStatusPage(
   },
 ) {
   if (input.slug !== undefined) {
+    const existingInTeam = await db
+      .select({ id: schema.statusPages.id })
+      .from(schema.statusPages)
+      .where(
+        and(
+          eq(schema.statusPages.teamId, teamId),
+          eq(schema.statusPages.slug, input.slug),
+        ),
+      )
+      .limit(1);
+
+    if (existingInTeam.length && existingInTeam[0].id !== statusPageId) {
+      throw new Error("Status page slug is already in use");
+    }
+
     const existing = await db
       .select({ id: schema.statusPages.id })
       .from(schema.statusPages)
-      .where(eq(schema.statusPages.slug, input.slug))
+      .where(
+        and(eq(schema.statusPages.slug, input.slug), eq(schema.statusPages.isPublic, 1)),
+      )
       .limit(1);
 
     if (existing.length && existing[0].id !== statusPageId) {
@@ -334,223 +205,4 @@ export async function listComponentsForStatusPage(
     .where(eq(schema.statusPageComponents.statusPageId, statusPageId))
     .orderBy(schema.statusPageComponents.sortOrder);
   return rows || [];
-}
-
-type ComponentStatus = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: 'up' | 'down' | 'unknown';
-  historical_data?: DayStatus[];
-  overall_uptime?: number;
-};
-
-type IncidentUpdate = {
-  id: string;
-  message: string;
-  status: string;
-  created_at: string;
-};
-
-type Incident = {
-  id: string;
-  title: string;
-  status: string;
-  started_at: number;
-  resolved_at: number | null;
-  updates: IncidentUpdate[];
-};
-
-export type StatusSnapshot = {
-  generated_at: string;
-  page: {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url: string | null;
-    brand_color: string | null;
-    custom_css: string | null;
-  };
-  components: ComponentStatus[];
-  incidents: Incident[];
-};
-
-export async function rebuildStatusSnapshot(
-  db: DB,
-  kv: KVNamespace,
-  slug: string,
-  accountId?: string,
-  apiToken?: string,
-  options?: {
-    teamId?: string;
-    includePrivate?: boolean;
-  },
-): Promise<StatusSnapshot | null> {
-  const includePrivate = options?.includePrivate ?? false;
-  let pageRows: Array<typeof schema.statusPages.$inferSelect> = [];
-
-  if (options?.teamId) {
-    pageRows = await db
-      .select()
-      .from(schema.statusPages)
-      .where(
-        and(
-          eq(schema.statusPages.teamId, options.teamId),
-          eq(schema.statusPages.slug, slug),
-        ),
-      )
-      .limit(1);
-  } else if (includePrivate) {
-    pageRows = await db
-      .select()
-      .from(schema.statusPages)
-      .where(eq(schema.statusPages.slug, slug))
-      .limit(1);
-  } else {
-    pageRows = await db
-      .select()
-      .from(schema.statusPages)
-      .where(
-        and(
-          eq(schema.statusPages.slug, slug),
-          eq(schema.statusPages.isPublic, 1),
-        ),
-      )
-      .limit(1);
-  }
-
-  const page = pageRows[0];
-  if (!page) return null;
-
-  const teamId = page.teamId;
-
-  const components = await listComponentsForStatusPage(db, page.id);
-  const compsWithStatus = [];
-
-  for (const c of components) {
-    let status: 'up' | 'down' | 'unknown' = 'unknown';
-
-    if (c.currentStatus && c.currentStatus !== 'operational') {
-      status = 'down';
-    } else {
-      const monitorRows = await db
-        .select({
-          lastStatus: schema.monitorState.lastStatus,
-        })
-        .from(schema.componentMonitors)
-        .innerJoin(
-          schema.monitorState,
-          eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId),
-        )
-        .where(eq(schema.componentMonitors.componentId, c.id));
-
-      if (monitorRows.length) {
-        status = monitorRows.some((r) => r.lastStatus === 'down')
-          ? 'down'
-          : 'up';
-      }
-    }
-
-    let historicalData: DayStatus[] | undefined;
-    let overallUptime = 100;
-
-    if (accountId && apiToken) {
-      const monitorIds = await db
-        .select({
-          monitorId: schema.componentMonitors.monitorId,
-        })
-        .from(schema.componentMonitors)
-        .where(eq(schema.componentMonitors.componentId, c.id));
-
-      const ids = monitorIds.map((m) => m.monitorId);
-      historicalData = await getComponentHistoricalData(
-        accountId,
-        apiToken,
-        ids,
-        90,
-      );
-
-      const totalDays = historicalData.filter(
-        (d) => d.status !== 'unknown',
-      ).length;
-      if (totalDays > 0) {
-        const totalUptime = historicalData
-          .filter((d) => d.status !== 'unknown')
-          .reduce((sum, d) => sum + d.uptimePercentage, 0);
-        overallUptime = totalUptime / totalDays;
-      }
-    }
-
-    compsWithStatus.push({
-      ...c,
-      status,
-      historical_data: historicalData,
-      overall_uptime: overallUptime,
-    });
-  }
-
-  const openIncidents = await listOpenIncidents(db, teamId, page.id);
-  const pastIncidents = await listRecentResolvedIncidents(
-    db,
-    teamId,
-    page.id,
-    30,
-  );
-  const allIncidents = [...openIncidents, ...pastIncidents];
-
-  const snapshot = {
-    generated_at: new Date().toISOString(),
-    page: {
-      id: page.id,
-      name: page.name,
-      slug: page.slug,
-      logo_url: page.logoUrl,
-      brand_color: page.brandColor,
-      custom_css: page.customCss,
-    },
-    components: compsWithStatus,
-    incidents: allIncidents.map((i) => ({
-      id: i.id,
-      title: i.title,
-      status: i.status,
-      started_at: i.startedAt,
-      resolved_at: i.resolvedAt,
-      updates: (i.updates || []).map((update) => {
-        return {
-          id: update.id,
-          message: update.message,
-          status: update.status,
-          created_at: update.createdAt,
-        };
-      }),
-    })),
-  };
-
-  await kv.put(`status:${slug}`, JSON.stringify(snapshot), {
-    expirationTtl: 60,
-  });
-  return snapshot;
-}
-
-export async function clearStatusPageCache(
-  db: DB,
-  kv: KVNamespace,
-  teamId: string,
-  statusPageId: string,
-) {
-  const page = await getStatusPageById(db, teamId, statusPageId);
-  if (page) {
-    await kv.delete(`status:${page.slug}`);
-  }
-}
-
-export async function clearAllStatusPageCaches(
-  db: DB,
-  kv: KVNamespace,
-  teamId: string,
-) {
-  const pages = await listStatusPages(db, teamId);
-  for (const page of pages) {
-    await kv.delete(`status:${page.slug}`);
-  }
 }

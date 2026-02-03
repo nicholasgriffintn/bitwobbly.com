@@ -1,11 +1,9 @@
 import { schema, nowIso } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
 
-export async function getMonitorState(
-  db: DrizzleD1Database,
-  monitorId: string,
-) {
+import type { DB } from '../lib/db';
+
+export async function getMonitorState(db: DB, monitorId: string) {
   const states = await db
     .select()
     .from(schema.monitorState)
@@ -16,11 +14,11 @@ export async function getMonitorState(
 }
 
 export async function upsertMonitorState(
-  db: DrizzleD1Database,
+  db: DB,
   monitorId: string,
   data: {
     lastCheckedAt: number;
-    lastStatus: "up" | "down" | "unknown";
+    lastStatus: 'up' | 'down' | 'unknown';
     lastLatencyMs: number | null;
     consecutiveFailures: number;
     lastError: string | null;

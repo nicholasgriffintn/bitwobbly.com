@@ -6,5 +6,17 @@ import { getDb } from './db';
 export async function requireTeam() {
   const vars = env;
   const db = getDb(vars.DB);
-  return baseRequireTeam(db);
+  const result = await baseRequireTeam(db);
+
+  const key =
+    typeof result.userId === "string"
+      ? `api:${result.teamId}:${result.userId}`
+      : `api:${result.teamId}`;
+
+  const { success } = await vars.API_RATE_LIMITER.limit({ key });
+  if (!success) {
+    throw new Error("Rate limit exceeded");
+  }
+
+  return result;
 }

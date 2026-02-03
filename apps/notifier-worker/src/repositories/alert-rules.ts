@@ -1,8 +1,9 @@
 import { schema } from "@bitwobbly/shared";
-import { eq, and } from "drizzle-orm";
-import type { DrizzleD1Database } from "drizzle-orm/d1";
+import { eq, and } from 'drizzle-orm';
 
-export async function getAlertRuleById(db: DrizzleD1Database, ruleId: string) {
+import type { DB } from '../lib/db';
+
+export async function getAlertRuleById(db: DB, ruleId: string) {
   const results = await db
     .select()
     .from(schema.alertRules)
@@ -11,7 +12,7 @@ export async function getAlertRuleById(db: DrizzleD1Database, ruleId: string) {
   return results[0] || null;
 }
 
-export async function getChannelById(db: DrizzleD1Database, channelId: string) {
+export async function getChannelById(db: DB, channelId: string) {
   const results = await db
     .select()
     .from(schema.notificationChannels)
@@ -25,7 +26,7 @@ export async function getChannelById(db: DrizzleD1Database, channelId: string) {
   return results[0] || null;
 }
 
-export async function getIssueById(db: DrizzleD1Database, issueId: string) {
+export async function getIssueById(db: DB, issueId: string) {
   const results = await db
     .select()
     .from(schema.sentryIssues)
@@ -34,7 +35,7 @@ export async function getIssueById(db: DrizzleD1Database, issueId: string) {
   return results[0] || null;
 }
 
-export async function getProjectById(db: DrizzleD1Database, projectId: string) {
+export async function getProjectById(db: DB, projectId: string) {
   const results = await db
     .select()
     .from(schema.sentryProjects)
@@ -44,7 +45,7 @@ export async function getProjectById(db: DrizzleD1Database, projectId: string) {
 }
 
 export async function getAlertRulesForMonitor(
-  db: DrizzleD1Database,
+  db: DB,
   monitorId: string,
   triggerType: string,
 ) {

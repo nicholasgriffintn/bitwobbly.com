@@ -7,6 +7,10 @@ import { hashWebhookToken, schema } from '@bitwobbly/shared';
 
 import { getDb } from '../lib/db';
 import { requireTeam } from '../lib/auth-middleware';
+import {
+  getPublicStatusSnapshotCacheKey,
+  getTeamStatusSnapshotCacheKey,
+} from '../lib/status-snapshot-cache';
 
 const DAY_SECONDS = 24 * 60 * 60;
 
@@ -76,7 +80,10 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
     }
 
     await Promise.all(
-      existingStatusPages.map((page) => env.KV.delete(`status:${page.slug}`)),
+      existingStatusPages.flatMap((page) => [
+        env.KV.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug)),
+        env.KV.delete(getPublicStatusSnapshotCacheKey(page.slug)),
+      ]),
     );
 
     if (ruleIds.length) {

@@ -6,14 +6,14 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ## Plan of Completion
 
-#### Phase 0
+#### Phase 0 (Complete)
 
-- Enforce unique slugs per team and globally safe public routing; validate `is_public` for `/status/$slug`.
-- Fix monitor rule API contracts (`monitorId` in create/update validators and repository writes).
-- Route webhook/manual status transitions through the same incident + alert pipeline as checker events.
-- Add idempotency guards for queue handlers (dedupe keys for alert jobs and sentry event writes).
-- Add strict authn/authz checks on all mutable server functions, and apply API rate limiter on authenticated API surfaces.
-- Turn on baseline observability (logs, traces, queue failure metrics, dead-letter queues).
+- [x] Enforce unique slugs per team and globally safe public routing; validate `is_public` for `/status/$slug`.
+- [x] Fix monitor rule API contracts (`monitorId` in create/update validators and repository writes).
+- [x] Route webhook/manual status transitions through the same incident + alert pipeline as checker events.
+- [x] Add idempotency guards for queue handlers (dedupe keys for alert jobs and sentry event writes).
+- [x] Add strict authn/authz checks on all mutable server functions, and apply API rate limiter on authenticated API surfaces.
+- [x] Turn on baseline observability (logs, traces, queue failure metrics, dead-letter queues).
 
 #### Phase 1
 

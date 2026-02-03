@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { getPublicStatusFn } from "@/server/functions/public";
 import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
-import { StatusSnapshot } from "@/server/repositories/status-pages";
+import type { StatusSnapshot } from "@/server/services/status-snapshots";
 
 export const Route = createFileRoute("/status/$slug")({
   component: PublicStatusPage,
