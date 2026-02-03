@@ -338,15 +338,11 @@ button {
   border-radius: 12px;
   cursor: pointer;
   font-weight: 600;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  box-shadow: 0 12px 20px rgba(240, 74, 47, 0.25);
+  transition: transform 0.2s ease;
 }
 
 button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 30px rgba(240, 74, 47, 0.3);
 }
 
 button.outline {
@@ -404,29 +400,14 @@ button.outline.button-danger:hover {
 
 button.button-warning {
   background: var(--warning);
-  box-shadow: 0 12px 20px rgba(179, 87, 42, 0.22);
-}
-
-button.button-warning:hover {
-  box-shadow: 0 16px 30px rgba(179, 87, 42, 0.28);
 }
 
 button.button-success {
   background: var(--success);
-  box-shadow: 0 12px 20px rgba(26, 143, 95, 0.24);
-}
-
-button.button-success:hover {
-  box-shadow: 0 16px 30px rgba(26, 143, 95, 0.3);
 }
 
 button.button-danger {
   background: var(--primary-dark);
-  box-shadow: 0 12px 20px rgba(196, 55, 32, 0.25);
-}
-
-button.button-danger:hover {
-  box-shadow: 0 16px 30px rgba(196, 55, 32, 0.3);
 }
 
 .button-row {
