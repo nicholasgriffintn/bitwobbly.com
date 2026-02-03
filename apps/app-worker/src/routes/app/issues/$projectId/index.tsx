@@ -40,6 +40,7 @@ type Event = {
   level: string | null;
   message: string | null;
   receivedAt: number;
+  issueId: string | null;
 };
 
 export const Route = createFileRoute("/app/issues/$projectId/")({
@@ -206,6 +207,18 @@ function ProjectIssues() {
     return sorted;
   }, [issues, searchQuery, statusFilter, levelFilter, sortBy]);
 
+  const issueStatusCounts = useMemo(() => {
+    return issues.reduce(
+      (acc, issue) => {
+        if (issue.status === "unresolved") acc.unresolved += 1;
+        else if (issue.status === "resolved") acc.resolved += 1;
+        else if (issue.status === "ignored") acc.ignored += 1;
+        return acc;
+      },
+      { unresolved: 0, resolved: 0, ignored: 0 },
+    );
+  }, [issues]);
+
   return (
     <div className="page">
       <div className="page-header mb-6">
@@ -247,60 +260,80 @@ function ProjectIssues() {
           </div>
 
           {activeTab === 'issues' && (
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.5rem',
-                flexWrap: 'wrap',
-                marginBottom: '1rem',
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Search issues..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+            <>
+              <div
                 style={{
-                  flex: '1 1 200px',
-                  minWidth: '200px',
-                  border: '1px solid var(--stroke)',
-                  borderRadius: '8px',
-                  padding: '0.5rem 0.75rem',
+                  display: "flex",
+                  gap: "0.5rem",
+                  flexWrap: "wrap",
+                  marginBottom: "0.75rem",
                 }}
-              />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ flex: '0 0 auto' }}
               >
-                <option value="all">All Statuses</option>
-                <option value="unresolved">Unresolved</option>
-                <option value="resolved">Resolved</option>
-                <option value="ignored">Ignored</option>
-              </select>
-              <select
-                value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value)}
-                style={{ flex: '0 0 auto' }}
+                <span className="pill small">
+                  Open: {issueStatusCounts.unresolved}
+                </span>
+                <span className="pill small">
+                  Resolved: {issueStatusCounts.resolved}
+                </span>
+                <span className="pill small">
+                  Ignored: {issueStatusCounts.ignored}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '1rem',
+                }}
               >
-                <option value="all">All Levels</option>
-                <option value="error">Error</option>
-                <option value="warning">Warning</option>
-                <option value="info">Info</option>
-                <option value="debug">Debug</option>
-              </select>
-              <select
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(e.target.value as 'recent' | 'oldest' | 'count')
-                }
-                style={{ flex: '0 0 auto' }}
-              >
-                <option value="recent">Most Recent</option>
-                <option value="oldest">Oldest First</option>
-                <option value="count">Most Events</option>
-              </select>
-            </div>
+                <input
+                  type="text"
+                  placeholder="Search issues..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    flex: '1 1 200px',
+                    minWidth: '200px',
+                    border: '1px solid var(--stroke)',
+                    borderRadius: '8px',
+                    padding: '0.5rem 0.75rem',
+                  }}
+                />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{ flex: '0 0 auto' }}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="unresolved">Unresolved</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="ignored">Ignored</option>
+                </select>
+                <select
+                  value={levelFilter}
+                  onChange={(e) => setLevelFilter(e.target.value)}
+                  style={{ flex: '0 0 auto' }}
+                >
+                  <option value="all">All Levels</option>
+                  <option value="error">Error</option>
+                  <option value="warning">Warning</option>
+                  <option value="info">Info</option>
+                  <option value="debug">Debug</option>
+                </select>
+                <select
+                  value={sortBy}
+                  onChange={(e) =>
+                    setSortBy(e.target.value as 'recent' | 'oldest' | 'count')
+                  }
+                  style={{ flex: '0 0 auto' }}
+                >
+                  <option value="recent">Most Recent</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="count">Most Events</option>
+                </select>
+              </div>
+            </>
           )}
         </div>
         <div className="list">
@@ -415,6 +448,16 @@ function ProjectIssues() {
                       {formatRelativeTime(event.receivedAt)}
                     </div>
                   </div>
+                  {event.issueId && (
+                    <Link
+                      to="/app/issues/$projectId/issue/$issueId"
+                      params={{ projectId, issueId: event.issueId }}
+                    >
+                      <button type="button" className="outline">
+                        Open issue
+                      </button>
+                    </Link>
+                  )}
                 </div>
               ))
             ) : (

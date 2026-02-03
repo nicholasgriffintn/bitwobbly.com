@@ -4,7 +4,13 @@ import { eq, and, desc, gte, lte } from "drizzle-orm";
 export async function listSentryEvents(
   db: DB,
   projectId: string,
-  options: { since?: number; until?: number; type?: string; limit?: number },
+  options: {
+    since?: number;
+    until?: number;
+    type?: string;
+    issueId?: string;
+    limit?: number;
+  },
 ) {
   const conditions = [eq(schema.sentryEvents.projectId, projectId)];
 
@@ -17,13 +23,16 @@ export async function listSentryEvents(
   if (options.type) {
     conditions.push(eq(schema.sentryEvents.type, options.type));
   }
+  if (options.issueId) {
+    conditions.push(eq(schema.sentryEvents.issueId, options.issueId));
+  }
 
   return db
     .select()
     .from(schema.sentryEvents)
     .where(and(...conditions))
     .orderBy(desc(schema.sentryEvents.receivedAt))
-    .limit(options.limit || 100);
+    .limit(options.limit ?? 100);
 }
 
 export async function getSentryEvent(

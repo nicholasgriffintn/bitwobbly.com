@@ -33,6 +33,42 @@ const UpdateProjectSchema = z.object({
   componentId: z.string().optional().nullable(),
 });
 
+const SentryIssueStatusSchema = z.enum(["unresolved", "resolved", "ignored"]);
+
+const GetProjectDsnSchema = z.object({
+  projectId: z.string().min(1),
+});
+
+const ListSentryEventsSchema = z.object({
+  projectId: z.string().min(1),
+  since: z.number().int().positive().optional(),
+  until: z.number().int().positive().optional(),
+  type: z.string().min(1).optional(),
+  issueId: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(500).optional(),
+});
+
+const GetSentryEventPayloadSchema = z.object({
+  projectId: z.string().min(1),
+  eventId: z.string().min(1),
+});
+
+const ListSentryIssuesSchema = z.object({
+  projectId: z.string().min(1),
+  status: SentryIssueStatusSchema.optional(),
+});
+
+const UpdateSentryIssueSchema = z.object({
+  projectId: z.string().min(1),
+  issueId: z.string().min(1),
+  status: SentryIssueStatusSchema,
+});
+
+const GetSentryIssueSchema = z.object({
+  projectId: z.string().min(1),
+  issueId: z.string().min(1),
+});
+
 export const listSentryProjectsFn = createServerFn({ method: "GET" }).handler(
   async () => {
     const { teamId } = await requireTeam();
@@ -63,7 +99,7 @@ export const updateSentryProjectFn = createServerFn({ method: "POST" })
   });
 
 export const getSentryProjectDsnFn = createServerFn({ method: "GET" })
-  .inputValidator((data: { projectId: string }) => data)
+  .inputValidator((data: unknown) => GetProjectDsnSchema.parse(data))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
@@ -79,9 +115,7 @@ export const getSentryProjectDsnFn = createServerFn({ method: "GET" })
   });
 
 export const listSentryEventsFn = createServerFn({ method: "GET" })
-  .inputValidator(
-    (data: { projectId: string; since?: number; type?: string }) => data,
-  )
+  .inputValidator((data: unknown) => ListSentryEventsSchema.parse(data))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
@@ -91,13 +125,16 @@ export const listSentryEventsFn = createServerFn({ method: "GET" })
 
     const events = await listSentryEvents(db, data.projectId, {
       since: data.since,
+      until: data.until,
       type: data.type,
+      issueId: data.issueId,
+      limit: data.limit,
     });
     return { events };
   });
 
 export const getSentryEventPayloadFn = createServerFn({ method: "GET" })
-  .inputValidator((data: { projectId: string; eventId: string }) => data)
+  .inputValidator((data: unknown) => GetSentryEventPayloadSchema.parse(data))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
@@ -116,7 +153,7 @@ export const getSentryEventPayloadFn = createServerFn({ method: "GET" })
   });
 
 export const listSentryIssuesFn = createServerFn({ method: "GET" })
-  .inputValidator((data: { projectId: string; status?: string }) => data)
+  .inputValidator((data: unknown) => ListSentryIssuesSchema.parse(data))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
@@ -141,9 +178,7 @@ export const deleteSentryProjectFn = createServerFn({ method: "POST" })
   });
 
 export const updateSentryIssueFn = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: { projectId: string; issueId: string; status: string }) => data,
-  )
+  .inputValidator((data: unknown) => UpdateSentryIssueSchema.parse(data))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
@@ -159,7 +194,7 @@ export const updateSentryIssueFn = createServerFn({ method: "POST" })
   });
 
 export const getSentryIssueFn = createServerFn({ method: "GET" })
-  .inputValidator((data: { projectId: string; issueId: string }) => data)
+  .inputValidator((data: unknown) => GetSentryIssueSchema.parse(data))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
