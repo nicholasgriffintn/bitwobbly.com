@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from "react";
-import { createFileRoute, useRouteContext } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+import { useState, type FormEvent } from 'react';
+import { createFileRoute, useRouteContext } from '@tanstack/react-router';
+import { useServerFn } from '@tanstack/react-start';
 
-import { Modal } from "@/components/Modal";
+import { Modal } from '@/components/Modal';
 import {
   listTeamMembersFn,
   removeTeamMemberFn,
@@ -13,7 +13,8 @@ import {
   updateTeamNameFn,
   deleteTeamFn,
   getCurrentTeamFn,
-} from "@/server/functions/teams";
+} from '@/server/functions/teams';
+import { seedDemoDataFn } from '@/server/functions/demo';
 
 type TeamMember = {
   userId: string;
@@ -31,7 +32,7 @@ type TeamInvite = {
   usedAt: string | null;
 };
 
-export const Route = createFileRoute("/app/settings")({
+export const Route = createFileRoute('/app/settings')({
   component: Settings,
   loader: async () => {
     const [currentTeam, membersResponse, invitesResponse] = await Promise.all([
@@ -54,7 +55,7 @@ export default function Settings() {
     members: initialMembers,
     invites: initialInvites,
   } = Route.useLoaderData();
-  const { user, teams } = useRouteContext({ from: "/app" });
+  const { user, teams } = useRouteContext({ from: '/app' });
 
   const [members, setMembers] = useState<TeamMember[]>(initialMembers);
   const [invites, setInvites] = useState<TeamInvite[]>(initialInvites);
@@ -62,17 +63,18 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null);
 
   const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
-  const [teamName, setTeamName] = useState(currentTeam?.name || "");
+  const [teamName, setTeamName] = useState(currentTeam?.name || '');
 
   const [isCreateInviteModalOpen, setIsCreateInviteModalOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("member");
-  const [inviteExpiry, setInviteExpiry] = useState("7");
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [inviteExpiry, setInviteExpiry] = useState('7');
   const [createdInviteCode, setCreatedInviteCode] = useState<string | null>(
     null,
   );
 
   const [isDeleteTeamModalOpen, setIsDeleteTeamModalOpen] = useState(false);
+  const [isSeedingDemo, setIsSeedingDemo] = useState(false);
 
   const listTeamMembers = useServerFn(listTeamMembersFn);
   const removeTeamMember = useServerFn(removeTeamMemberFn);
@@ -83,11 +85,14 @@ export default function Settings() {
   const updateTeamName = useServerFn(updateTeamNameFn);
   const deleteTeam = useServerFn(deleteTeamFn);
   const getCurrentTeam = useServerFn(getCurrentTeamFn);
+  const seedDemoData = useServerFn(seedDemoDataFn);
 
   const currentUserTeam = teams?.find(
     (t) => t.id === (user?.currentTeamId || user?.teamId),
   );
-  const isOwner = currentUserTeam?.role === "owner";
+  const isOwner = currentUserTeam?.role === 'owner';
+
+  console.log({ currentUserTeam, isOwner });
 
   const refreshMembers = async () => {
     try {
@@ -119,7 +124,7 @@ export default function Settings() {
 
   const onRemoveMember = async (userId: string) => {
     setError(null);
-    if (!confirm("Are you sure you want to remove this team member?")) return;
+    if (!confirm('Are you sure you want to remove this team member?')) return;
     try {
       await removeTeamMember({ data: { userId } });
       await refreshMembers();
@@ -130,7 +135,7 @@ export default function Settings() {
 
   const onToggleRole = async (userId: string, currentRole: string) => {
     setError(null);
-    const newRole = currentRole === "owner" ? "member" : "owner";
+    const newRole = currentRole === 'owner' ? 'member' : 'owner';
     if (
       !confirm(
         `Are you sure you want to change this user's role to ${newRole}?`,
@@ -164,7 +169,7 @@ export default function Settings() {
       const result = await createTeamInvite({
         data: {
           email: inviteEmail || undefined,
-          role: inviteRole as "owner" | "member",
+          role: inviteRole as 'owner' | 'member',
           expiresInDays: Number(inviteExpiry),
         },
       });
@@ -178,14 +183,14 @@ export default function Settings() {
   const closeCreateInviteModal = () => {
     setIsCreateInviteModalOpen(false);
     setCreatedInviteCode(null);
-    setInviteEmail("");
-    setInviteRole("member");
-    setInviteExpiry("7");
+    setInviteEmail('');
+    setInviteRole('member');
+    setInviteExpiry('7');
   };
 
   const onRevokeInvite = async (inviteCode: string) => {
     setError(null);
-    if (!confirm("Are you sure you want to revoke this invite?")) return;
+    if (!confirm('Are you sure you want to revoke this invite?')) return;
     try {
       await revokeTeamInvite({ data: { inviteCode } });
       await refreshInvites();
@@ -198,10 +203,31 @@ export default function Settings() {
     setError(null);
     try {
       await deleteTeam();
-      window.location.href = "/app";
+      window.location.href = '/app';
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setIsDeleteTeamModalOpen(false);
+    }
+  };
+
+  const onSeedDemoData = async () => {
+    setError(null);
+    if (
+      !confirm(
+        'This will replace existing team resources with a full demo setup. Continue?',
+      )
+    ) {
+      return;
+    }
+
+    setIsSeedingDemo(true);
+    try {
+      await seedDemoData();
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSeedingDemo(false);
     }
   };
 
@@ -214,7 +240,7 @@ export default function Settings() {
     <div className="page">
       <div className="page-header mb-6">
         <div>
-          <h2>Team Settings</h2>
+          <h1>Team Settings</h1>
           <p>Manage your team members, invitations, and settings.</p>
         </div>
       </div>
@@ -227,7 +253,7 @@ export default function Settings() {
           <div className="list-row">
             <div style={{ flex: 1 }}>
               <div className="list-title">
-                {currentTeam?.name || "Loading..."}
+                {currentTeam?.name || 'Loading...'}
               </div>
             </div>
             <div className="button-row">
@@ -254,6 +280,31 @@ export default function Settings() {
         </div>
       </div>
 
+      {isOwner && (
+        <div className="card">
+          <div className="card-title">Demo Data</div>
+          <div className="list">
+            <div className="list-row">
+              <div style={{ flex: 1 }}>
+                <div className="list-title">Load full demo setup</div>
+                <div className="muted">
+                  Seeds all core tables with varied sample data for monitors,
+                  incidents, status pages, alerting, and issue tracking.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="outline"
+                onClick={onSeedDemoData}
+                disabled={isSeedingDemo}
+              >
+                {isSeedingDemo ? 'Seeding...' : 'Load Demo Data'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div className="card-title">Team Members</div>
         <div className="list">
@@ -264,7 +315,7 @@ export default function Settings() {
                   <div className="list-title">{member.email}</div>
                   <div className="muted">
                     <span className="pill small">{member.role}</span>
-                    {" · "}
+                    {' · '}
                     Joined {new Date(member.joinedAt).toLocaleDateString()}
                   </div>
                 </div>
@@ -275,7 +326,7 @@ export default function Settings() {
                       className="outline"
                       onClick={() => onToggleRole(member.userId, member.role)}
                     >
-                      {member.role === "owner" ? "Make Member" : "Make Owner"}
+                      {member.role === 'owner' ? 'Make Member' : 'Make Owner'}
                     </button>
                     <button
                       type="button"
@@ -297,7 +348,7 @@ export default function Settings() {
       <div className="card">
         <div
           className="card-title"
-          style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+          style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}
         >
           Team Invitations
           {isOwner && (
@@ -306,9 +357,9 @@ export default function Settings() {
               className="outline"
               onClick={() => setIsCreateInviteModalOpen(true)}
               style={{
-                marginLeft: "auto",
-                fontSize: "0.875rem",
-                padding: "0.25rem 0.75rem",
+                marginLeft: 'auto',
+                fontSize: '0.875rem',
+                padding: '0.25rem 0.75rem',
               }}
             >
               Create Invite
@@ -325,17 +376,17 @@ export default function Settings() {
                   <div key={invite.inviteCode} className="list-row">
                     <div style={{ flex: 1 }}>
                       <div className="list-title">
-                        Invite Code:{" "}
-                        <span style={{ fontFamily: "monospace" }}>
+                        Invite Code:{' '}
+                        <span style={{ fontFamily: 'monospace' }}>
                           {invite.inviteCode}
                         </span>
                       </div>
                       <div className="muted">
                         {invite.email && `For ${invite.email} · `}
                         <span className="pill small">{invite.role}</span>
-                        {" · "}
+                        {' · '}
                         {isExpired ? (
-                          <span style={{ color: "#dc3545" }}>Expired</span>
+                          <span style={{ color: '#dc3545' }}>Expired</span>
                         ) : (
                           `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`
                         )}
@@ -382,7 +433,7 @@ export default function Settings() {
             placeholder="My Team"
             required
           />
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="submit">Save</button>
             <button
               type="button"
@@ -404,29 +455,29 @@ export default function Settings() {
           <div className="form">
             <div
               style={{
-                padding: "1rem",
-                marginBottom: "1rem",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "4px",
-                border: "2px solid #28a745",
+                padding: '1rem',
+                marginBottom: '1rem',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '4px',
+                border: '2px solid #28a745',
               }}
             >
               <div
                 style={{
-                  marginBottom: "0.75rem",
-                  color: "#28a745",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  fontSize: "1rem",
+                  marginBottom: '0.75rem',
+                  color: '#28a745',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '1rem',
                   fontWeight: 600,
                 }}
               >
                 <span>✓</span>
                 Invite Created
               </div>
-              <div style={{ marginBottom: "0.75rem" }}>
-                <label style={{ fontWeight: 600, fontSize: "0.875rem" }}>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                   Invite Link
                 </label>
                 <input
@@ -434,15 +485,15 @@ export default function Settings() {
                   value={`${window.location.origin}/join?code=${createdInviteCode}`}
                   onClick={(e) => e.currentTarget.select()}
                   style={{
-                    fontFamily: "monospace",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    width: "100%",
+                    fontFamily: 'monospace',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    width: '100%',
                   }}
                 />
               </div>
               <div>
-                <label style={{ fontWeight: 600, fontSize: "0.875rem" }}>
+                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                   Invite Code
                 </label>
                 <input
@@ -450,10 +501,10 @@ export default function Settings() {
                   value={createdInviteCode}
                   onClick={(e) => e.currentTarget.select()}
                   style={{
-                    fontFamily: "monospace",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    width: "100%",
+                    fontFamily: 'monospace',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    width: '100%',
                   }}
                 />
               </div>
@@ -495,7 +546,7 @@ export default function Settings() {
               onChange={(e) => setInviteExpiry(e.target.value)}
             />
 
-            <div className="button-row" style={{ marginTop: "1rem" }}>
+            <div className="button-row" style={{ marginTop: '1rem' }}>
               <button type="submit">Create Invite</button>
               <button
                 type="button"
@@ -520,7 +571,7 @@ export default function Settings() {
             undone. You must first delete all monitors, status pages, and
             projects associated with this team.
           </p>
-          <div className="button-row" style={{ marginTop: "1rem" }}>
+          <div className="button-row" style={{ marginTop: '1rem' }}>
             <button type="button" className="outline" onClick={onDeleteTeam}>
               Delete Team
             </button>
