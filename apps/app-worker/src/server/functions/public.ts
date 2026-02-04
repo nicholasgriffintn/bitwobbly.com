@@ -4,11 +4,16 @@ import { notFound } from "@tanstack/react-router";
 
 import { getDb } from "../lib/db";
 import { isStatusSnapshot } from "../lib/type-guards";
-import { getPublicStatusSnapshotCacheKey } from "../lib/status-snapshot-cache";
 import {
+  getPublicStatusSnapshotCacheKey,
+  getTeamStatusSnapshotCacheKey,
+} from "../lib/status-snapshot-cache";
+import {
+  getStatusPageBySlug,
   publicStatusPageExistsBySlug,
 } from "../repositories/status-pages";
 import { rebuildStatusSnapshot, type StatusSnapshot } from "../services/status-snapshots";
+import { requireTeam } from "../lib/auth-middleware";
 
 export const getPublicStatusFn = createServerFn({ method: 'GET' })
   .inputValidator((data: { slug: string }) => {
@@ -26,13 +31,39 @@ export const getPublicStatusFn = createServerFn({ method: 'GET' })
     }
 
     const db = getDb(vars.DB);
-    const exists = await publicStatusPageExistsBySlug(db, data.slug);
-    if (!exists) {
+    const isPublic = await publicStatusPageExistsBySlug(db, data.slug);
+    if (isPublic) {
+      const cached = await vars.KV.get(
+        getPublicStatusSnapshotCacheKey(data.slug),
+        'json',
+      );
+      if (isStatusSnapshot(cached)) {
+        return cached;
+      }
+
+      const snapshot = await rebuildStatusSnapshot(
+        db,
+        vars.KV,
+        data.slug,
+        vars.CLOUDFLARE_ACCOUNT_ID,
+        vars.CLOUDFLARE_API_TOKEN,
+      );
+
+      if (!snapshot) {
+        throw notFound();
+      }
+
+      return snapshot;
+    }
+
+    const { teamId } = await requireTeam();
+    const page = await getStatusPageBySlug(db, teamId, data.slug);
+    if (!page) {
       throw notFound();
     }
 
     const cached = await vars.KV.get(
-      getPublicStatusSnapshotCacheKey(data.slug),
+      getTeamStatusSnapshotCacheKey(teamId, data.slug),
       'json',
     );
     if (isStatusSnapshot(cached)) {
@@ -45,6 +76,7 @@ export const getPublicStatusFn = createServerFn({ method: 'GET' })
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
+      { teamId, includePrivate: true },
     );
 
     if (!snapshot) {
