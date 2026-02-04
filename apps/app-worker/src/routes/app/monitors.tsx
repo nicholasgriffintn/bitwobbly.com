@@ -402,7 +402,12 @@ function Monitors() {
           Monitors
           <button
             type="button"
-            className="outline button-info ml-auto px-3 py-1 text-sm"
+            className="outline button-info"
+            style={{
+              marginLeft: 'auto',
+              fontSize: '0.875rem',
+              padding: '0.25rem 0.75rem',
+            }}
             onClick={onTriggerScheduler}
             title="Manually trigger monitor checks (dev mode)"
           >
@@ -419,9 +424,7 @@ function Monitors() {
                       <div className="list-title">
                         {monitor.name}
                         {!monitor.enabled && (
-                          <span className="pill small ml-2">
-                            Paused
-                          </span>
+                          <span className="pill small ml-2">Paused</span>
                         )}
                       </div>
                       {monitor.url && (
@@ -551,9 +554,7 @@ function Monitors() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold">
-                  Token
-                </label>
+                <label className="text-sm font-semibold">Token</label>
                 <input
                   readOnly
                   value={webhookToken}
@@ -712,7 +713,9 @@ function Monitors() {
                     }}
                     rows={4}
                   />
-                  {checkConfigError ? <p className="text-red-600">{checkConfigError}</p> : null}
+                  {checkConfigError ? (
+                    <p className="text-red-600">{checkConfigError}</p>
+                  ) : null}
                   {(() => {
                     const help = configHelp(monitorType);
                     if (!help) return null;
@@ -721,21 +724,15 @@ function Monitors() {
                         <summary className="muted cursor-pointer select-none">
                           {help.title} config help
                         </summary>
-                        <p className="muted mt-2">
-                          {help.description}
-                        </p>
+                        <p className="muted mt-2">{help.description}</p>
                         <div className="mt-2">
-                          <div className="muted mb-1">
-                            Example
-                          </div>
+                          <div className="muted mb-1">Example</div>
                           <pre className="m-0 whitespace-pre-wrap">
                             {help.example}
                           </pre>
                         </div>
                         <div className="mt-2">
-                          <div className="muted mb-1">
-                            Schema
-                          </div>
+                          <div className="muted mb-1">Schema</div>
                           <pre className="m-0 whitespace-pre-wrap">
                             {help.schema}
                           </pre>
@@ -762,7 +759,9 @@ function Monitors() {
                   }}
                   rows={3}
                 />
-                {checkConfigError ? <p className="text-red-600">{checkConfigError}</p> : null}
+                {checkConfigError ? (
+                  <p className="text-red-600">{checkConfigError}</p>
+                ) : null}
                 {(() => {
                   const help = configHelp('heartbeat');
                   if (!help) return null;
@@ -771,21 +770,15 @@ function Monitors() {
                       <summary className="muted cursor-pointer select-none">
                         {help.title} config help
                       </summary>
-                      <p className="muted mt-2">
-                        {help.description}
-                      </p>
+                      <p className="muted mt-2">{help.description}</p>
                       <div className="mt-2">
-                        <div className="muted mb-1">
-                          Example
-                        </div>
+                        <div className="muted mb-1">Example</div>
                         <pre className="m-0 whitespace-pre-wrap">
                           {help.example}
                         </pre>
                       </div>
                       <div className="mt-2">
-                        <div className="muted mb-1">
-                          Schema
-                        </div>
+                        <div className="muted mb-1">Schema</div>
                         <pre className="m-0 whitespace-pre-wrap">
                           {help.schema}
                         </pre>
@@ -926,7 +919,9 @@ function Monitors() {
                   }}
                   rows={4}
                 />
-                {editCheckConfigError ? <p className="text-red-600">{editCheckConfigError}</p> : null}
+                {editCheckConfigError ? (
+                  <p className="text-red-600">{editCheckConfigError}</p>
+                ) : null}
                 {(() => {
                   const help = configHelp(editingMonitorType);
                   if (!help) return null;
@@ -935,21 +930,15 @@ function Monitors() {
                       <summary className="muted cursor-pointer select-none">
                         {help.title} config help
                       </summary>
-                      <p className="muted mt-2">
-                        {help.description}
-                      </p>
+                      <p className="muted mt-2">{help.description}</p>
                       <div className="mt-2">
-                        <div className="muted mb-1">
-                          Example
-                        </div>
+                        <div className="muted mb-1">Example</div>
                         <pre className="m-0 whitespace-pre-wrap">
                           {help.example}
                         </pre>
                       </div>
                       <div className="mt-2">
-                        <div className="muted mb-1">
-                          Schema
-                        </div>
+                        <div className="muted mb-1">Schema</div>
                         <pre className="m-0 whitespace-pre-wrap">
                           {help.schema}
                         </pre>
