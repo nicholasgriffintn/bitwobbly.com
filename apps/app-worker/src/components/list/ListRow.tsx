@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 
 interface ListRowProps {
   title: ReactNode;
+  titleClassName?: string;
   subtitle?: ReactNode;
+  subtitleClassName?: string;
   badges?: ReactNode;
   actions?: ReactNode;
   expanded?: boolean;
@@ -12,7 +14,9 @@ interface ListRowProps {
 
 export function ListRow({
   title,
+  titleClassName,
   subtitle,
+  subtitleClassName,
   badges,
   actions,
   expanded = false,
@@ -21,14 +25,18 @@ export function ListRow({
 }: ListRowProps) {
   const hasExpandedContent = expanded && expandedContent;
 
+  const resolvedTitleClassName =
+    titleClassName ?? "list-title flex flex-wrap items-center gap-2";
+  const resolvedSubtitleClassName = subtitleClassName ?? "muted";
+
   const rowContent = (
     <div className="list-row">
       <div className="flex-1">
-        <div className="list-title flex flex-wrap items-center gap-2">
+        <div className={resolvedTitleClassName}>
           {title}
           {badges}
         </div>
-        {subtitle && <div className="muted">{subtitle}</div>}
+        {subtitle && <div className={resolvedSubtitleClassName}>{subtitle}</div>}
       </div>
       {actions && <div className="button-row">{actions}</div>}
     </div>

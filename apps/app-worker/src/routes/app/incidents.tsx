@@ -2,13 +2,11 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { PageHeader } from "@/components/layout";
+import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
-import { StatusBadge, isStatusType } from "@/components/ui";
-import {
-  CreateIncidentModal,
-  UpdateIncidentModal,
-} from "@/components/modals/incidents";
+import { ListContainer, ListRow } from "@/components/list";
+import { Button, StatusBadge, isStatusType } from "@/components/ui";
+import { IncidentsModals } from "@/components/modals/incidents";
 import { toTitleCase } from "@/utils/format";
 import { listStatusPagesFn } from "@/server/functions/status-pages";
 import {
@@ -113,7 +111,7 @@ export default function Incidents() {
   };
 
   return (
-    <div className="page page-stack">
+    <Page className="page-stack">
       <PageHeader
         title="Incidents"
         description="Track and communicate service disruptions."
@@ -125,99 +123,94 @@ export default function Incidents() {
 
       {error && <ErrorCard message={error} />}
 
-      <div className="card">
-        <div className="card-title">Incidents</div>
-        <div className="list">
-          {incidents.length ? (
-            incidents.map((incident) => (
-              <div key={incident.id} className="list-item-expanded">
-                <div className="list-row">
-                  <div>
-                    <div className="list-title flex flex-wrap items-center gap-2">
-                      {incident.title}
-                      <StatusBadge
-                        status={
-                          isStatusType(incident.status)
-                            ? incident.status
-                            : "unknown"
-                        }
-                      >
-                        {toTitleCase(incident.status)}
-                      </StatusBadge>
-                    </div>
-                    <div className="muted">
-                      Started {formatDate(incident.startedAt)}
-                      {incident.resolvedAt &&
-                        ` · Resolved ${formatDate(incident.resolvedAt)}`}
-                      {" · "}
-                      {getStatusPageName(incident.statusPageId)}
-                    </div>
-                  </div>
-                  <div className="button-row">
-                    {incident.status !== "resolved" && (
-                      <button
+      <Card>
+        <CardTitle>Incidents</CardTitle>
+        <ListContainer isEmpty={!incidents.length} emptyMessage="No incidents recorded.">
+          {incidents.map((incident) => {
+            const status = isStatusType(incident.status) ? incident.status : "unknown";
+
+            return (
+              <ListRow
+                key={incident.id}
+                className="list-item-expanded"
+                title={incident.title}
+                badges={
+                  <StatusBadge status={status}>
+                    {toTitleCase(incident.status)}
+                  </StatusBadge>
+                }
+                subtitle={
+                  <>
+                    Started {formatDate(incident.startedAt)}
+                    {incident.resolvedAt &&
+                      ` · Resolved ${formatDate(incident.resolvedAt)}`}
+                    {' · '}
+                    {getStatusPageName(incident.statusPageId)}
+                  </>
+                }
+                actions={
+                  <>
+                    {incident.status !== 'resolved' && (
+                      <Button
                         type="button"
-                        className="outline button-warning"
+                        variant="outline"
                         onClick={() => openUpdateModal(incident)}
                       >
                         Update
-                      </button>
+                      </Button>
                     )}
-                    <button
+                    <Button
                       type="button"
-                      className="outline button-danger"
+                      variant="outline"
+                      color="danger"
                       onClick={() => onDelete(incident.id)}
                     >
                       Delete
-                    </button>
-                  </div>
-                </div>
-
-                {incident.updates.length > 0 && (
-                  <div className="timeline">
-                    {incident.updates.map((update) => (
-                      <div key={update.id} className="timeline-item">
-                        <span className={`status-dot ${update.status}`} />
-                        <div>
-                          <div className="timeline-status">
-                            {toTitleCase(update.status)}
-                          </div>
-                          <div className="timeline-message">
-                            {update.message}
-                          </div>
-                          <div className="muted">
-                            {new Date(update.createdAt).toLocaleString()}
+                    </Button>
+                  </>
+                }
+                expanded={incident.updates.length > 0}
+                expandedContent={
+                  incident.updates.length > 0 ? (
+                    <div className="timeline">
+                      {incident.updates.map((update) => (
+                        <div key={update.id} className="timeline-item">
+                          <span className={`status-dot ${update.status}`} />
+                          <div>
+                            <div className="timeline-status">
+                              {toTitleCase(update.status)}
+                            </div>
+                            <div className="timeline-message">
+                              {update.message}
+                            </div>
+                            <div className="muted">
+                              {new Date(update.createdAt).toLocaleString()}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="muted">No incidents recorded.</div>
-          )}
-        </div>
-      </div>
+                      ))}
+                    </div>
+                  ) : null
+                }
+              />
+            );
+          })}
+        </ListContainer>
+      </Card>
 
-      <CreateIncidentModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+      <IncidentsModals
+        isCreateOpen={isCreateModalOpen}
+        onCloseCreate={() => setIsCreateModalOpen(false)}
+        isUpdateOpen={isUpdateModalOpen}
+        onCloseUpdate={() => {
+          setIsUpdateModalOpen(false);
+          setUpdatingIncident(null);
+        }}
+        updatingIncident={updatingIncident}
         onSuccess={refreshIncidents}
         statusPages={statusPages as StatusPage[]}
         components={components as Component[]}
       />
-
-      <UpdateIncidentModal
-        isOpen={isUpdateModalOpen}
-        onClose={() => {
-          setIsUpdateModalOpen(false);
-          setUpdatingIncident(null);
-        }}
-        onSuccess={refreshIncidents}
-        incident={updatingIncident}
-      />
-    </div>
+    </Page>
   );
 }

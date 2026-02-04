@@ -5,7 +5,9 @@ import { listStatusPagesFn } from '@/server/functions/status-pages';
 import { listOpenIncidentsFn } from '@/server/functions/incidents';
 import { listChannelsFn } from '@/server/functions/notification-channels';
 import { toTitleCase } from '@/utils/format';
-import { Badge, StatusBadge, isStatusType } from '@/components/ui';
+import { Card, CardTitle, Page, PageHeader } from '@/components/layout';
+import { ListContainer, ListRow } from '@/components/list';
+import { Badge, Button, StatusBadge, isStatusType } from '@/components/ui';
 
 export const Route = createFileRoute('/app/')({
   component: Overview,
@@ -46,33 +48,32 @@ function Overview() {
     monitors.length > 0 && channels.length > 0 && pages.length > 0;
 
   return (
-    <div className="page page-stack">
-      <div className="page-header">
-        <div>
-          <h2>System overview</h2>
-          <p>Watch the fleet and keep stakeholders informed.</p>
-        </div>
+    <Page className="page-stack">
+      <PageHeader
+        title="System overview"
+        description="A top-level view of your monitoring and incident status."
+      >
         <div className="button-row">
           <Link to="/app/monitors">
-            <button type="button" className="outline">
+            <Button type="button" variant="outline">
               Add monitor
-            </button>
+            </Button>
           </Link>
           <Link to="/app/status-pages">
-            <button type="button">Create status page</button>
+            <Button type="button">Create status page</Button>
           </Link>
         </div>
-      </div>
+      </PageHeader>
 
-      <div className="card">
+      <Card>
         <div className="flex items-center gap-3">
           <span
             className={`status-indicator ${overallStatus} h-3 w-3 rounded-full ${
-              overallStatus === "operational"
-                ? "bg-[color:var(--green)]"
-                : overallStatus === "degraded"
-                  ? "bg-[color:var(--red)]"
-                  : "bg-[color:var(--muted)]"
+              overallStatus === 'operational'
+                ? 'bg-[color:var(--green)]'
+                : overallStatus === 'degraded'
+                  ? 'bg-[color:var(--red)]'
+                  : 'bg-[color:var(--muted)]'
             }`}
           />
           <div>
@@ -89,7 +90,7 @@ function Overview() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       <div className="grid metrics">
         <div className="card">
@@ -102,7 +103,7 @@ function Overview() {
           <div className="metric-label">Monitors down</div>
           <div
             className={`metric-value ${
-              downCount > 0 ? "text-[color:var(--red)]" : ""
+              downCount > 0 ? 'text-[color:var(--red)]' : ''
             }`}
           >
             {downCount}
@@ -112,7 +113,7 @@ function Overview() {
           <div className="metric-label">Open incidents</div>
           <div
             className={`metric-value ${
-              incidents.length > 0 ? "text-[color:var(--orange)]" : ""
+              incidents.length > 0 ? 'text-[color:var(--orange)]' : ''
             }`}
           >
             {incidents.length}
@@ -126,8 +127,8 @@ function Overview() {
 
       {!hasCompletedSetup && (
         <div className="grid two">
-          <div className="card">
-            <div className="card-title">Getting started</div>
+          <Card>
+            <CardTitle>Getting started</CardTitle>
             <div className="list">
               <div className="list-row">
                 <div className="muted">
@@ -149,75 +150,76 @@ function Overview() {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="card">
-            <div className="card-title">Quick setup</div>
-            <div className="list">
-              <div className="list-row">
-                <div>
-                  <div className="list-title">Monitors</div>
-                  <div className="muted">{monitors.length} configured</div>
-                </div>
-                {monitors.length === 0 ? (
-                  <Link to="/app/monitors">
-                    <button type="button" className="outline button-success">
-                      Add first
-                    </button>
-                  </Link>
-                ) : (
-                  <Badge size="small" variant="success">
-                    Done
-                  </Badge>
-                )}
-              </div>
-              <div className="list-row">
-                <div>
-                  <div className="list-title">Notification channels</div>
-                  <div className="muted">{channels.length} configured</div>
-                </div>
-                {channels.length === 0 ? (
-                  <Link to="/app/notifications">
-                    <button type="button" className="outline button-success">
-                      Add first
-                    </button>
-                  </Link>
-                ) : (
-                  <Badge size="small" variant="success">
-                    Done
-                  </Badge>
-                )}
-              </div>
-              <div className="list-row">
-                <div>
-                  <div className="list-title">Status pages</div>
-                  <div className="muted">{pages.length} configured</div>
-                </div>
-                {pages.length === 0 ? (
-                  <Link to="/app/status-pages">
-                    <button type="button" className="outline button-success">
-                      Add first
-                    </button>
-                  </Link>
-                ) : (
-                  <Badge size="small" variant="success">
-                    Done
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
+          <Card>
+            <CardTitle>Quick setup</CardTitle>
+            <ListContainer isEmpty={false}>
+              <ListRow
+                title="Monitors"
+                subtitle={`${monitors.length} configured`}
+                actions={
+                  monitors.length === 0 ? (
+                    <Link to="/app/monitors">
+                      <Button type="button" variant="outline" color="success">
+                        Add first
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Badge size="small" variant="success">
+                      Done
+                    </Badge>
+                  )
+                }
+              />
+              <ListRow
+                title="Notification channels"
+                subtitle={`${channels.length} configured`}
+                actions={
+                  channels.length === 0 ? (
+                    <Link to="/app/notifications">
+                      <Button type="button" variant="outline" color="success">
+                        Add first
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Badge size="small" variant="success">
+                      Done
+                    </Badge>
+                  )
+                }
+              />
+              <ListRow
+                title="Status pages"
+                subtitle={`${pages.length} configured`}
+                actions={
+                  pages.length === 0 ? (
+                    <Link to="/app/status-pages">
+                      <Button type="button" variant="outline" color="success">
+                        Add first
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Badge size="small" variant="success">
+                      Done
+                    </Badge>
+                  )
+                }
+              />
+            </ListContainer>
+          </Card>
         </div>
       )}
 
       {incidents.length > 0 && (
-        <div className="card">
-          <div className="card-title">Active incidents</div>
-          <div className="list">
+        <Card>
+          <CardTitle>Active incidents</CardTitle>
+          <ListContainer isEmpty={false}>
             {incidents.slice(0, 3).map((incident) => (
-              <div key={incident.id} className="list-row">
-                <div>
-                  <div className="list-title">
+              <ListRow
+                key={incident.id}
+                title={
+                  <>
                     {incident.title}
                     <StatusBadge
                       className="ml-2"
@@ -233,91 +235,90 @@ function Overview() {
                           : 'unknown',
                       )}
                     </StatusBadge>
-                  </div>
-                  <div className="muted">
-                    Started{' '}
-                    {new Date(incident.startedAt * 1000).toLocaleString()}
-                  </div>
-                </div>
-                <Link to="/app/incidents">
-                  <button type="button" className="outline">
-                    View
-                  </button>
-                </Link>
-              </div>
+                  </>
+                }
+                subtitle={`Started ${new Date(incident.startedAt * 1000).toLocaleString()}`}
+                actions={
+                  <Link to="/app/incidents">
+                    <Button type="button" variant="outline">
+                      View
+                    </Button>
+                  </Link>
+                }
+              />
             ))}
-          </div>
-        </div>
+          </ListContainer>
+        </Card>
       )}
 
       <div className="grid two">
-        <div className="card">
-          <div className="card-title">Recent monitors</div>
-          <div className="list">
-            {monitors.length ? (
-              monitors.slice(0, 5).map((monitor) => {
-                const rawStatus = monitor.state?.lastStatus ?? 'unknown';
-                const status = isStatusType(rawStatus) ? rawStatus : 'unknown';
+        <Card>
+          <CardTitle>Recent monitors</CardTitle>
+          <ListContainer
+            isEmpty={!monitors.length}
+            emptyMessage="No monitors yet."
+          >
+            {monitors.slice(0, 5).map((monitor) => {
+              const rawStatus = monitor.state?.lastStatus ?? 'unknown';
+              const status = isStatusType(rawStatus) ? rawStatus : 'unknown';
 
-                return (
-                  <div key={monitor.id} className="list-row">
-                    <div>
-                      <div className="list-title">{monitor.name}</div>
-                      <div className="muted">{monitor.url}</div>
-                    </div>
+              return (
+                <ListRow
+                  key={monitor.id}
+                  title={monitor.name}
+                  subtitle={monitor.url}
+                  actions={
                     <StatusBadge status={status}>
                       {toTitleCase(status)}
                     </StatusBadge>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="muted">No monitors yet.</div>
-            )}
+                  }
+                />
+              );
+            })}
             {monitors.length > 0 && (
               <Link to="/app/monitors">
-                <button type="button" className="outline w-full mt-2">
+                <Button type="button" variant="outline" className="w-full mt-2">
                   View all monitors
-                </button>
+                </Button>
               </Link>
             )}
-          </div>
-        </div>
+          </ListContainer>
+        </Card>
 
-        <div className="card">
-          <div className="card-title">Status pages</div>
-          <div className="list">
-            {pages.length ? (
-              pages.slice(0, 5).map((page) => (
-                <div key={page.id} className="list-row">
-                  <div>
-                    <div className="list-title">{page.name}</div>
-                    <div className="muted">/{page.slug}</div>
-                  </div>
-                  <button
+        <Card>
+          <CardTitle>Status pages</CardTitle>
+          <ListContainer
+            isEmpty={!pages.length}
+            emptyMessage="No status pages yet."
+          >
+            {pages.slice(0, 5).map((page) => (
+              <ListRow
+                key={page.id}
+                title={page.name}
+                subtitle={`/${page.slug}`}
+                actions={
+                  <Button
                     type="button"
-                    className="outline"
+                    variant="outline"
                     onClick={() =>
                       window.open(`/status/${page.slug}`, '_blank')
                     }
                   >
                     View
-                  </button>
-                </div>
-              ))
-            ) : (
-              <div className="muted">No status pages yet.</div>
-            )}
+                  </Button>
+                }
+              />
+            ))}
             {pages.length > 0 && (
               <Link to="/app/status-pages">
-                <button type="button" className="outline w-full mt-2">
+                <Button type="button" variant="outline" className="w-full mt-2">
                   Manage status pages
-                </button>
+                </Button>
               </Link>
             )}
-          </div>
-        </div>
+          </ListContainer>
+        </Card>
       </div>
-    </div>
+    </Page>
   );
 }

@@ -2,10 +2,12 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { PageHeader } from "@/components/layout";
+import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
 import { TabNav } from "@/components/navigation";
-import { CreateChannelModal, AlertRuleModal } from "@/components/modals/notifications";
+import { ListContainer, ListRow } from "@/components/list";
+import { NotificationsModals } from "@/components/modals/notifications";
+import { Button } from "@/components/ui";
 import { toTitleCase } from "@/utils/format";
 import { listMonitorsFn } from "@/server/functions/monitors";
 import { listSentryProjectsFn } from "@/server/functions/sentry";
@@ -192,7 +194,7 @@ export default function Notifications() {
   };
 
   return (
-    <div className="page page-stack">
+    <Page className="page-stack">
       <PageHeader
         title="Notifications"
         description="Route incidents and issues to webhooks or email."
@@ -228,135 +230,138 @@ export default function Notifications() {
       />
 
       {activeTab === 'channels' && (
-        <div className="card">
-          <div className="card-title">Notification Channels</div>
-          <div className="list">
-            {channels.length ? (
-              channels.map((channel) => {
-                const display = getChannelDisplay(channel);
-                return (
-                  <div key={channel.id} className="list-row">
-                    <div>
-                      <div
-                        className="flex flex-wrap items-center gap-2"
-                      >
-                        <span className="pill small">
-                          {toTitleCase(channel.type)}
-                        </span>
-                        <span>{display.title}</span>
-                      </div>
-                      <div className="muted">{display.subtitle}</div>
-                    </div>
-                    <button
+        <Card>
+          <CardTitle>Notification Channels</CardTitle>
+          <ListContainer
+            isEmpty={!channels.length}
+            emptyMessage="No notification channels yet."
+          >
+            {channels.map((channel) => {
+              const display = getChannelDisplay(channel);
+              return (
+                <ListRow
+                  key={channel.id}
+                  titleClassName="flex flex-wrap items-center gap-2"
+                  title={
+                    <>
+                      <span className="pill small">{toTitleCase(channel.type)}</span>
+                      <span>{display.title}</span>
+                    </>
+                  }
+                  subtitle={display.subtitle}
+                  actions={
+                    <Button
                       type="button"
-                      className="outline button-danger"
+                      variant="outline"
+                      color="danger"
                       onClick={() => onDeleteChannel(channel.id)}
                     >
                       Remove
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="muted">No notification channels yet.</div>
-            )}
-          </div>
-        </div>
+                    </Button>
+                  }
+                />
+              );
+            })}
+          </ListContainer>
+        </Card>
       )}
 
       {activeTab === 'rules' && (
-        <div className="card">
-          <div className="card-title">Issue Alert Rules</div>
+        <Card>
+          <CardTitle>Issue Alert Rules</CardTitle>
           <p className="muted mb-4">
             Alert rules trigger notifications based on issue events, thresholds,
             and conditions.
           </p>
-          <div className="list">
-            {rules.length ? (
-              rules.map((rule) => {
-                const config = JSON.parse(rule.channelConfig);
-                const channelLabel =
-                  config.label || config.url || config.to || 'Channel';
-                return (
-                  <div key={rule.id} className="list-row">
-                    <div className="flex-1">
-                      <div className="list-title">
-                        <span
-                          className={`pill small ${rule.enabled ? 'success' : 'muted'}`}
-                        >
-                          {rule.enabled ? 'Active' : 'Disabled'}
-                        </span>{' '}
-                        {rule.name}
-                      </div>
-                      <div className="muted">
+          <ListContainer isEmpty={!rules.length} emptyMessage="No alert rules yet.">
+            {rules.map((rule) => {
+              const config = JSON.parse(rule.channelConfig);
+              const channelLabel =
+                config.label || config.url || config.to || "Channel";
+              return (
+                <ListRow
+                  key={rule.id}
+                  title={
+                    <>
+                      <span
+                        className={`pill small ${rule.enabled ? "success" : "muted"}`}
+                      >
+                        {rule.enabled ? "Active" : "Disabled"}
+                      </span>{" "}
+                      {rule.name}
+                    </>
+                  }
+                  subtitle={
+                    <>
+                      <div>
                         <span className="pill small">
                           {getTriggerLabel(rule.triggerType)}
-                        </span>{' '}
-                        ·{' '}
-                        {rule.sourceType === 'monitor'
-                          ? `Monitor: ${rule.monitorName || 'Unknown'}`
-                          : `${getProjectName(rule.projectId)}${rule.environment ? ` (${rule.environment})` : ''}`}{' '}
+                        </span>{" "}
+                        ·{" "}
+                        {rule.sourceType === "monitor"
+                          ? `Monitor: ${rule.monitorName || "Unknown"}`
+                          : `${getProjectName(rule.projectId)}${
+                              rule.environment ? ` (${rule.environment})` : ""
+                            }`}{" "}
                         · [{toTitleCase(rule.channelType)}] {channelLabel}
                       </div>
-                      <div className="muted text-[0.8rem]">
-                        Last triggered:{' '}
-                        {formatLastTriggered(rule.lastTriggeredAt)}
+                      <div className="text-[0.8rem]">
+                        Last triggered: {formatLastTriggered(rule.lastTriggeredAt)}
                       </div>
-                    </div>
-                    <div className="button-row">
-                      <button
+                    </>
+                  }
+                  actions={
+                    <>
+                      <Button
                         type="button"
-                        className="outline"
+                        variant="outline"
                         onClick={() => {
                           setEditingRule(rule);
                           setIsRuleModalOpen(true);
                         }}
                       >
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className={`outline ${rule.enabled ? 'button-warning' : 'button-success'}`}
+                        variant="outline"
+                        color={rule.enabled ? "warning" : "success"}
                         onClick={() => onToggleRule(rule.id, !rule.enabled)}
                       >
-                        {rule.enabled ? 'Disable' : 'Enable'}
-                      </button>
-                      <button
+                        {rule.enabled ? "Disable" : "Enable"}
+                      </Button>
+                      <Button
                         type="button"
-                        className="outline button-danger"
+                        variant="outline"
+                        color="danger"
                         onClick={() => onDeleteRule(rule.id)}
                       >
                         Delete
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="muted">No alert rules yet.</div>
-            )}
-          </div>
-        </div>
+                      </Button>
+                    </>
+                  }
+                />
+              );
+            })}
+          </ListContainer>
+        </Card>
       )}
 
-      <CreateChannelModal
-        isOpen={isChannelModalOpen}
-        onClose={() => setIsChannelModalOpen(false)}
-        onSuccess={refreshChannels}
-      />
-
-      <AlertRuleModal
-        isOpen={isRuleModalOpen}
-        onClose={() => {
+      <NotificationsModals
+        isChannelOpen={isChannelModalOpen}
+        onCloseChannel={() => setIsChannelModalOpen(false)}
+        onChannelsSuccess={refreshChannels}
+        isRuleOpen={isRuleModalOpen}
+        onCloseRule={() => {
           setIsRuleModalOpen(false);
           setEditingRule(null);
         }}
-        onSuccess={refreshRules}
+        onRulesSuccess={refreshRules}
         editingRule={editingRule}
         monitors={monitors}
         projects={projects}
         channels={channels}
       />
-    </div>
+    </Page>
   );
 }

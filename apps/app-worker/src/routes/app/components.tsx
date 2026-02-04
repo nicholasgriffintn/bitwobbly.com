@@ -2,15 +2,13 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { PageHeader } from "@/components/layout";
+import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
-import { StatusBadge, isStatusType } from "@/components/ui";
+import { ListContainer, ListRow } from "@/components/list";
+import { Button, StatusBadge, isStatusType } from "@/components/ui";
 import { CheckboxList } from "@/components/form";
 import { ComponentMetrics } from "@/components/ComponentMetrics";
-import {
-  CreateComponentModal,
-  EditComponentModal,
-} from "@/components/modals/components";
+import { ComponentsModals } from "@/components/modals/components";
 import { toTitleCase } from "@/utils/format";
 import { listMonitorsFn } from "@/server/functions/monitors";
 import {
@@ -117,135 +115,128 @@ export default function Components() {
   };
 
   return (
-    <div className="page page-stack">
+    <Page className="page-stack">
       <PageHeader
         title="Components"
         description="Group monitors into logical service components for status pages."
       >
-        <button onClick={() => setIsCreateModalOpen(true)}>
-          Create Component
-        </button>
+        <button onClick={() => setIsCreateModalOpen(true)}>Create Component</button>
       </PageHeader>
 
       {error && <ErrorCard message={error} />}
 
-      <div className="card">
-        <div className="card-title">Components</div>
-        <div className="list">
-          {components.length ? (
-            components.map((component) => (
-              <div key={component.id} className="list-item-expanded">
-                <div className="list-row">
-                  <div>
-                    <div className="list-title flex flex-wrap items-center gap-2">
-                      {component.name}
-                      {component.currentStatus &&
-                        component.currentStatus !== "operational" && (
-                          <StatusBadge
-                            status={
-                              isStatusType(component.currentStatus)
-                                ? component.currentStatus
-                                : "unknown"
-                            }
-                          >
-                            {toTitleCase(component.currentStatus)}
-                          </StatusBadge>
-                        )}
-                    </div>
-                    <div className="muted">
-                      {component.description || "No description"}
-                      {" · "}
-                      {component.monitorIds.length} monitor
-                      {component.monitorIds.length !== 1 ? "s" : ""} linked
-                    </div>
-                  </div>
-                  <div className="button-row">
-                    <button
-                      type="button"
-                      className="outline"
-                      onClick={() =>
-                        setExpandedMetricsId(
-                          expandedMetricsId === component.id
-                            ? null
-                            : component.id,
-                        )
+      <Card>
+        <CardTitle>Components</CardTitle>
+        <ListContainer isEmpty={!components.length} emptyMessage="No components yet.">
+          {components.map((component) => {
+            const isLinkExpanded = expandedId === component.id;
+            const isMetricsExpanded = expandedMetricsId === component.id;
+
+            return (
+              <ListRow
+                key={component.id}
+                className="list-item-expanded"
+                title={component.name}
+                badges={
+                  component.currentStatus &&
+                  component.currentStatus !== "operational" ? (
+                    <StatusBadge
+                      status={
+                        isStatusType(component.currentStatus)
+                          ? component.currentStatus
+                          : "unknown"
                       }
                     >
-                      {expandedMetricsId === component.id ? "Hide" : "Metrics"}
-                    </button>
-                    <button
+                      {toTitleCase(component.currentStatus)}
+                    </StatusBadge>
+                  ) : null
+                }
+                subtitle={
+                  <>
+                    {component.description || "No description"}
+                    {" · "}
+                    {component.monitorIds.length} monitor
+                    {component.monitorIds.length !== 1 ? "s" : ""} linked
+                  </>
+                }
+                actions={
+                  <>
+                    <Button
                       type="button"
-                      className="outline"
+                      variant="outline"
                       onClick={() =>
-                        setExpandedId(
-                          expandedId === component.id ? null : component.id,
-                        )
+                        setExpandedMetricsId(isMetricsExpanded ? null : component.id)
                       }
                     >
-                      {expandedId === component.id ? "Hide" : "Link"} monitors
-                    </button>
-                    <button
+                      {isMetricsExpanded ? "Hide" : "Metrics"}
+                    </Button>
+                    <Button
                       type="button"
-                      className="outline"
+                      variant="outline"
+                      onClick={() => setExpandedId(isLinkExpanded ? null : component.id)}
+                    >
+                      {isLinkExpanded ? "Hide" : "Link"} monitors
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => startEditing(component)}
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="outline button-danger"
+                      variant="outline"
+                      color="danger"
                       onClick={() => onDelete(component.id)}
                     >
                       Delete
-                    </button>
-                  </div>
-                </div>
+                    </Button>
+                  </>
+                }
+                expanded={isMetricsExpanded || isLinkExpanded}
+                expandedContent={
+                  <>
+                    {isMetricsExpanded && (
+                      <div className="mt-4">
+                        <ComponentMetrics
+                          componentId={component.id}
+                          componentName={component.name}
+                        />
+                      </div>
+                    )}
+                    {isLinkExpanded && (
+                      <CheckboxList
+                        items={monitors.map((monitor) => ({
+                          id: monitor.id,
+                          label: monitor.name,
+                          checked: component.monitorIds.includes(monitor.id),
+                        }))}
+                        onChange={(monitorId, checked) =>
+                          onToggleMonitor(component.id, monitorId, checked)
+                        }
+                        emptyMessage="No monitors available. Create monitors first."
+                      />
+                    )}
+                  </>
+                }
+              />
+            );
+          })}
+        </ListContainer>
+      </Card>
 
-                {expandedMetricsId === component.id && (
-                  <div className="mt-4">
-                    <ComponentMetrics
-                      componentId={component.id}
-                      componentName={component.name}
-                    />
-                  </div>
-                )}
-
-                {expandedId === component.id && (
-                  <CheckboxList
-                    items={monitors.map((monitor) => ({
-                      id: monitor.id,
-                      label: monitor.name,
-                      checked: component.monitorIds.includes(monitor.id),
-                    }))}
-                    onChange={(monitorId, checked) =>
-                      onToggleMonitor(component.id, monitorId, checked)
-                    }
-                    emptyMessage="No monitors available. Create monitors first."
-                  />
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="muted">No components yet.</div>
-          )}
-        </div>
-      </div>
-
-      <CreateComponentModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={refreshComponents}
-      />
-
-      <EditComponentModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
+      <ComponentsModals
+        isCreateOpen={isCreateModalOpen}
+        onCloseCreate={() => setIsCreateModalOpen(false)}
+        isEditOpen={isEditModalOpen}
+        onCloseEdit={() => {
           setIsEditModalOpen(false);
           setEditingComponent(null);
         }}
+        editingComponent={editingComponent}
         onSuccess={refreshComponents}
-        component={editingComponent}
       />
-    </div>
+    </Page>
   );
 }

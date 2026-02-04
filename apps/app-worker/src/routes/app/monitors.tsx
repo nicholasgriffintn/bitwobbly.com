@@ -1,16 +1,13 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { MetricsChart } from "@/components/MetricsChart";
-import { PageHeader } from "@/components/layout";
+import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
-import { Badge, StatusBadge, isStatusType } from "@/components/ui";
-import {
-  CreateMonitorModal,
-  EditMonitorModal,
-  ManualStatusModal,
-} from "@/components/modals/monitors";
+import { ListContainer, ListRow } from "@/components/list";
+import { Badge, Button, StatusBadge, isStatusType } from "@/components/ui";
+import { MonitorsModals } from "@/components/modals/monitors";
 import { toTitleCase } from "@/utils/format";
 import {
   listMonitorsFn,
@@ -131,157 +128,143 @@ function Monitors() {
   };
 
   return (
-    <div className="page page-stack">
+    <Page className="page-stack">
       <PageHeader
         title="Monitors"
         description="Track availability, latency, and incident thresholds."
       >
-        <button onClick={() => setIsCreateModalOpen(true)}>Create Monitor</button>
+        <button onClick={() => setIsCreateModalOpen(true)}>
+          Create Monitor
+        </button>
       </PageHeader>
 
       {error ? <ErrorCard message={error} /> : null}
 
-      <div className="card">
-        <div className="card-title flex flex-wrap items-center gap-4">
+      <Card>
+        <CardTitle className="flex flex-wrap items-center gap-4">
           Monitors
-          <button
+          <Button
             type="button"
-            className="outline button-info button-compact ml-auto"
+            variant="outline"
+            color="info"
+            className="button-compact ml-auto"
             onClick={onTriggerScheduler}
             title="Manually trigger monitor checks (dev mode)"
           >
             Check Now
-          </button>
-        </div>
-        <div className="list">
-          {monitors.length ? (
-            monitors.map((monitor) => {
-              const rawStatus = monitor.state?.lastStatus ?? "unknown";
-              const status = isStatusType(rawStatus) ? rawStatus : "unknown";
+          </Button>
+        </CardTitle>
 
-              return (
-                <React.Fragment key={monitor.id}>
-                  <div className="list-item-expanded">
-                    <div className="list-row">
-                      <div className="flex-1">
-                        <div className="list-title">
-                          {monitor.name}
-                          {!monitor.enabled && (
-                            <span className="ml-2">
-                              <Badge size="small" variant="muted">
-                                Paused
-                              </Badge>
-                            </span>
-                          )}
-                        </div>
-                        {monitor.url && (
-                          <div className="muted">{monitor.url}</div>
-                        )}
-                        <div className="muted mt-1">
-                          <StatusBadge status={status}>
-                            {toTitleCase(status)}
-                          </StatusBadge>
+        <ListContainer isEmpty={!monitors.length} emptyMessage="No monitors configured.">
+          {monitors.map((monitor) => {
+            const rawStatus = monitor.state?.lastStatus ?? "unknown";
+            const status = isStatusType(rawStatus) ? rawStatus : "unknown";
+            const isMetricsExpandable =
+              monitor.type !== "webhook" && monitor.type !== "manual";
+            const isMetricsExpanded = expandedMonitorId === monitor.id;
+
+            return (
+              <ListRow
+                key={monitor.id}
+                className="list-item-expanded"
+                title={monitor.name}
+                badges={
+                  !monitor.enabled ? (
+                    <Badge size="small" variant="muted">
+                      Paused
+                    </Badge>
+                  ) : null
+                }
+                subtitle={
+                  <>
+                    {monitor.url ? <div>{monitor.url}</div> : null}
+                    <div className={monitor.url ? "mt-1" : ""}>
+                      <StatusBadge status={status}>{toTitleCase(status)}</StatusBadge>
+                      {" · "}
+                      <Badge size="small">{toTitleCase(monitor.type)}</Badge>
+                      {isMetricsExpandable && (
+                        <>
                           {" · "}
-                          <Badge size="small">{toTitleCase(monitor.type)}</Badge>
-                          {monitor.type !== "webhook" &&
-                            monitor.type !== "manual" && (
-                              <>
-                                {" · "}
-                                {monitor.intervalSeconds}s interval ·{" "}
-                                {monitor.timeoutMs}ms timeout ·{" "}
-                                {monitor.failureThreshold} failures
-                              </>
-                            )}
-                        </div>
-                      </div>
-                      <div className="button-row">
-                        {monitor.type !== "webhook" &&
-                          monitor.type !== "manual" && (
-                            <button
-                              type="button"
-                              className="outline"
-                              onClick={() =>
-                                setExpandedMonitorId(
-                                  expandedMonitorId === monitor.id
-                                    ? null
-                                    : monitor.id,
-                                )
-                              }
-                            >
-                              {expandedMonitorId === monitor.id
-                                ? "Hide"
-                                : "Metrics"}
-                            </button>
-                          )}
-                        {monitor.type === "manual" && (
-                          <button
-                            type="button"
-                            className="outline"
-                            onClick={() => openManualStatusModal(monitor.id)}
-                          >
-                            Set Status
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="outline"
-                          onClick={() => startEditing(monitor)}
-                        >
-                          Edit
-                        </button>
-                        {monitor.type !== "webhook" &&
-                          monitor.type !== "manual" && (
-                            <button
-                              type="button"
-                              className={`outline ${monitor.enabled ? "button-warning" : "button-success"}`}
-                              onClick={() => toggleEnabled(monitor)}
-                            >
-                              {monitor.enabled ? "Pause" : "Resume"}
-                            </button>
-                          )}
-                        <button
-                          type="button"
-                          className="outline button-danger"
-                          onClick={() => onDelete(monitor.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
+                          {monitor.intervalSeconds}s interval · {monitor.timeoutMs}ms timeout ·{" "}
+                          {monitor.failureThreshold} failures
+                        </>
+                      )}
                     </div>
-
-                    {expandedMonitorId === monitor.id && (
-                      <div className="mt-4">
-                        <MetricsChart monitorId={monitor.id} />
-                      </div>
+                  </>
+                }
+                actions={
+                  <>
+                    {isMetricsExpandable && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setExpandedMonitorId(isMetricsExpanded ? null : monitor.id)
+                        }
+                      >
+                        {isMetricsExpanded ? "Hide" : "Metrics"}
+                      </Button>
                     )}
-                  </div>
-                </React.Fragment>
-              );
-            })
-          ) : (
-            <div className="muted">No monitors configured.</div>
-          )}
-        </div>
-      </div>
-      <CreateMonitorModal
-        isOpen={isCreateModalOpen}
-        onClose={closeCreateModal}
+                    {monitor.type === "manual" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => openManualStatusModal(monitor.id)}
+                      >
+                        Set Status
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => startEditing(monitor)}
+                    >
+                      Edit
+                    </Button>
+                    {isMetricsExpandable && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        color={monitor.enabled ? "warning" : "success"}
+                        onClick={() => toggleEnabled(monitor)}
+                      >
+                        {monitor.enabled ? "Pause" : "Resume"}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      color="danger"
+                      onClick={() => onDelete(monitor.id)}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                }
+                expanded={isMetricsExpandable && isMetricsExpanded}
+                expandedContent={
+                  isMetricsExpandable ? (
+                    <div className="mt-4">
+                      <MetricsChart monitorId={monitor.id} />
+                    </div>
+                  ) : null
+                }
+              />
+            );
+          })}
+        </ListContainer>
+      </Card>
+      <MonitorsModals
+        isCreateOpen={isCreateModalOpen}
+        onCloseCreate={closeCreateModal}
+        isEditOpen={isEditModalOpen}
+        onCloseEdit={cancelEditing}
+        editingMonitor={editingMonitor}
+        isManualStatusOpen={isManualStatusModalOpen}
+        onCloseManualStatus={closeManualStatusModal}
+        manualStatusMonitorId={manualStatusMonitorId}
         onSuccess={refreshMonitors}
       />
-
-      <EditMonitorModal
-        isOpen={isEditModalOpen}
-        onClose={cancelEditing}
-        onSuccess={refreshMonitors}
-        monitor={editingMonitor}
-      />
-
-      <ManualStatusModal
-        isOpen={isManualStatusModalOpen}
-        onClose={closeManualStatusModal}
-        onSuccess={refreshMonitors}
-        monitorId={manualStatusMonitorId}
-      />
-    </div>
+    </Page>
   );
 }

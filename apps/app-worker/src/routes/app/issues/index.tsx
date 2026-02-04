@@ -4,12 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
-import {
-  CreateProjectModal,
-  DeleteProjectModal,
-  EditProjectModal,
-  ProjectDsnModal,
-} from "@/components/modals/issues";
+import { IssuesModals } from "@/components/modals/issues";
 import { toTitleCase } from "@/utils/format";
 import {
   listSentryProjectsFn,
@@ -314,10 +309,10 @@ function IssueTracking() {
         )}
       </div>
 
-      <CreateProjectModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={refreshProjects}
+      <IssuesModals
+        isCreateOpen={isCreateModalOpen}
+        onCloseCreate={() => setIsCreateModalOpen(false)}
+        onCreateSuccess={refreshProjects}
         onCreated={({ dsn, publicKey, secretKey }) => {
           setDsn(dsn);
           setPublicKey(publicKey);
@@ -325,32 +320,22 @@ function IssueTracking() {
           setIsDsnModalOpen(true);
         }}
         components={components}
-      />
-
-      <EditProjectModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
+        isEditOpen={isEditModalOpen}
+        onCloseEdit={() => {
           setIsEditModalOpen(false);
           setEditingProject(null);
         }}
-        onSuccess={refreshProjects}
-        project={editingProject}
-        components={components}
-      />
-
-      <ProjectDsnModal
-        isOpen={isDsnModalOpen}
-        onClose={closeDsnModal}
+        onEditSuccess={refreshProjects}
+        editingProject={editingProject}
+        isDsnOpen={isDsnModalOpen}
+        onCloseDsn={closeDsnModal}
         dsn={dsn}
         publicKey={publicKey}
         secretKey={secretKey}
-      />
-
-      <DeleteProjectModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onSuccess={refreshProjects}
-        projectId={deletingProjectId}
+        isDeleteOpen={isDeleteModalOpen}
+        onCloseDelete={closeDeleteModal}
+        onDeleteSuccess={refreshProjects}
+        deletingProjectId={deletingProjectId}
       />
     </div>
   );

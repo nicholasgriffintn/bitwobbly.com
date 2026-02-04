@@ -2,15 +2,11 @@ import { useState } from "react";
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { PageHeader } from "@/components/layout";
+import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
-import { Badge } from "@/components/ui";
-import {
-  CreateTeamModal,
-  RenameTeamModal,
-  CreateInviteModal,
-  DeleteTeamModal,
-} from "@/components/modals/settings";
+import { ListContainer, ListRow } from "@/components/list";
+import { Badge, Button } from "@/components/ui";
+import { SettingsModals } from "@/components/modals/settings";
 import {
   listTeamMembersFn,
   removeTeamMemberFn,
@@ -179,217 +175,206 @@ export default function Settings() {
     navigator.clipboard.writeText(inviteUrl);
   };
 
+  const activeInvites = invites.filter((inv) => !inv.usedAt);
+
   return (
-    <div className="page page-stack">
+    <Page className="page-stack">
       <PageHeader
         title="Team Settings"
         description="Manage your team members, invitations, and settings."
       >
         <div className="button-row">
-          <button
+          <Button
             type="button"
-            className="outline button-success"
+            variant="outline"
+            color="success"
             onClick={() => {
               setError(null);
               setIsCreateTeamModalOpen(true);
             }}
           >
             New Team
-          </button>
+          </Button>
         </div>
       </PageHeader>
 
       {error && <ErrorCard message={error} />}
 
-      <div className="card">
-        <div className="card-title">Team Details</div>
-        <div className="list">
-          <div className="list-row">
-            <div className="flex-1">
-              <div className="list-title">
-                {currentTeam?.name || "Loading..."}
-              </div>
-            </div>
-            <div className="button-row">
-              {isOwner && (
-                <>
-                  <button
-                    type="button"
-                    className="outline"
-                    onClick={() => setIsEditNameModalOpen(true)}
-                  >
-                    Rename
-                  </button>
-                  <button
-                    type="button"
-                    className="outline button-danger"
-                    onClick={() => setIsDeleteTeamModalOpen(true)}
-                  >
-                    Delete Team
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <Card>
+        <CardTitle>Team Details</CardTitle>
+        <ListRow
+          title={currentTeam?.name || "Loading..."}
+          actions={
+            isOwner ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditNameModalOpen(true)}
+                >
+                  Rename
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  color="danger"
+                  onClick={() => setIsDeleteTeamModalOpen(true)}
+                >
+                  Delete Team
+                </Button>
+              </>
+            ) : null
+          }
+        />
+      </Card>
 
       {isOwner && (
-        <div className="card">
-          <div className="card-title">Demo Data</div>
-          <div className="list">
-            <div className="list-row">
-              <div className="flex-1">
-                <div className="list-title">Load full demo setup</div>
-                <div className="muted">
-                  Seeds all core tables with varied sample data for monitors,
-                  incidents, status pages, alerting, and issue tracking.
-                </div>
-              </div>
-              <button
+        <Card>
+          <CardTitle>Demo Data</CardTitle>
+          <ListRow
+            title="Load full demo setup"
+            subtitle="Seeds all core tables with varied sample data for monitors, incidents, status pages, alerting, and issue tracking."
+            actions={
+              <Button
                 type="button"
-                className="outline button-warning"
+                variant="outline"
+                color="warning"
                 onClick={onSeedDemoData}
                 disabled={isSeedingDemo}
               >
                 {isSeedingDemo ? "Seeding..." : "Load Demo Data"}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            }
+          />
+        </Card>
       )}
 
-      <div className="card">
-        <div className="card-title">Team Members</div>
-        <div className="list">
-          {members.length ? (
-            members.map((member) => (
-              <div key={member.userId} className="list-row">
-                <div className="flex-1">
-                  <div className="list-title">{member.email}</div>
-                  <div className="muted flex flex-wrap items-center gap-2">
-                    <Badge size="small">{toTitleCase(member.role)}</Badge>
-                    <span>
-                      · Joined {new Date(member.joinedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-                {isOwner && member.userId !== user?.id && (
-                  <div className="button-row">
-                    <button
+      <Card>
+        <CardTitle>Team Members</CardTitle>
+        <ListContainer isEmpty={!members.length} emptyMessage="No members yet.">
+          {members.map((member) => (
+            <ListRow
+              key={member.userId}
+              title={member.email}
+              subtitleClassName="muted flex flex-wrap items-center gap-2"
+              subtitle={
+                <>
+                  <Badge size="small">{toTitleCase(member.role)}</Badge>
+                  <span>
+                    · Joined {new Date(member.joinedAt).toLocaleDateString()}
+                  </span>
+                </>
+              }
+              actions={
+                isOwner && member.userId !== user?.id ? (
+                  <>
+                    <Button
                       type="button"
-                      className="outline"
+                      variant="outline"
                       onClick={() => onToggleRole(member.userId, member.role)}
                     >
                       {member.role === "owner" ? "Make Member" : "Make Owner"}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="outline button-danger"
+                      variant="outline"
+                      color="danger"
                       onClick={() => onRemoveMember(member.userId)}
                     >
                       Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="muted">No members yet.</div>
-          )}
-        </div>
-      </div>
+                    </Button>
+                  </>
+                ) : null
+              }
+            />
+          ))}
+        </ListContainer>
+      </Card>
 
-      <div className="card">
-        <div className="card-title flex items-center gap-4">
+      <Card>
+        <CardTitle className="flex items-center gap-4">
           Team Invitations
           {isOwner && (
-            <button
+            <Button
               type="button"
-              className="outline button-success button-compact ml-auto"
+              variant="outline"
+              color="success"
+              className="button-compact ml-auto"
               onClick={() => setIsCreateInviteModalOpen(true)}
             >
               Create Invite
-            </button>
+            </Button>
           )}
-        </div>
-        <div className="list">
-          {invites.filter((inv) => !inv.usedAt).length ? (
-            invites
-              .filter((inv) => !inv.usedAt)
-              .map((invite) => {
-                const isExpired = new Date(invite.expiresAt) < new Date();
-                return (
-                  <div key={invite.inviteCode} className="list-row">
-                    <div className="flex-1">
-                      <div className="list-title">
-                        Invite Code:{" "}
-                        <span className="font-mono">{invite.inviteCode}</span>
-                      </div>
-                      <div className="muted flex flex-wrap items-center gap-2">
-                        {invite.email && <span>For {invite.email} ·</span>}
-                        <Badge size="small">{toTitleCase(invite.role)}</Badge>
-                        <span>
-                          ·{" "}
-                          {isExpired ? (
-                            <span className="text-[color:var(--primary-dark)]">
-                              Expired
-                            </span>
-                          ) : (
-                            `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`
-                          )}
+        </CardTitle>
+        <ListContainer isEmpty={!activeInvites.length} emptyMessage="No active invitations.">
+          {activeInvites.map((invite) => {
+            const isExpired = new Date(invite.expiresAt) < new Date();
+            return (
+              <ListRow
+                key={invite.inviteCode}
+                title={
+                  <>
+                    Invite Code:{" "}
+                    <span className="font-mono">{invite.inviteCode}</span>
+                  </>
+                }
+                subtitleClassName="muted flex flex-wrap items-center gap-2"
+                subtitle={
+                  <>
+                    {invite.email && <span>For {invite.email} ·</span>}
+                    <Badge size="small">{toTitleCase(invite.role)}</Badge>
+                    <span>
+                      ·{" "}
+                      {isExpired ? (
+                        <span className="text-[color:var(--primary-dark)]">
+                          Expired
                         </span>
-                      </div>
-                    </div>
-                    {isOwner && (
-                      <div className="button-row">
-                        <button
-                          type="button"
-                          className="outline"
-                          onClick={() => copyInviteLink(invite.inviteCode)}
-                        >
-                          Copy Link
-                        </button>
-                        <button
-                          type="button"
-                          className="outline button-warning"
-                          onClick={() => onRevokeInvite(invite.inviteCode)}
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-          ) : (
-            <div className="muted">No active invitations.</div>
-          )}
-        </div>
-      </div>
+                      ) : (
+                        `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`
+                      )}
+                    </span>
+                  </>
+                }
+                actions={
+                  isOwner ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => copyInviteLink(invite.inviteCode)}
+                      >
+                        Copy Link
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        color="warning"
+                        onClick={() => onRevokeInvite(invite.inviteCode)}
+                      >
+                        Revoke
+                      </Button>
+                    </>
+                  ) : null
+                }
+              />
+            );
+          })}
+        </ListContainer>
+      </Card>
 
-      <CreateTeamModal
-        isOpen={isCreateTeamModalOpen}
-        onClose={() => setIsCreateTeamModalOpen(false)}
+      <SettingsModals
+        isCreateTeamOpen={isCreateTeamModalOpen}
+        onCloseCreateTeam={() => setIsCreateTeamModalOpen(false)}
+        isRenameTeamOpen={isEditNameModalOpen}
+        onCloseRenameTeam={() => setIsEditNameModalOpen(false)}
+        onTeamSuccess={refreshTeam}
+        currentTeamName={currentTeam?.name || ""}
+        isCreateInviteOpen={isCreateInviteModalOpen}
+        onCloseCreateInvite={() => setIsCreateInviteModalOpen(false)}
+        onInvitesSuccess={refreshInvites}
+        isDeleteTeamOpen={isDeleteTeamModalOpen}
+        onCloseDeleteTeam={() => setIsDeleteTeamModalOpen(false)}
       />
-
-      <RenameTeamModal
-        isOpen={isEditNameModalOpen}
-        onClose={() => setIsEditNameModalOpen(false)}
-        onSuccess={refreshTeam}
-        currentName={currentTeam?.name || ""}
-      />
-
-      <CreateInviteModal
-        isOpen={isCreateInviteModalOpen}
-        onClose={() => setIsCreateInviteModalOpen(false)}
-        onSuccess={refreshInvites}
-      />
-
-      <DeleteTeamModal
-        isOpen={isDeleteTeamModalOpen}
-        onClose={() => setIsDeleteTeamModalOpen(false)}
-      />
-    </div>
+    </Page>
   );
 }

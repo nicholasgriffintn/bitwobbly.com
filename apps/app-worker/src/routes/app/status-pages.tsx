@@ -2,13 +2,12 @@ import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { PageHeader } from "@/components/layout";
+import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
 import { CheckboxList } from "@/components/form";
-import {
-  CreateStatusPageModal,
-  EditStatusPageModal,
-} from "@/components/modals/status-pages";
+import { ListContainer, ListRow } from "@/components/list";
+import { Button } from "@/components/ui";
+import { StatusPagesModals } from "@/components/modals/status-pages";
 import {
   listStatusPagesFn,
   deleteStatusPageFn,
@@ -143,7 +142,7 @@ export default function StatusPages() {
   const linkedComponentIds = pageComponents.map((pc) => pc.componentId);
 
   return (
-    <div className="page page-stack">
+    <Page className="page-stack">
       <PageHeader
         title="Status pages"
         description="Publish uptime updates for your customers."
@@ -155,97 +154,88 @@ export default function StatusPages() {
 
       {error && <ErrorCard message={error} />}
 
-      <div className="card">
-        <div className="card-title">Status pages</div>
-        <div className="list">
-          {pages.length ? (
-            pages.map((page) => {
-              const isExpanded = expandedPageId === page.id;
+      <Card>
+        <CardTitle>Status pages</CardTitle>
+        <ListContainer isEmpty={!pages.length} emptyMessage="No status pages yet.">
+          {pages.map((page) => {
+            const isExpanded = expandedPageId === page.id;
 
-              return (
-                <div key={page.id} className="list-item-expanded">
-                  <div className="list-row">
-                    <div>
-                      <div className="list-title">{page.name}</div>
-                      <div className="muted">/{page.slug}</div>
+            return (
+              <ListRow
+                key={page.id}
+                className="list-item-expanded"
+                title={page.name}
+                subtitle={`/${page.slug}`}
+                actions={
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => openPublicPage(page.slug)}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setExpandedPageId(isExpanded ? null : page.id)}
+                    >
+                      {isExpanded ? "Hide" : "Components"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => startEditing(page)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      color="danger"
+                      onClick={() => onDelete(page.id)}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                }
+                expanded={isExpanded}
+                expandedContent={
+                  <div className="nested-list">
+                    <div className="muted mb-2">
+                      Link components to display on this status page:
                     </div>
-                    <div className="button-row">
-                      <button
-                        type="button"
-                        className="outline"
-                        onClick={() => openPublicPage(page.slug)}
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        className="outline"
-                        onClick={() =>
-                          setExpandedPageId(isExpanded ? null : page.id)
-                        }
-                      >
-                        {isExpanded ? "Hide" : "Components"}
-                      </button>
-                      <button
-                        type="button"
-                        className="outline"
-                        onClick={() => startEditing(page)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="outline button-danger"
-                        onClick={() => onDelete(page.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <CheckboxList
+                      items={components.map((component) => ({
+                        id: component.id,
+                        label: component.name,
+                        checked: linkedComponentIds.includes(component.id),
+                      }))}
+                      onChange={(componentId, checked) =>
+                        onToggleComponent(page.id, componentId, checked)
+                      }
+                      emptyMessage="No components available. Create components first."
+                      className="!border-none !bg-transparent !p-0"
+                    />
                   </div>
+                }
+              />
+            );
+          })}
+        </ListContainer>
+      </Card>
 
-                  {isExpanded && (
-                    <div className="nested-list">
-                      <div className="muted mb-2">
-                        Link components to display on this status page:
-                      </div>
-                      <CheckboxList
-                        items={components.map((component) => ({
-                          id: component.id,
-                          label: component.name,
-                          checked: linkedComponentIds.includes(component.id),
-                        }))}
-                        onChange={(componentId, checked) =>
-                          onToggleComponent(page.id, componentId, checked)
-                        }
-                        emptyMessage="No components available. Create components first."
-                        className="!border-none !bg-transparent !p-0"
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div className="muted">No status pages yet.</div>
-          )}
-        </div>
-      </div>
-
-      <CreateStatusPageModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={refreshPages}
-      />
-
-      <EditStatusPageModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
+      <StatusPagesModals
+        isCreateOpen={isCreateModalOpen}
+        onCloseCreate={() => setIsCreateModalOpen(false)}
+        isEditOpen={isEditModalOpen}
+        onCloseEdit={() => {
           setIsEditModalOpen(false);
           setEditingPage(null);
         }}
+        editingPage={editingPage}
         onSuccess={refreshPages}
-        page={editingPage}
       />
-    </div>
+    </Page>
   );
 }
