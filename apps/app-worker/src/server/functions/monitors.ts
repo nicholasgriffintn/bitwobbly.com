@@ -32,6 +32,7 @@ const CreateMonitorSchema = z
   .object({
     name: z.string().min(1),
     url: z.string().optional(),
+    group_id: z.string().nullable().optional(),
     interval_seconds: z.number().int(),
     timeout_ms: z.number().int(),
     failure_threshold: z.number().int(),
@@ -120,6 +121,7 @@ export const createMonitorFn = createServerFn({ method: "POST" })
       type: data.type || "http",
       webhook_token: webhookTokenHash,
       external_config: data.external_config,
+      group_id: data.group_id,
     });
 
     return {
@@ -173,6 +175,7 @@ const UpdateMonitorSchema = z.object({
   id: z.string(),
   name: z.string().min(1).optional(),
   url: z.string().optional(),
+  group_id: z.string().nullable().optional(),
   interval_seconds: z.number().int().optional(),
   timeout_ms: z.number().int().optional(),
   failure_threshold: z.number().int().optional(),
@@ -218,6 +221,7 @@ export const updateMonitorFn = createServerFn({ method: "POST" })
     const updates: Parameters<typeof updateMonitor>[3] = {};
     if (data.name !== undefined) updates.name = data.name;
     if (data.url !== undefined) updates.url = data.url;
+    if (data.group_id !== undefined) updates.group_id = data.group_id;
     if (data.interval_seconds !== undefined)
       updates.interval_seconds = clampInt(data.interval_seconds, 30, 3600, 60);
     if (data.timeout_ms !== undefined)

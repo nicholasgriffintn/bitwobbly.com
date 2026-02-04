@@ -9,6 +9,7 @@ type Monitor = {
   id: string;
   name: string;
   url: string | null;
+  groupId?: string | null;
   intervalSeconds: number;
   timeoutMs: number;
   failureThreshold: number;
@@ -22,6 +23,7 @@ interface EditMonitorModalProps {
   onClose: () => void;
   onSuccess: () => Promise<void>;
   monitor: Monitor | null;
+  groups: Array<{ id: string; name: string }>;
 }
 
 export function EditMonitorModal({
@@ -29,11 +31,13 @@ export function EditMonitorModal({
   onClose,
   onSuccess,
   monitor,
+  groups,
 }: EditMonitorModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [editingMonitorType, setEditingMonitorType] = useState("http");
   const [editName, setEditName] = useState("");
   const [editUrl, setEditUrl] = useState("");
+  const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [editInterval, setEditInterval] = useState("");
   const [editTimeout, setEditTimeout] = useState("");
   const [editThreshold, setEditThreshold] = useState("");
@@ -50,6 +54,7 @@ export function EditMonitorModal({
     setEditingMonitorType(monitor.type);
     setEditName(monitor.name);
     setEditUrl(monitor.url || "");
+    setEditGroupId(monitor.groupId || null);
     setEditInterval(String(monitor.intervalSeconds));
     setEditTimeout(String(monitor.timeoutMs));
     setEditThreshold(String(monitor.failureThreshold));
@@ -102,6 +107,7 @@ export function EditMonitorModal({
         data: {
           id: monitor.id,
           name: editName,
+          group_id: editGroupId,
           url:
             editingMonitorType === "webhook" ||
             editingMonitorType === "manual" ||
@@ -135,6 +141,20 @@ export function EditMonitorModal({
           onChange={(e) => setEditName(e.target.value)}
           required
         />
+
+        <label htmlFor="edit-group">Monitor group</label>
+        <select
+          id="edit-group"
+          value={editGroupId || ""}
+          onChange={(e) => setEditGroupId(e.target.value || null)}
+        >
+          <option value="">No group</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
 
         {editingMonitorType !== "webhook" &&
           editingMonitorType !== "manual" &&
@@ -264,4 +284,3 @@ export function EditMonitorModal({
     </Modal>
   );
 }
-

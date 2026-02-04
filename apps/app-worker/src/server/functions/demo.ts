@@ -163,6 +163,12 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       .where(eq(schema.components.teamId, teamId));
     await db.delete(schema.monitors).where(eq(schema.monitors.teamId, teamId));
     await db
+      .delete(schema.suppressions)
+      .where(eq(schema.suppressions.teamId, teamId));
+    await db
+      .delete(schema.monitorGroups)
+      .where(eq(schema.monitorGroups.teamId, teamId));
+    await db
       .delete(schema.notificationChannels)
       .where(eq(schema.notificationChannels.teamId, teamId));
     await db
@@ -323,10 +329,39 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       `demo-heartbeat-token-${key}`,
     );
 
+    const monitorGroupCoreId = demoId('mg', key, 'core');
+    const monitorGroupPaymentsId = demoId('mg', key, 'payments');
+    const monitorGroupInfraId = demoId('mg', key, 'infra');
+
+    await db.insert(schema.monitorGroups).values([
+      {
+        id: monitorGroupCoreId,
+        teamId,
+        name: 'Core services',
+        description: 'API and internal service monitors',
+        createdAt: unixToIso(now - 120 * DAY_SECONDS),
+      },
+      {
+        id: monitorGroupPaymentsId,
+        teamId,
+        name: 'Payments',
+        description: 'Checkout and payment confirmation pipeline',
+        createdAt: unixToIso(now - 100 * DAY_SECONDS),
+      },
+      {
+        id: monitorGroupInfraId,
+        teamId,
+        name: 'Infrastructure',
+        description: 'DNS/TLS/connectivity probes',
+        createdAt: unixToIso(now - 80 * DAY_SECONDS),
+      },
+    ]);
+
     const demoMonitors = [
       {
         id: monitorApiId,
         teamId,
+        groupId: monitorGroupCoreId,
         name: 'API Gateway',
         url: 'https://demo-api.bitwobbly.com/health',
         method: 'GET',
@@ -344,6 +379,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorCheckoutId,
         teamId,
+        groupId: monitorGroupPaymentsId,
         name: 'Checkout API',
         url: 'https://demo-api.bitwobbly.com/checkout/health',
         method: 'GET',
@@ -361,6 +397,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorAssertionsId,
         teamId,
+        groupId: monitorGroupCoreId,
         name: 'API Health (Assertions)',
         url: 'https://demo-api.bitwobbly.com/health',
         method: 'GET',
@@ -381,6 +418,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorKeywordId,
         teamId,
+        groupId: monitorGroupCoreId,
         name: 'Docs Keyword (Match)',
         url: 'https://example.com',
         method: 'GET',
@@ -401,6 +439,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorTlsId,
         teamId,
+        groupId: monitorGroupInfraId,
         name: 'TLS Certificate (Expiry)',
         url: 'example.com:443',
         method: 'GET',
@@ -421,6 +460,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorDnsId,
         teamId,
+        groupId: monitorGroupInfraId,
         name: 'DNS (DoH)',
         url: 'example.com',
         method: 'GET',
@@ -441,6 +481,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorTcpId,
         teamId,
+        groupId: monitorGroupInfraId,
         name: 'TCP (Connect)',
         url: 'example.com:443',
         method: 'GET',
@@ -458,6 +499,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorHeartbeatId,
         teamId,
+        groupId: monitorGroupCoreId,
         name: 'Cron Heartbeat',
         url: null,
         method: 'GET',
@@ -475,6 +517,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorWebhookId,
         teamId,
+        groupId: monitorGroupPaymentsId,
         name: 'Payment Webhook',
         url: null,
         method: 'GET',
@@ -492,6 +535,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorManualId,
         teamId,
+        groupId: monitorGroupCoreId,
         name: 'Support Process (Manual)',
         url: null,
         method: 'GET',
@@ -509,6 +553,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       {
         id: monitorExternalId,
         teamId,
+        groupId: monitorGroupInfraId,
         name: 'Cloudflare KV Probe',
         url: 'https://api.cloudflare.com/client/v4/user',
         method: 'GET',
@@ -675,7 +720,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         teamId,
         name: 'Checkout',
         description: 'Cart checkout and payment processing',
-        currentStatus: 'down',
+        currentStatus: 'operational',
         statusUpdatedAt: now - 90,
         createdAt: unixToIso(now - 120 * DAY_SECONDS),
       },
@@ -684,7 +729,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         teamId,
         name: 'Payment Gateway',
         description: '3rd-party payment gateway integration',
-        currentStatus: 'degraded',
+        currentStatus: 'operational',
         statusUpdatedAt: now - 250,
         createdAt: unixToIso(now - 95 * DAY_SECONDS),
       },
@@ -715,6 +760,17 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         console.error('Error inserting component:', e);
       }
     }
+
+    await db.insert(schema.componentDependencies).values([
+      {
+        componentId: componentCheckoutId,
+        dependsOnComponentId: componentPaymentsId,
+      },
+      {
+        componentId: componentApiId,
+        dependsOnComponentId: componentAuthId,
+      },
+    ]);
 
     const statusPagePublicId = demoId('sp', key, 'public');
     const statusPagePrivateId = demoId('sp', key, 'private');
@@ -817,6 +873,45 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       { componentId: componentAuthId, monitorId: monitorExternalId },
       { componentId: componentSupportId, monitorId: monitorManualId },
       { componentId: componentPaymentsId, monitorId: monitorCheckoutId },
+    ]);
+
+    const suppressionMaintenanceId = demoId('sup', key, 'payments_maintenance');
+    const suppressionSilenceId = demoId('sup', key, 'external_silence');
+
+    await db.insert(schema.suppressions).values([
+      {
+        id: suppressionMaintenanceId,
+        teamId,
+        kind: 'maintenance',
+        name: 'Payments maintenance',
+        reason: 'Planned provider upgrade',
+        startsAt: now - 10 * 60,
+        endsAt: now + 60 * 60,
+        createdAt: unixToIso(now - 30 * 60),
+      },
+      {
+        id: suppressionSilenceId,
+        teamId,
+        kind: 'silence',
+        name: 'Silence infra probe',
+        reason: 'Ignoring noisy alerts during staging rollout',
+        startsAt: now - 2 * DAY_SECONDS,
+        endsAt: null,
+        createdAt: unixToIso(now - 2 * DAY_SECONDS),
+      },
+    ]);
+
+    await db.insert(schema.suppressionScopes).values([
+      {
+        suppressionId: suppressionMaintenanceId,
+        scopeType: 'monitor_group',
+        scopeId: monitorGroupPaymentsId,
+      },
+      {
+        suppressionId: suppressionSilenceId,
+        scopeType: 'monitor',
+        scopeId: monitorExternalId,
+      },
     ]);
 
     const channelOpsWebhookId = demoId('chan', key, 'ops_webhook');

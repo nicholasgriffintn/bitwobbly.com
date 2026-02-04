@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { CreateMonitorModal } from "./CreateMonitorModal";
 import { EditMonitorModal } from "./EditMonitorModal";
 import { ManualStatusModal } from "./ManualStatusModal";
+import { MonitorGroupsModal } from "../monitor-groups";
 
 interface MonitorsModalsProps {
   isCreateOpen: boolean;
@@ -13,6 +14,9 @@ interface MonitorsModalsProps {
   isManualStatusOpen: boolean;
   onCloseManualStatus: () => void;
   manualStatusMonitorId: ComponentProps<typeof ManualStatusModal>["monitorId"];
+  groups: Array<{ id: string; name: string; description: string | null }>;
+  isGroupsOpen: boolean;
+  onCloseGroups: () => void;
   onSuccess: () => Promise<void>;
 }
 
@@ -25,6 +29,9 @@ export function MonitorsModals({
   isManualStatusOpen,
   onCloseManualStatus,
   manualStatusMonitorId,
+  groups,
+  isGroupsOpen,
+  onCloseGroups,
   onSuccess,
 }: MonitorsModalsProps) {
   return (
@@ -33,12 +40,20 @@ export function MonitorsModals({
         isOpen={isCreateOpen}
         onClose={onCloseCreate}
         onSuccess={onSuccess}
+        groups={groups}
       />
       <EditMonitorModal
         isOpen={isEditOpen}
         onClose={onCloseEdit}
         onSuccess={onSuccess}
         monitor={editingMonitor}
+        groups={groups}
+      />
+      <MonitorGroupsModal
+        isOpen={isGroupsOpen}
+        onClose={onCloseGroups}
+        groups={groups}
+        onSuccess={onSuccess}
       />
       <ManualStatusModal
         isOpen={isManualStatusOpen}
@@ -49,4 +64,3 @@ export function MonitorsModals({
     </>
   );
 }
-

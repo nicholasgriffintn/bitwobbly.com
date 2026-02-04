@@ -17,6 +17,9 @@ export const monitors = sqliteTable("monitors", {
   teamId: text("team_id")
     .notNull()
     .references(() => teams.id),
+  groupId: text("group_id").references(() => monitorGroups.id, {
+    onDelete: "set null",
+  }),
   name: text("name").notNull(),
   url: text("url"),
   method: text("method").notNull().default("GET"),
@@ -29,6 +32,16 @@ export const monitors = sqliteTable("monitors", {
   type: text("type").notNull().default("http"),
   webhookToken: text("webhook_token"),
   externalConfig: text("external_config"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const monitorGroups = sqliteTable("monitor_groups", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id")
+    .notNull()
+    .references(() => teams.id),
+  name: text("name").notNull(),
+  description: text("description"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -110,6 +123,48 @@ export const componentMonitors = sqliteTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.componentId, table.monitorId] }),
+  }),
+);
+
+export const componentDependencies = sqliteTable(
+  "component_dependencies",
+  {
+    componentId: text("component_id")
+      .notNull()
+      .references(() => components.id, { onDelete: "cascade" }),
+    dependsOnComponentId: text("depends_on_component_id")
+      .notNull()
+      .references(() => components.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.componentId, table.dependsOnComponentId] }),
+  }),
+);
+
+export const suppressions = sqliteTable("suppressions", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id")
+    .notNull()
+    .references(() => teams.id),
+  kind: text("kind").notNull(), // "maintenance" | "silence"
+  name: text("name").notNull(),
+  reason: text("reason"),
+  startsAt: integer("starts_at").notNull(),
+  endsAt: integer("ends_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const suppressionScopes = sqliteTable(
+  "suppression_scopes",
+  {
+    suppressionId: text("suppression_id")
+      .notNull()
+      .references(() => suppressions.id, { onDelete: "cascade" }),
+    scopeType: text("scope_type").notNull(), // "monitor" | "monitor_group" | "component"
+    scopeId: text("scope_id").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.suppressionId, table.scopeType, table.scopeId] }),
   }),
 );
 
@@ -408,12 +463,20 @@ export type Team = typeof teams.$inferSelect;
 export type NewTeam = typeof teams.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
 export type NewMonitor = typeof monitors.$inferInsert;
+export type MonitorGroup = typeof monitorGroups.$inferSelect;
+export type NewMonitorGroup = typeof monitorGroups.$inferInsert;
 export type MonitorState = typeof monitorState.$inferSelect;
 export type NewMonitorState = typeof monitorState.$inferInsert;
 export type StatusPage = typeof statusPages.$inferSelect;
 export type NewStatusPage = typeof statusPages.$inferInsert;
 export type Component = typeof components.$inferSelect;
 export type NewComponent = typeof components.$inferInsert;
+export type ComponentDependency = typeof componentDependencies.$inferSelect;
+export type NewComponentDependency = typeof componentDependencies.$inferInsert;
+export type Suppression = typeof suppressions.$inferSelect;
+export type NewSuppression = typeof suppressions.$inferInsert;
+export type SuppressionScope = typeof suppressionScopes.$inferSelect;
+export type NewSuppressionScope = typeof suppressionScopes.$inferInsert;
 export type Incident = typeof incidents.$inferSelect;
 export type NewIncident = typeof incidents.$inferInsert;
 export type IncidentUpdate = typeof incidentUpdates.$inferSelect;

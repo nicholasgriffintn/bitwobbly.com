@@ -16,6 +16,8 @@ import {
   deleteComponentFn,
   linkMonitorFn,
   unlinkMonitorFn,
+  linkDependencyFn,
+  unlinkDependencyFn,
 } from "@/server/functions/components";
 
 type Monitor = {
@@ -28,6 +30,7 @@ type Component = {
   name: string;
   description: string | null;
   monitorIds: string[];
+  dependencyIds: string[];
   currentStatus?: string;
   statusUpdatedAt?: number | null;
 };
@@ -56,6 +59,7 @@ export default function Components() {
   const [expandedMetricsId, setExpandedMetricsId] = useState<string | null>(
     null,
   );
+  const [expandedDepsId, setExpandedDepsId] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -67,6 +71,8 @@ export default function Components() {
   const listComponents = useServerFn(listComponentsFn);
   const linkMonitor = useServerFn(linkMonitorFn);
   const unlinkMonitor = useServerFn(unlinkMonitorFn);
+  const linkDependency = useServerFn(linkDependencyFn);
+  const unlinkDependency = useServerFn(unlinkDependencyFn);
 
   const refreshComponents = async () => {
     try {
@@ -114,6 +120,28 @@ export default function Components() {
     }
   };
 
+  const onToggleDependency = async (
+    componentId: string,
+    dependsOnComponentId: string,
+    checked: boolean,
+  ) => {
+    setError(null);
+    try {
+      const component = components.find((c) => c.id === componentId);
+      if (!component) return;
+
+      const wasLinked = component.dependencyIds.includes(dependsOnComponentId);
+      if (checked && !wasLinked) {
+        await linkDependency({ data: { componentId, dependsOnComponentId } });
+      } else if (!checked && wasLinked) {
+        await unlinkDependency({ data: { componentId, dependsOnComponentId } });
+      }
+      await refreshComponents();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <Page className="page-stack">
       <PageHeader
@@ -131,6 +159,7 @@ export default function Components() {
           {components.map((component) => {
             const isLinkExpanded = expandedId === component.id;
             const isMetricsExpanded = expandedMetricsId === component.id;
+            const isDepsExpanded = expandedDepsId === component.id;
 
             return (
               <ListRow
@@ -157,6 +186,9 @@ export default function Components() {
                     {" · "}
                     {component.monitorIds.length} monitor
                     {component.monitorIds.length !== 1 ? "s" : ""} linked
+                    {" · "}
+                    {component.dependencyIds.length}{" "}
+                    {component.dependencyIds.length === 1 ? "dependency" : "dependencies"}
                   </>
                 }
                 actions={
@@ -169,6 +201,15 @@ export default function Components() {
                       }
                     >
                       {isMetricsExpanded ? "Hide" : "Metrics"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setExpandedDepsId(isDepsExpanded ? null : component.id)
+                      }
+                    >
+                      {isDepsExpanded ? "Hide" : "Dependencies"}
                     </Button>
                     <Button
                       type="button"
@@ -194,7 +235,7 @@ export default function Components() {
                     </Button>
                   </>
                 }
-                expanded={isMetricsExpanded || isLinkExpanded}
+                expanded={isMetricsExpanded || isLinkExpanded || isDepsExpanded}
                 expandedContent={
                   <>
                     {isMetricsExpanded && (
@@ -204,6 +245,21 @@ export default function Components() {
                           componentName={component.name}
                         />
                       </div>
+                    )}
+                    {isDepsExpanded && (
+                      <CheckboxList
+                        items={components
+                          .filter((c) => c.id !== component.id)
+                          .map((c) => ({
+                            id: c.id,
+                            label: c.name,
+                            checked: component.dependencyIds.includes(c.id),
+                          }))}
+                        onChange={(dependsOnComponentId, checked) =>
+                          onToggleDependency(component.id, dependsOnComponentId, checked)
+                        }
+                        emptyMessage="No other components available."
+                      />
                     )}
                     {isLinkExpanded && (
                       <CheckboxList

@@ -15,6 +15,7 @@ export default function Sidebar() {
         </Link>
         <Link to="/app/monitors">Monitors</Link>
         <Link to="/app/components">Components</Link>
+        <Link to="/app/maintenance">Maintenance</Link>
         <Link to="/app/status-pages">Status pages</Link>
         <Link to="/app/incidents">Incidents</Link>
         <Link to="/app/issues">Issues</Link>

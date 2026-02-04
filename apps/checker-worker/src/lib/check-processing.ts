@@ -3,6 +3,7 @@ import { randomId } from "@bitwobbly/shared";
 import { connect } from "cloudflare:sockets";
 
 import { getMonitorState, upsertMonitorState } from "../repositories/monitor-state";
+import { getMonitorSuppressionState } from "../repositories/suppressions";
 import type { Env } from "../types/env";
 import { isRecord } from "./guards";
 import type { DB } from "./db";
@@ -331,12 +332,22 @@ async function handleStatusResult(
 ) {
   ctx.waitUntil(writeCheckEvent(env, job, result.status, result.latency_ms));
 
-  const checkedAtSec = options?.checkedAtSec ?? Math.floor(Date.now() / 1000);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const checkedAtSec = options?.checkedAtSec ?? nowSec;
+  const suppression = await getMonitorSuppressionState(
+    db,
+    job.team_id,
+    job.monitor_id,
+    nowSec,
+  );
   const prev = await getMonitorState(db, job.monitor_id);
 
   const prevFailures = prev?.consecutiveFailures ?? 0;
   const prevIncidentOpen = prev?.incidentOpen ?? 0;
-  const nextFailures = result.status === "down" ? prevFailures + 1 : 0;
+  const nextFailures =
+    result.status === "down" && suppression.isMaintenance ? 0 : result.status === "down"
+      ? prevFailures + 1
+      : 0;
 
   await upsertMonitorState(db, job.monitor_id, {
     lastCheckedAt: checkedAtSec,
@@ -353,21 +364,25 @@ async function handleStatusResult(
     nextFailures >= threshold &&
     !prevIncidentOpen
   ) {
+    if (suppression.isMaintenance) return;
+
     if (job.job_id) {
       const alreadySent = await env.KV.get(`dedupe:alert:${job.job_id}:down`);
       if (alreadySent) return;
     }
 
     const incidentId = await transitionViaDO(env, job, "down", result.reason);
-    await enqueueAlert(env, {
-      type: "monitor",
-      alert_id: randomId("al"),
-      team_id: job.team_id,
-      monitor_id: job.monitor_id,
-      status: "down",
-      reason: result.reason,
-      incident_id: incidentId || undefined,
-    });
+    if (!suppression.isSilenced) {
+      await enqueueAlert(env, {
+        type: "monitor",
+        alert_id: randomId("al"),
+        team_id: job.team_id,
+        monitor_id: job.monitor_id,
+        status: "down",
+        reason: result.reason,
+        incident_id: incidentId || undefined,
+      });
+    }
 
     if (job.job_id) {
       await env.KV.put(`dedupe:alert:${job.job_id}:down`, "1", {
@@ -384,15 +399,17 @@ async function handleStatusResult(
     }
 
     const incidentId = await transitionViaDO(env, job, "up");
-    await enqueueAlert(env, {
-      type: "monitor",
-      alert_id: randomId("al"),
-      team_id: job.team_id,
-      monitor_id: job.monitor_id,
-      status: "up",
-      reason: "Recovered",
-      incident_id: incidentId || undefined,
-    });
+    if (!suppression.isSilenced) {
+      await enqueueAlert(env, {
+        type: "monitor",
+        alert_id: randomId("al"),
+        team_id: job.team_id,
+        monitor_id: job.monitor_id,
+        status: "up",
+        reason: "Recovered",
+        incident_id: incidentId || undefined,
+      });
+    }
 
     if (job.job_id) {
       await env.KV.put(`dedupe:alert:${job.job_id}:up`, "1", {

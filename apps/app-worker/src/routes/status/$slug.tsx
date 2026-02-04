@@ -43,12 +43,14 @@ function StatusPage() {
   const activeIncidents = incidents.filter((i) => i.status !== "resolved");
   const pastIncidents = incidents.filter((i) => i.status === "resolved");
 
-  const statusIcon = (status: "up" | "down" | "unknown") => {
+  const statusIcon = (status: "up" | "down" | "unknown" | "maintenance") => {
     switch (status) {
       case "up":
         return <span className="status-indicator status-up">●</span>;
       case "down":
         return <span className="status-indicator status-down">●</span>;
+      case "maintenance":
+        return <span className="status-indicator status-maintenance">●</span>;
       default:
         return <span className="status-indicator status-unknown">●</span>;
     }
@@ -146,6 +148,10 @@ function StatusPage() {
 
           .status-down {
             color: #ef4444;
+          }
+
+          .status-maintenance {
+            color: #3b82f6;
           }
 
           .status-unknown {
@@ -249,6 +255,11 @@ function StatusPage() {
             color: #991b1b;
           }
 
+          .overall-status.maintenance {
+            background: rgba(59, 130, 246, 0.12);
+            color: #1e40af;
+          }
+
           .footer {
             text-align: center;
             margin-top: 3rem;
@@ -346,11 +357,19 @@ function StatusPage() {
         {components.length > 0 && (
           <>
             <div
-              className={`overall-status ${components.some((c) => c.status === "down") ? "degraded" : "operational"}`}
+              className={`overall-status ${
+                components.some((c) => c.status === "down")
+                  ? "degraded"
+                  : components.some((c) => c.status === "maintenance")
+                    ? "maintenance"
+                    : "operational"
+              }`}
             >
               {components.some((c) => c.status === "down")
                 ? "Some systems are experiencing issues"
-                : "All systems operational"}
+                : components.some((c) => c.status === "maintenance")
+                  ? "Maintenance in progress"
+                  : "All systems operational"}
             </div>
 
             <div className="status-section">

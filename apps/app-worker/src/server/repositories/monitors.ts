@@ -5,6 +5,19 @@ type MonitorWithState = schema.Monitor & {
   state: schema.MonitorState | null;
 };
 
+async function assertMonitorGroupAccess(
+  db: DB,
+  teamId: string,
+  groupId: string,
+) {
+  const rows = await db
+    .select({ id: schema.monitorGroups.id })
+    .from(schema.monitorGroups)
+    .where(and(eq(schema.monitorGroups.teamId, teamId), eq(schema.monitorGroups.id, groupId)))
+    .limit(1);
+  if (!rows.length) throw new Error("Monitor group not found or access denied");
+}
+
 export async function listMonitors(
   db: DB,
   teamId: string,
@@ -38,6 +51,7 @@ export async function createMonitor(
   input: {
     name: string;
     url?: string;
+    group_id?: string | null;
     interval_seconds: number;
     timeout_ms: number;
     failure_threshold: number;
@@ -50,9 +64,14 @@ export async function createMonitor(
   const created_at = nowIso();
   const next_run_at = Math.floor(Date.now() / 1000);
 
+  if (input.group_id) {
+    await assertMonitorGroupAccess(db, teamId, input.group_id);
+  }
+
   await db.insert(schema.monitors).values({
     id,
     teamId,
+    groupId: input.group_id || null,
     name: input.name,
     url: input.url || null,
     method: "GET",
@@ -157,6 +176,7 @@ export async function updateMonitor(
   input: {
     name?: string;
     url?: string;
+    group_id?: string | null;
     interval_seconds?: number;
     timeout_ms?: number;
     failure_threshold?: number;
@@ -168,6 +188,12 @@ export async function updateMonitor(
   const updates: Record<string, unknown> = {};
   if (input.name !== undefined) updates.name = input.name;
   if (input.url !== undefined) updates.url = input.url;
+  if (input.group_id !== undefined) {
+    if (input.group_id) {
+      await assertMonitorGroupAccess(db, teamId, input.group_id);
+    }
+    updates.groupId = input.group_id;
+  }
   if (input.interval_seconds !== undefined)
     updates.intervalSeconds = input.interval_seconds;
   if (input.timeout_ms !== undefined) updates.timeoutMs = input.timeout_ms;

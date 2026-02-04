@@ -25,9 +25,27 @@ export async function listComponents(db: DB, teamId: string) {
     monitorLinks.set(link.componentId, arr);
   }
 
+  const deps = ids.length
+    ? await db
+        .select({
+          componentId: schema.componentDependencies.componentId,
+          dependsOnComponentId: schema.componentDependencies.dependsOnComponentId,
+        })
+        .from(schema.componentDependencies)
+        .where(inArray(schema.componentDependencies.componentId, ids))
+    : [];
+
+  const depLinks = new Map<string, string[]>();
+  for (const d of deps) {
+    const arr = depLinks.get(d.componentId) || [];
+    arr.push(d.dependsOnComponentId);
+    depLinks.set(d.componentId, arr);
+  }
+
   return components.map((c) => ({
     ...c,
     monitorIds: monitorLinks.get(c.id) || [],
+    dependencyIds: depLinks.get(c.id) || [],
   }));
 }
 
@@ -72,6 +90,12 @@ export async function deleteComponent(
   await db
     .delete(schema.componentMonitors)
     .where(eq(schema.componentMonitors.componentId, componentId));
+  await db
+    .delete(schema.componentDependencies)
+    .where(eq(schema.componentDependencies.componentId, componentId));
+  await db
+    .delete(schema.componentDependencies)
+    .where(eq(schema.componentDependencies.dependsOnComponentId, componentId));
   await db
     .delete(schema.statusPageComponents)
     .where(eq(schema.statusPageComponents.componentId, componentId));
@@ -191,6 +215,69 @@ export async function unlinkMonitorFromComponent(
         eq(schema.componentMonitors.monitorId, monitorId),
       ),
     );
+}
+
+export async function linkDependency(
+  db: DB,
+  teamId: string,
+  componentId: string,
+  dependsOnComponentId: string,
+) {
+  if (componentId === dependsOnComponentId) {
+    throw new Error("A component cannot depend on itself");
+  }
+
+  const component = await getComponentById(db, teamId, componentId);
+  if (!component) throw new Error("Component not found or access denied");
+
+  const dependency = await getComponentById(db, teamId, dependsOnComponentId);
+  if (!dependency) throw new Error("Dependency component not found or access denied");
+
+  await db
+    .insert(schema.componentDependencies)
+    .values({ componentId, dependsOnComponentId })
+    .onConflictDoNothing();
+}
+
+export async function unlinkDependency(
+  db: DB,
+  teamId: string,
+  componentId: string,
+  dependsOnComponentId: string,
+) {
+  const component = await getComponentById(db, teamId, componentId);
+  if (!component) throw new Error("Component not found or access denied");
+
+  const dependency = await getComponentById(db, teamId, dependsOnComponentId);
+  if (!dependency) throw new Error("Dependency component not found or access denied");
+
+  await db
+    .delete(schema.componentDependencies)
+    .where(
+      and(
+        eq(schema.componentDependencies.componentId, componentId),
+        eq(schema.componentDependencies.dependsOnComponentId, dependsOnComponentId),
+      ),
+    );
+}
+
+export async function listComponentDependencies(db: DB, componentIds: string[]) {
+  if (!componentIds.length) return new Map<string, string[]>();
+  const rows = await db
+    .select({
+      componentId: schema.componentDependencies.componentId,
+      dependsOnComponentId: schema.componentDependencies.dependsOnComponentId,
+    })
+    .from(schema.componentDependencies)
+    .where(inArray(schema.componentDependencies.componentId, componentIds));
+
+  const map = new Map<string, string[]>();
+  for (const r of rows) {
+    const arr = map.get(r.componentId) || [];
+    arr.push(r.dependsOnComponentId);
+    map.set(r.componentId, arr);
+  }
+  return map;
 }
 
 export async function linkComponentToStatusPage(

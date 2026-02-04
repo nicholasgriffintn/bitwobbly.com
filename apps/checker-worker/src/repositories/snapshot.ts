@@ -1,5 +1,5 @@
 import { nowIso, createDb, schema } from "@bitwobbly/shared";
-import { eq, and, ne, inArray, desc } from "drizzle-orm";
+import { eq, and, ne, inArray, desc, lte, gt, or, isNull } from "drizzle-orm";
 
 export async function rebuildAllSnapshots(env: {
   DB: D1Database;
@@ -43,6 +43,7 @@ async function rebuildStatusSnapshot(
       id: schema.components.id,
       name: schema.components.name,
       description: schema.components.description,
+      currentStatus: schema.components.currentStatus,
     })
     .from(schema.statusPageComponents)
     .innerJoin(
@@ -52,24 +53,201 @@ async function rebuildStatusSnapshot(
     .where(eq(schema.statusPageComponents.statusPageId, page.id))
     .orderBy(schema.statusPageComponents.sortOrder);
 
+  const nowSec = Math.floor(Date.now() / 1000);
+  const componentIds = components.map((c) => c.id);
+  const componentMonitorLinks = componentIds.length
+    ? await db
+        .select({
+          componentId: schema.componentMonitors.componentId,
+          monitorId: schema.componentMonitors.monitorId,
+        })
+        .from(schema.componentMonitors)
+        .where(inArray(schema.componentMonitors.componentId, componentIds))
+    : [];
+
+  const monitorIds = Array.from(
+    new Set(componentMonitorLinks.map((l) => l.monitorId)),
+  );
+  const monitors = monitorIds.length
+    ? await db
+        .select({ id: schema.monitors.id, groupId: schema.monitors.groupId })
+        .from(schema.monitors)
+        .where(inArray(schema.monitors.id, monitorIds))
+    : [];
+
+  const monitorGroupIds = Array.from(
+    new Set(monitors.map((m) => m.groupId).filter((id): id is string => !!id)),
+  );
+
+  const maintenanceMatches =
+    componentIds.length || monitorIds.length || monitorGroupIds.length
+      ? await db
+          .select({
+            scopeType: schema.suppressionScopes.scopeType,
+            scopeId: schema.suppressionScopes.scopeId,
+          })
+          .from(schema.suppressions)
+          .innerJoin(
+            schema.suppressionScopes,
+            eq(schema.suppressionScopes.suppressionId, schema.suppressions.id),
+          )
+          .where(
+            and(
+              eq(schema.suppressions.teamId, page.teamId),
+              eq(schema.suppressions.kind, "maintenance"),
+              lte(schema.suppressions.startsAt, nowSec),
+              or(
+                isNull(schema.suppressions.endsAt),
+                gt(schema.suppressions.endsAt, nowSec),
+              ),
+              or(
+                and(
+                  eq(schema.suppressionScopes.scopeType, "component"),
+                  inArray(schema.suppressionScopes.scopeId, componentIds),
+                ),
+                and(
+                  eq(schema.suppressionScopes.scopeType, "monitor"),
+                  inArray(schema.suppressionScopes.scopeId, monitorIds),
+                ),
+                monitorGroupIds.length
+                  ? and(
+                      eq(schema.suppressionScopes.scopeType, "monitor_group"),
+                      inArray(schema.suppressionScopes.scopeId, monitorGroupIds),
+                    )
+                  : and(
+                      eq(schema.suppressionScopes.scopeType, "monitor_group"),
+                      inArray(schema.suppressionScopes.scopeId, ["__none__"]),
+                    ),
+              ),
+            ),
+          )
+      : [];
+
+  const maintenanceMonitorIds = new Set(
+    maintenanceMatches
+      .filter((m) => m.scopeType === "monitor")
+      .map((m) => m.scopeId),
+  );
+  const maintenanceGroupIds = new Set(
+    maintenanceMatches
+      .filter((m) => m.scopeType === "monitor_group")
+      .map((m) => m.scopeId),
+  );
+  const maintenanceComponentIds = new Set(
+    maintenanceMatches
+      .filter((m) => m.scopeType === "component")
+      .map((m) => m.scopeId),
+  );
+
+  const monitorIdToGroupId = new Map(monitors.map((m) => [m.id, m.groupId]));
+  const componentIdToMonitorIds = new Map<string, string[]>();
+  for (const link of componentMonitorLinks) {
+    const arr = componentIdToMonitorIds.get(link.componentId) || [];
+    arr.push(link.monitorId);
+    componentIdToMonitorIds.set(link.componentId, arr);
+  }
+
+  const monitorStates = monitorIds.length
+    ? await db
+        .select({
+          monitorId: schema.monitorState.monitorId,
+          lastStatus: schema.monitorState.lastStatus,
+        })
+        .from(schema.monitorState)
+        .where(inArray(schema.monitorState.monitorId, monitorIds))
+    : [];
+  const monitorIdToStatus = new Map(
+    monitorStates.map((s) => [s.monitorId, s.lastStatus]),
+  );
+
+  const dependencyRows = componentIds.length
+    ? await db
+        .select({
+          componentId: schema.componentDependencies.componentId,
+          dependsOnComponentId: schema.componentDependencies.dependsOnComponentId,
+        })
+        .from(schema.componentDependencies)
+        .where(inArray(schema.componentDependencies.componentId, componentIds))
+    : [];
+
+  const componentIdToDependencyIds = new Map<string, string[]>();
+  for (const row of dependencyRows) {
+    const arr = componentIdToDependencyIds.get(row.componentId) || [];
+    arr.push(row.dependsOnComponentId);
+    componentIdToDependencyIds.set(row.componentId, arr);
+  }
+
   const compsWithStatus = [];
   for (const c of components) {
-    const monitorRows = await db
-      .select({
-        lastStatus: schema.monitorState.lastStatus,
-      })
-      .from(schema.componentMonitors)
-      .innerJoin(
-        schema.monitorState,
-        eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId),
-      )
-      .where(eq(schema.componentMonitors.componentId, c.id));
+    let status: "up" | "down" | "unknown" | "maintenance" = "unknown";
 
-    let status: "up" | "down" | "unknown" = "unknown";
-    if (monitorRows.length)
-      status = monitorRows.some((r) => r.lastStatus === "down") ? "down" : "up";
+    if (c.currentStatus && c.currentStatus !== "operational") {
+      status = c.currentStatus === "maintenance" ? "maintenance" : "down";
+    } else {
+      const linkedMonitorIds = componentIdToMonitorIds.get(c.id) || [];
+      const isInMaintenance =
+        maintenanceComponentIds.has(c.id) ||
+        linkedMonitorIds.some((id) => maintenanceMonitorIds.has(id)) ||
+        linkedMonitorIds.some((id) => {
+          const groupId = monitorIdToGroupId.get(id);
+          return groupId ? maintenanceGroupIds.has(groupId) : false;
+        });
 
-    compsWithStatus.push({ ...c, status });
+      if (isInMaintenance) {
+        status = "maintenance";
+      } else if (linkedMonitorIds.length) {
+        const statuses = linkedMonitorIds
+          .map((id) => monitorIdToStatus.get(id) || "unknown")
+          .filter((s): s is string => typeof s === "string");
+
+        const hasDown = statuses.some((s) => s === "down");
+        const hasUp = statuses.some((s) => s === "up");
+        status = hasDown ? "down" : hasUp ? "up" : "unknown";
+      }
+    }
+
+    compsWithStatus.push({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      status,
+    });
+  }
+
+  const severity: Record<"up" | "unknown" | "maintenance" | "down", number> = {
+    up: 0,
+    unknown: 1,
+    maintenance: 2,
+    down: 3,
+  };
+  const statusById = new Map<string, "up" | "unknown" | "maintenance" | "down">(
+    compsWithStatus.map((c: any) => [c.id, c.status]),
+  );
+
+  for (let i = 0; i < componentIds.length; i++) {
+    let changed = false;
+    for (const c of compsWithStatus as any[]) {
+      const base = statusById.get(c.id) || "unknown";
+      if (base === "down" || base === "maintenance") continue;
+
+      const depIds = componentIdToDependencyIds.get(c.id) || [];
+      if (!depIds.length) continue;
+
+      let next: "up" | "unknown" | "maintenance" | "down" = base;
+      for (const depId of depIds) {
+        const depStatus = statusById.get(depId) || "unknown";
+        if (severity[depStatus] > severity[next]) next = depStatus;
+      }
+      if (next !== base) {
+        statusById.set(c.id, next);
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
+  for (const c of compsWithStatus as any[]) {
+    c.status = statusById.get(c.id) || c.status;
   }
 
   const openIncidents = await db

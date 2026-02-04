@@ -9,16 +9,19 @@ interface CreateMonitorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => Promise<void>;
+  groups: Array<{ id: string; name: string }>;
 }
 
 export function CreateMonitorModal({
   isOpen,
   onClose,
   onSuccess,
+  groups,
 }: CreateMonitorModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
+  const [groupId, setGroupId] = useState<string | null>(null);
   const [interval, setInterval] = useState("60");
   const [timeout, setTimeout] = useState("8000");
   const [threshold, setThreshold] = useState("3");
@@ -40,6 +43,7 @@ export function CreateMonitorModal({
     setCreatedTokenType(null);
     setName("");
     setUrl("");
+    setGroupId(null);
     setInterval("60");
     setTimeout("8000");
     setThreshold("3");
@@ -68,6 +72,7 @@ export function CreateMonitorModal({
       const result = await createMonitor({
         data: {
           name,
+          group_id: groupId,
           url:
             monitorType === "webhook" ||
             monitorType === "manual" ||
@@ -186,6 +191,20 @@ export function CreateMonitorModal({
             placeholder="API gateway"
             required
           />
+
+          <label htmlFor="monitor-group">Monitor group</label>
+          <select
+            id="monitor-group"
+            value={groupId || ""}
+            onChange={(e) => setGroupId(e.target.value || null)}
+          >
+            <option value="">No group</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
 
           {(monitorType === "http" ||
             monitorType === "http_assert" ||
@@ -396,4 +415,3 @@ export function CreateMonitorModal({
     </Modal>
   );
 }
-

@@ -27,6 +27,7 @@ import { Route as AppStatusPagesRouteImport } from './routes/app/status-pages'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
 import { Route as AppMonitorsRouteImport } from './routes/app/monitors'
+import { Route as AppMaintenanceRouteImport } from './routes/app/maintenance'
 import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
 import { Route as AppComponentsRouteImport } from './routes/app/components'
 import { Route as AppIssuesIndexRouteImport } from './routes/app/issues/index'
@@ -125,6 +126,11 @@ const AppMonitorsRoute = AppMonitorsRouteImport.update({
   path: '/monitors',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMaintenanceRoute = AppMaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppIncidentsRoute = AppIncidentsRouteImport.update({
   id: '/incidents',
   path: '/incidents',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
+  '/app/maintenance': typeof AppMaintenanceRoute
   '/app/monitors': typeof AppMonitorsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
+  '/app/maintenance': typeof AppMaintenanceRoute
   '/app/monitors': typeof AppMonitorsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
+  '/app/maintenance': typeof AppMaintenanceRoute
   '/app/monitors': typeof AppMonitorsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/app/components'
     | '/app/incidents'
+    | '/app/maintenance'
     | '/app/monitors'
     | '/app/notifications'
     | '/app/settings'
@@ -286,6 +296,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/app/components'
     | '/app/incidents'
+    | '/app/maintenance'
     | '/app/monitors'
     | '/app/notifications'
     | '/app/settings'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/app/components'
     | '/app/incidents'
+    | '/app/maintenance'
     | '/app/monitors'
     | '/app/notifications'
     | '/app/settings'
@@ -472,6 +484,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMonitorsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/maintenance': {
+      id: '/app/maintenance'
+      path: '/maintenance'
+      fullPath: '/app/maintenance'
+      preLoaderRoute: typeof AppMaintenanceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/incidents': {
       id: '/app/incidents'
       path: '/incidents'
@@ -527,6 +546,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppComponentsRoute: typeof AppComponentsRoute
   AppIncidentsRoute: typeof AppIncidentsRoute
+  AppMaintenanceRoute: typeof AppMaintenanceRoute
   AppMonitorsRoute: typeof AppMonitorsRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -540,6 +560,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppComponentsRoute: AppComponentsRoute,
   AppIncidentsRoute: AppIncidentsRoute,
+  AppMaintenanceRoute: AppMaintenanceRoute,
   AppMonitorsRoute: AppMonitorsRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppSettingsRoute: AppSettingsRoute,

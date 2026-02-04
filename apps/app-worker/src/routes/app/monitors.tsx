@@ -15,9 +15,11 @@ import {
   updateMonitorFn,
   triggerSchedulerFn,
 } from "@/server/functions/monitors";
+import { listMonitorGroupsFn } from "@/server/functions/monitor-groups";
 
 type Monitor = {
   id: string;
+  groupId?: string | null;
   name: string;
   url: string | null;
   intervalSeconds: number;
@@ -30,18 +32,29 @@ type Monitor = {
   state?: { lastStatus?: string; lastLatencyMs?: number | null } | null;
 };
 
+type MonitorGroup = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+
 export const Route = createFileRoute("/app/monitors")({
   component: Monitors,
   loader: async () => {
-    const monitors = await listMonitorsFn();
-    return { monitors: monitors.monitors };
+    const [monitorsRes, groupsRes] = await Promise.all([
+      listMonitorsFn(),
+      listMonitorGroupsFn(),
+    ]);
+    return { monitors: monitorsRes.monitors, groups: groupsRes.groups };
   },
 });
 
 function Monitors() {
-  const { monitors: initialMonitors } = Route.useLoaderData();
+  const { monitors: initialMonitors, groups: initialGroups } =
+    Route.useLoaderData();
 
   const [monitors, setMonitors] = useState<Monitor[]>(initialMonitors);
+  const [groups, setGroups] = useState<MonitorGroup[]>(initialGroups);
   const [error, setError] = useState<string | null>(null);
   const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(
     null,
@@ -53,16 +66,27 @@ function Monitors() {
   const [manualStatusMonitorId, setManualStatusMonitorId] = useState<
     string | null
   >(null);
+  const [isGroupsModalOpen, setIsGroupsModalOpen] = useState(false);
 
   const deleteMonitor = useServerFn(deleteMonitorFn);
   const updateMonitor = useServerFn(updateMonitorFn);
   const listMonitors = useServerFn(listMonitorsFn);
   const triggerScheduler = useServerFn(triggerSchedulerFn);
+  const listMonitorGroups = useServerFn(listMonitorGroupsFn);
 
   const refreshMonitors = async () => {
     try {
       const res = await listMonitors();
       setMonitors(res.monitors);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const refreshGroups = async () => {
+    try {
+      const res = await listMonitorGroups();
+      setGroups(res.groups);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -133,9 +157,18 @@ function Monitors() {
         title="Monitors"
         description="Track availability, latency, and incident thresholds."
       >
-        <button onClick={() => setIsCreateModalOpen(true)}>
-          Create Monitor
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsGroupsModalOpen(true)}
+          >
+            Manage groups
+          </Button>
+          <Button type="button" onClick={() => setIsCreateModalOpen(true)}>
+            Create Monitor
+          </Button>
+        </div>
       </PageHeader>
 
       {error ? <ErrorCard message={error} /> : null}
@@ -155,8 +188,38 @@ function Monitors() {
           </Button>
         </CardTitle>
 
-        <ListContainer isEmpty={!monitors.length} emptyMessage="No monitors configured.">
-          {monitors.map((monitor) => {
+        {(() => {
+          if (!monitors.length) {
+            return (
+              <ListContainer isEmpty emptyMessage="No monitors configured.">
+                {null}
+              </ListContainer>
+            );
+          }
+
+          const byGroupId = new Map<string | null, Monitor[]>();
+          for (const monitor of monitors) {
+            const gid = monitor.groupId || null;
+            const arr = byGroupId.get(gid) || [];
+            arr.push(monitor);
+            byGroupId.set(gid, arr);
+          }
+
+          const sections: Array<{ id: string; title: string; items: Monitor[] }> =
+            [];
+
+          for (const g of groups) {
+            const items = byGroupId.get(g.id) || [];
+            if (!items.length) continue;
+            sections.push({ id: g.id, title: g.name, items });
+          }
+
+          const ungrouped = byGroupId.get(null) || [];
+          if (ungrouped.length) {
+            sections.push({ id: "__ungrouped__", title: "Ungrouped", items: ungrouped });
+          }
+
+          const renderMonitorRow = (monitor: Monitor) => {
             const rawStatus = monitor.state?.lastStatus ?? "unknown";
             const status = isStatusType(rawStatus) ? rawStatus : "unknown";
             const isMetricsExpandable =
@@ -214,11 +277,7 @@ function Monitors() {
                         Set Status
                       </Button>
                     )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => startEditing(monitor)}
-                    >
+                    <Button type="button" variant="outline" onClick={() => startEditing(monitor)}>
                       Edit
                     </Button>
                     {isMetricsExpandable && (
@@ -251,8 +310,26 @@ function Monitors() {
                 }
               />
             );
-          })}
-        </ListContainer>
+          };
+
+          return (
+            <div className="space-y-6">
+              {sections.map((section) => (
+                <div key={section.id}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-sm font-semibold">{section.title}</div>
+                    <Badge size="small" variant="muted">
+                      {section.items.length}
+                    </Badge>
+                  </div>
+                  <ListContainer isEmpty={false} emptyMessage="">
+                    {section.items.map(renderMonitorRow)}
+                  </ListContainer>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </Card>
       <MonitorsModals
         isCreateOpen={isCreateModalOpen}
@@ -263,7 +340,13 @@ function Monitors() {
         isManualStatusOpen={isManualStatusModalOpen}
         onCloseManualStatus={closeManualStatusModal}
         manualStatusMonitorId={manualStatusMonitorId}
-        onSuccess={refreshMonitors}
+        groups={groups}
+        isGroupsOpen={isGroupsModalOpen}
+        onCloseGroups={() => setIsGroupsModalOpen(false)}
+        onSuccess={async () => {
+          await refreshMonitors();
+          await refreshGroups();
+        }}
       />
     </Page>
   );

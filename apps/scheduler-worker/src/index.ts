@@ -1,5 +1,5 @@
-import type { CheckJob } from "@bitwobbly/shared";
-import { randomId } from "@bitwobbly/shared";
+import type { CheckJob, MonitorType } from "@bitwobbly/shared";
+import { MonitorTypeValues, randomId } from "@bitwobbly/shared";
 import * as Sentry from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
@@ -11,6 +11,11 @@ import {
   unlockMonitor,
 } from "./repositories/monitors";
 import { cleanupExpiredSessions } from './repositories/sessions';
+
+const monitorTypeSet: ReadonlySet<string> = new Set(MonitorTypeValues);
+function isMonitorType(value: string): value is MonitorType {
+  return monitorTypeSet.has(value);
+}
 
 const handler = {
   async scheduled(
@@ -56,11 +61,12 @@ const handler = {
                 continue;
               }
 
+              const monitorType = m.type && isMonitorType(m.type) ? m.type : "http";
               const msg: CheckJob = {
                 job_id: randomId('job'),
                 team_id: m.teamId,
                 monitor_id: m.id,
-                monitor_type: m.type || 'http',
+                monitor_type: monitorType,
                 url: m.url || "",
                 interval_seconds: Number(m.intervalSeconds) || 60,
                 timeout_ms: Number(m.timeoutMs) || 8000,

@@ -12,6 +12,8 @@ import {
   deleteComponent,
   linkMonitorToComponent,
   unlinkMonitorFromComponent,
+  linkDependency,
+  unlinkDependency,
   linkComponentToStatusPage,
   unlinkComponentFromStatusPage,
   getComponentsForStatusPage,
@@ -41,6 +43,11 @@ const UpdateComponentSchema = z.object({
 const LinkMonitorSchema = z.object({
   componentId: z.string(),
   monitorId: z.string(),
+});
+
+const LinkDependencySchema = z.object({
+  componentId: z.string(),
+  dependsOnComponentId: z.string(),
 });
 
 const LinkToPageSchema = z.object({
@@ -121,6 +128,32 @@ export const unlinkMonitorFn = createServerFn({ method: "POST" })
       data.componentId,
       data.monitorId,
     );
+
+    await clearAllStatusPageCaches(db, vars.KV, teamId);
+
+    return { ok: true };
+  });
+
+export const linkDependencyFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => LinkDependencySchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await linkDependency(db, teamId, data.componentId, data.dependsOnComponentId);
+
+    await clearAllStatusPageCaches(db, vars.KV, teamId);
+
+    return { ok: true };
+  });
+
+export const unlinkDependencyFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => LinkDependencySchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    await unlinkDependency(db, teamId, data.componentId, data.dependsOnComponentId);
 
     await clearAllStatusPageCaches(db, vars.KV, teamId);
 
