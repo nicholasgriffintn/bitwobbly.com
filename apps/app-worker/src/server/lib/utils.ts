@@ -2,7 +2,7 @@ export function clampInt(
   v: unknown,
   min: number,
   max: number,
-  fallback: number,
+  fallback: number
 ): number {
   const n = Number(v);
   if (!Number.isFinite(n)) {
@@ -32,7 +32,7 @@ export function clampFiniteInt(
   value: unknown,
   min: number,
   max: number,
-  fallback: number,
+  fallback: number
 ): number {
   const n = Number(value);
   if (!Number.isFinite(n)) {

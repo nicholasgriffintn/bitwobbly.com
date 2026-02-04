@@ -74,7 +74,10 @@ export type PublicSubscribeResult =
   | { kind: "already_subscribed" }
   | { kind: "confirmation_sent" }
   | { kind: "password_required" }
-  | { kind: "webhook_verification_queued"; unsubscribe: { sid: string; sig: string } };
+  | {
+      kind: "webhook_verification_queued";
+      unsubscribe: { sid: string; sig: string };
+    };
 
 export const subscribeToStatusPageFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => SubscribeSchema.parse(data))
@@ -110,7 +113,7 @@ export const subscribeToStatusPageFn = createServerFn({ method: "POST" })
       db,
       page.id,
       channelType,
-      endpoint,
+      endpoint
     );
 
     if (existing?.status === "active" && existing.confirmedAt) {
@@ -143,7 +146,7 @@ export const subscribeToStatusPageFn = createServerFn({ method: "POST" })
 
     const unsubscribeSig = await statusPageUnsubscribeSig(
       vars.SESSION_SECRET,
-      subscriberId,
+      subscriberId
     );
 
     if (channelType === "email") {
@@ -180,7 +183,10 @@ export const subscribeToStatusPageFn = createServerFn({ method: "POST" })
       action: "webhook_verification_enqueued",
     });
 
-    return { kind: "webhook_verification_queued", unsubscribe: { sid: subscriberId, sig: unsubscribeSig } };
+    return {
+      kind: "webhook_verification_queued",
+      unsubscribe: { sid: subscriberId, sig: unsubscribeSig },
+    };
   });
 
 const ConfirmSchema = z.object({
@@ -188,7 +194,9 @@ const ConfirmSchema = z.object({
   token: z.string().min(8),
 });
 
-export const confirmStatusPageSubscriptionFn = createServerFn({ method: "POST" })
+export const confirmStatusPageSubscriptionFn = createServerFn({
+  method: "POST",
+})
   .inputValidator((data: unknown) => ConfirmSchema.parse(data))
   .handler(async ({ data }) => {
     const vars = env;
@@ -244,7 +252,7 @@ export const unsubscribeFromStatusPageFn = createServerFn({ method: "POST" })
     const okSig = await verifyStatusPageUnsubscribeSig(
       vars.SESSION_SECRET,
       data.sid,
-      data.sig,
+      data.sig
     );
     if (!okSig) {
       throw new Error("Invalid unsubscribe link");
@@ -264,4 +272,3 @@ export const unsubscribeFromStatusPageFn = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
-

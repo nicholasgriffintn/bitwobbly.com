@@ -36,7 +36,7 @@ const CreateIncidentSchema = z.object({
       z.object({
         componentId: z.string(),
         impactLevel: z.enum(["down", "degraded", "maintenance"]),
-      }),
+      })
     )
     .optional(),
 });
@@ -54,7 +54,7 @@ export const listIncidentsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const incidents = await listAllIncidents(db, teamId);
     return { incidents };
-  },
+  }
 );
 
 export const listOpenIncidentsFn = createServerFn({ method: "GET" }).handler(
@@ -64,7 +64,7 @@ export const listOpenIncidentsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const incidents = await listOpenIncidents(db, teamId, null);
     return { incidents };
-  },
+  }
 );
 
 export const createIncidentFn = createServerFn({ method: "POST" })
@@ -87,14 +87,18 @@ export const createIncidentFn = createServerFn({ method: "POST" })
     }
     if (data.affectedComponents?.length) {
       const componentIds = data.affectedComponents.map((c) => c.componentId);
-      const pageIds = await listStatusPageIdsForComponents(db, teamId, componentIds);
+      const pageIds = await listStatusPageIdsForComponents(
+        db,
+        teamId,
+        componentIds
+      );
       for (const pageId of pageIds) targetStatusPageIds.add(pageId);
     }
 
     for (const statusPageId of targetStatusPageIds) {
       const subscribers = await listDeliverableSubscribersForStatusPage(
         db,
-        statusPageId,
+        statusPageId
       );
 
       for (const sub of subscribers) {
@@ -146,7 +150,7 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
     const linkedStatusPageId = await getIncidentStatusPageId(
       db,
       teamId,
-      data.incidentId,
+      data.incidentId
     );
     if (linkedStatusPageId) targetStatusPageIds.add(linkedStatusPageId);
 
@@ -155,7 +159,7 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
       const pageIds = await listStatusPageIdsForComponents(
         db,
         teamId,
-        componentIds,
+        componentIds
       );
       for (const pageId of pageIds) targetStatusPageIds.add(pageId);
     }
@@ -166,7 +170,7 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
     for (const statusPageId of targetStatusPageIds) {
       const subscribers = await listDeliverableSubscribersForStatusPage(
         db,
-        statusPageId,
+        statusPageId
       );
 
       for (const sub of subscribers) {

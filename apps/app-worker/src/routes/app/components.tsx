@@ -57,14 +57,14 @@ export default function Components() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedMetricsId, setExpandedMetricsId] = useState<string | null>(
-    null,
+    null
   );
   const [expandedDepsId, setExpandedDepsId] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingComponent, setEditingComponent] = useState<Component | null>(
-    null,
+    null
   );
 
   const deleteComponent = useServerFn(deleteComponentFn);
@@ -101,7 +101,7 @@ export default function Components() {
   const onToggleMonitor = async (
     componentId: string,
     monitorId: string,
-    checked: boolean,
+    checked: boolean
   ) => {
     setError(null);
     try {
@@ -123,7 +123,7 @@ export default function Components() {
   const onToggleDependency = async (
     componentId: string,
     dependsOnComponentId: string,
-    checked: boolean,
+    checked: boolean
   ) => {
     setError(null);
     try {
@@ -148,14 +148,19 @@ export default function Components() {
         title="Components"
         description="Group monitors into logical service components for status pages."
       >
-        <button onClick={() => setIsCreateModalOpen(true)}>Create Component</button>
+        <button onClick={() => setIsCreateModalOpen(true)}>
+          Create Component
+        </button>
       </PageHeader>
 
       {error && <ErrorCard message={error} />}
 
       <Card>
         <CardTitle>Components</CardTitle>
-        <ListContainer isEmpty={!components.length} emptyMessage="No components yet.">
+        <ListContainer
+          isEmpty={!components.length}
+          emptyMessage="No components yet."
+        >
           {components.map((component) => {
             const isLinkExpanded = expandedId === component.id;
             const isMetricsExpanded = expandedMetricsId === component.id;
@@ -188,7 +193,9 @@ export default function Components() {
                     {component.monitorIds.length !== 1 ? "s" : ""} linked
                     {" · "}
                     {component.dependencyIds.length}{" "}
-                    {component.dependencyIds.length === 1 ? "dependency" : "dependencies"}
+                    {component.dependencyIds.length === 1
+                      ? "dependency"
+                      : "dependencies"}
                   </>
                 }
                 actions={
@@ -197,7 +204,9 @@ export default function Components() {
                       type="button"
                       variant="outline"
                       onClick={() =>
-                        setExpandedMetricsId(isMetricsExpanded ? null : component.id)
+                        setExpandedMetricsId(
+                          isMetricsExpanded ? null : component.id
+                        )
                       }
                     >
                       {isMetricsExpanded ? "Hide" : "Metrics"}
@@ -214,7 +223,9 @@ export default function Components() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setExpandedId(isLinkExpanded ? null : component.id)}
+                      onClick={() =>
+                        setExpandedId(isLinkExpanded ? null : component.id)
+                      }
                     >
                       {isLinkExpanded ? "Hide" : "Link"} monitors
                     </Button>
@@ -256,7 +267,11 @@ export default function Components() {
                             checked: component.dependencyIds.includes(c.id),
                           }))}
                         onChange={(dependsOnComponentId, checked) =>
-                          onToggleDependency(component.id, dependsOnComponentId, checked)
+                          onToggleDependency(
+                            component.id,
+                            dependsOnComponentId,
+                            checked
+                          )
                         }
                         emptyMessage="No other components available."
                       />

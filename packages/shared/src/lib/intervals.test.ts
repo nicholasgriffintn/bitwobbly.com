@@ -26,6 +26,7 @@ test("mergeIntervals keeps non-overlapping intervals separate", () => {
     { start: 0, end: 10 },
     { start: 20, end: 30 },
   ]);
+});
 
 test("mergeIntervals handles adjacent intervals", () => {
   const input = [

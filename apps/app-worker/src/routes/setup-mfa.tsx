@@ -11,7 +11,7 @@ export const Route = createFileRoute("/setup-mfa")({
       throw redirect({ to: "/login" });
     }
     if (user?.mfaEnabled) {
-      throw redirect({ to: '/app' });
+      throw redirect({ to: "/app" });
     }
   },
   component: SetupMFA,
@@ -21,7 +21,7 @@ function SetupMFA() {
   const navigate = useNavigate();
 
   const handleComplete = async () => {
-    await navigate({ to: '/app' });
+    await navigate({ to: "/app" });
   };
 
   return (

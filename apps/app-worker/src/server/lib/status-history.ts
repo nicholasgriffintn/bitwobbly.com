@@ -10,7 +10,7 @@ export async function getComponentHistoricalData(
   accountId: string,
   apiToken: string,
   monitorIds: string[],
-  days: number,
+  days: number
 ): Promise<DayStatus[]> {
   if (monitorIds.length === 0) {
     const result: DayStatus[] = [];
@@ -62,7 +62,7 @@ export async function getComponentHistoricalData(
     const errorText = await response.text();
     console.error(
       `Analytics Engine query failed (${response.status}):`,
-      errorText,
+      errorText
     );
     const result: DayStatus[] = [];
     for (let i = days - 1; i >= 0; i--) {
@@ -135,8 +135,7 @@ export async function getComponentHistoricalData(
     const bucket = dayBuckets.get(dayKey);
     if (bucket) {
       const total = bucket.upCount + bucket.downCount;
-      const uptimePercentage =
-        total > 0 ? (bucket.upCount / total) * 100 : 100;
+      const uptimePercentage = total > 0 ? (bucket.upCount / total) * 100 : 100;
       let status: "operational" | "degraded" | "down" = "operational";
       if (uptimePercentage < 50) {
         status = "down";
@@ -159,4 +158,3 @@ export async function getComponentHistoricalData(
 
   return result;
 }
-

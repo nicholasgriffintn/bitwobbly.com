@@ -3,7 +3,10 @@ import { z } from "zod";
 import { env } from "cloudflare:workers";
 
 import { getDb } from "@/server/lib/db";
-import { getExternalStatusPageBySlug, listComponentsForStatusPage } from "@/server/repositories/status-pages";
+import {
+  getExternalStatusPageBySlug,
+  listComponentsForStatusPage,
+} from "@/server/repositories/status-pages";
 import {
   isStatusPageUnlocked,
   useStatusPageSession,
@@ -23,7 +26,9 @@ function csvEscape(value: string): string {
   return value;
 }
 
-export const Route = createFileRoute("/api/status/$slug/reports/availability/monthly")({
+export const Route = createFileRoute(
+  "/api/status/$slug/reports/availability/monthly"
+)({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
@@ -37,13 +42,16 @@ export const Route = createFileRoute("/api/status/$slug/reports/availability/mon
           if (!success) {
             return Response.json(
               { ok: false, error: "Rate limit exceeded" },
-              { status: 429, headers: { "Retry-After": "60" } },
+              { status: 429, headers: { "Retry-After": "60" } }
             );
           }
 
           const page = await getExternalStatusPageBySlug(db, params.slug);
           if (!page) {
-            return Response.json({ ok: false, error: "Not found" }, { status: 404 });
+            return Response.json(
+              { ok: false, error: "Not found" },
+              { status: 404 }
+            );
           }
 
           if (page.accessMode === "private") {
@@ -51,7 +59,7 @@ export const Route = createFileRoute("/api/status/$slug/reports/availability/mon
             if (!isStatusPageUnlocked(session, params.slug)) {
               return Response.json(
                 { ok: false, error: "password_required" },
-                { status: 401 },
+                { status: 401 }
               );
             }
           }
@@ -67,7 +75,10 @@ export const Route = createFileRoute("/api/status/$slug/reports/availability/mon
             const comps = await listComponentsForStatusPage(db, page.id);
             const allowed = comps.some((c) => c.id === data.component_id);
             if (!allowed) {
-              return Response.json({ ok: false, error: "Not found" }, { status: 404 });
+              return Response.json(
+                { ok: false, error: "Not found" },
+                { status: 404 }
+              );
             }
             scopeType = "component";
             scopeId = data.component_id;
@@ -92,7 +103,7 @@ export const Route = createFileRoute("/api/status/$slug/reports/availability/mon
               "downtime_minutes",
               "maintenance_minutes",
               "effective_minutes",
-            ].join(","),
+            ].join(",")
           );
           for (const day of report.days) {
             lines.push(
@@ -102,7 +113,7 @@ export const Route = createFileRoute("/api/status/$slug/reports/availability/mon
                 String(day.downtime_minutes),
                 String(day.maintenance_minutes),
                 String(day.effective_minutes),
-              ].join(","),
+              ].join(",")
             );
           }
           const csv = lines.join("\n");
@@ -120,16 +131,15 @@ export const Route = createFileRoute("/api/status/$slug/reports/availability/mon
           if (error instanceof z.ZodError) {
             return Response.json(
               { ok: false, error: "Invalid query params" },
-              { status: 400 },
+              { status: 400 }
             );
           }
           return Response.json(
             { ok: false, error: "Internal server error" },
-            { status: 500 },
+            { status: 500 }
           );
         }
       },
     },
   },
 });
-

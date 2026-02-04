@@ -4,17 +4,17 @@ import { eq, and, ne, inArray, desc } from "drizzle-orm";
 export async function listOpenIncidents(
   db: DB,
   teamId: string,
-  statusPageId: string | null,
+  statusPageId: string | null
 ) {
   const whereClause = statusPageId
     ? and(
         eq(schema.incidents.teamId, teamId),
         eq(schema.incidents.statusPageId, statusPageId),
-        ne(schema.incidents.status, "resolved"),
+        ne(schema.incidents.status, "resolved")
       )
     : and(
         eq(schema.incidents.teamId, teamId),
-        ne(schema.incidents.status, "resolved"),
+        ne(schema.incidents.status, "resolved")
       );
 
   const incs = await db
@@ -46,13 +46,16 @@ export async function listOpenIncidents(
 export async function getIncidentStatusPageId(
   db: DB,
   teamId: string,
-  incidentId: string,
+  incidentId: string
 ): Promise<string | null> {
   const rows = await db
     .select({ statusPageId: schema.incidents.statusPageId })
     .from(schema.incidents)
     .where(
-      and(eq(schema.incidents.teamId, teamId), eq(schema.incidents.id, incidentId)),
+      and(
+        eq(schema.incidents.teamId, teamId),
+        eq(schema.incidents.id, incidentId)
+      )
     )
     .limit(1);
 
@@ -61,7 +64,7 @@ export async function getIncidentStatusPageId(
 
 export async function listIncidentComponentIds(
   db: DB,
-  incidentId: string,
+  incidentId: string
 ): Promise<string[]> {
   const rows = await db
     .select({ componentId: schema.incidentComponents.componentId })
@@ -75,7 +78,7 @@ export async function listRecentResolvedIncidents(
   db: DB,
   teamId: string,
   statusPageId: string | null,
-  daysBack: number = 30,
+  daysBack: number = 30
 ) {
   const cutoffTimestamp =
     Math.floor(Date.now() / 1000) - daysBack * 24 * 60 * 60;
@@ -84,11 +87,11 @@ export async function listRecentResolvedIncidents(
     ? and(
         eq(schema.incidents.teamId, teamId),
         eq(schema.incidents.statusPageId, statusPageId),
-        eq(schema.incidents.status, "resolved"),
+        eq(schema.incidents.status, "resolved")
       )
     : and(
         eq(schema.incidents.teamId, teamId),
-        eq(schema.incidents.status, "resolved"),
+        eq(schema.incidents.status, "resolved")
       );
 
   const incs = await db
@@ -123,7 +126,7 @@ export async function listRecentResolvedIncidents(
 export async function listAllIncidents(
   db: DB,
   teamId: string,
-  limit: number = 50,
+  limit: number = 50
 ) {
   const incs = await db
     .select()
@@ -162,7 +165,7 @@ export async function createIncident(
     monitorId?: string;
     message?: string;
     affectedComponents?: Array<{ componentId: string; impactLevel: string }>;
-  },
+  }
 ) {
   const id = randomId("inc");
   const now = nowIso();
@@ -217,7 +220,7 @@ export async function createIncident(
 export async function findOpenIncidentForMonitor(
   db: DB,
   teamId: string,
-  monitorId: string,
+  monitorId: string
 ): Promise<string | null> {
   const rows = await db
     .select({ id: schema.incidents.id })
@@ -226,8 +229,8 @@ export async function findOpenIncidentForMonitor(
       and(
         eq(schema.incidents.teamId, teamId),
         eq(schema.incidents.monitorId, monitorId),
-        ne(schema.incidents.status, "resolved"),
-      ),
+        ne(schema.incidents.status, "resolved")
+      )
     )
     .orderBy(desc(schema.incidents.startedAt))
     .limit(1);
@@ -239,7 +242,7 @@ export async function addIncidentUpdate(
   db: DB,
   teamId: string,
   incidentId: string,
-  input: { message: string; status: string },
+  input: { message: string; status: string }
 ) {
   const incident = await db
     .select()
@@ -247,8 +250,8 @@ export async function addIncidentUpdate(
     .where(
       and(
         eq(schema.incidents.teamId, teamId),
-        eq(schema.incidents.id, incidentId),
-      ),
+        eq(schema.incidents.id, incidentId)
+      )
     )
     .limit(1);
 
@@ -292,14 +295,14 @@ export async function addIncidentUpdate(
           .from(schema.incidentComponents)
           .innerJoin(
             schema.incidents,
-            eq(schema.incidentComponents.incidentId, schema.incidents.id),
+            eq(schema.incidentComponents.incidentId, schema.incidents.id)
           )
           .where(
             and(
               eq(schema.incidentComponents.componentId, ac.componentId),
               ne(schema.incidentComponents.incidentId, incidentId),
-              ne(schema.incidents.status, "resolved"),
-            ),
+              ne(schema.incidents.status, "resolved")
+            )
           );
 
         if (otherOpenIncidents.length === 0) {
@@ -321,7 +324,7 @@ export async function addIncidentUpdate(
 export async function deleteIncident(
   db: DB,
   teamId: string,
-  incidentId: string,
+  incidentId: string
 ) {
   const affectedComponents = await db
     .select()
@@ -339,8 +342,8 @@ export async function deleteIncident(
     .where(
       and(
         eq(schema.incidents.teamId, teamId),
-        eq(schema.incidents.id, incidentId),
-      ),
+        eq(schema.incidents.id, incidentId)
+      )
     );
 
   if (affectedComponents.length > 0) {
@@ -351,13 +354,13 @@ export async function deleteIncident(
         .from(schema.incidentComponents)
         .innerJoin(
           schema.incidents,
-          eq(schema.incidentComponents.incidentId, schema.incidents.id),
+          eq(schema.incidentComponents.incidentId, schema.incidents.id)
         )
         .where(
           and(
             eq(schema.incidentComponents.componentId, ac.componentId),
-            ne(schema.incidents.status, "resolved"),
-          ),
+            ne(schema.incidents.status, "resolved")
+          )
         );
 
       if (otherOpenIncidents.length === 0) {
@@ -383,7 +386,7 @@ export async function getIncidentComponents(db: DB, incidentId: string) {
     .from(schema.incidentComponents)
     .innerJoin(
       schema.components,
-      eq(schema.incidentComponents.componentId, schema.components.id),
+      eq(schema.incidentComponents.componentId, schema.components.id)
     )
     .where(eq(schema.incidentComponents.incidentId, incidentId));
 

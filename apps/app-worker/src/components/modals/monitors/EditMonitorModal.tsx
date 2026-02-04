@@ -43,7 +43,9 @@ export function EditMonitorModal({
   const [editThreshold, setEditThreshold] = useState("");
   const [editExternalServiceType, setEditExternalServiceType] = useState("");
   const [editCheckConfig, setEditCheckConfig] = useState("");
-  const [editCheckConfigError, setEditCheckConfigError] = useState<string | null>(null);
+  const [editCheckConfigError, setEditCheckConfigError] = useState<
+    string | null
+  >(null);
 
   const updateMonitor = useServerFn(updateMonitorFn);
 
@@ -201,7 +203,9 @@ export function EditMonitorModal({
           editingMonitorType !== "manual" && (
             <>
               <label htmlFor="edit-config">Config (JSON)</label>
-              <p className="muted -mt-1">Optional. Leave blank to use defaults.</p>
+              <p className="muted -mt-1">
+                Optional. Leave blank to use defaults.
+              </p>
               <textarea
                 id="edit-config"
                 value={editCheckConfig}
@@ -212,7 +216,9 @@ export function EditMonitorModal({
                 }}
                 rows={4}
               />
-              {editCheckConfigError ? <p className="text-red-600">{editCheckConfigError}</p> : null}
+              {editCheckConfigError ? (
+                <p className="text-red-600">{editCheckConfigError}</p>
+              ) : null}
               {(() => {
                 const help = configHelp(editingMonitorType);
                 if (!help) return null;
@@ -224,11 +230,15 @@ export function EditMonitorModal({
                     <p className="muted mt-2">{help.description}</p>
                     <div className="mt-2">
                       <div className="muted mb-1">Example</div>
-                      <pre className="m-0 whitespace-pre-wrap">{help.example}</pre>
+                      <pre className="m-0 whitespace-pre-wrap">
+                        {help.example}
+                      </pre>
                     </div>
                     <div className="mt-2">
                       <div className="muted mb-1">Schema</div>
-                      <pre className="m-0 whitespace-pre-wrap">{help.schema}</pre>
+                      <pre className="m-0 whitespace-pre-wrap">
+                        {help.schema}
+                      </pre>
                     </div>
                   </details>
                 );
@@ -236,43 +246,44 @@ export function EditMonitorModal({
             </>
           )}
 
-        {editingMonitorType !== "webhook" && editingMonitorType !== "manual" && (
-          <div className="grid three">
-            <div>
-              <label htmlFor="edit-interval">Interval (sec)</label>
-              <input
-                id="edit-interval"
-                type="number"
-                min="30"
-                max="3600"
-                value={editInterval}
-                onChange={(e) => setEditInterval(e.target.value)}
-              />
+        {editingMonitorType !== "webhook" &&
+          editingMonitorType !== "manual" && (
+            <div className="grid three">
+              <div>
+                <label htmlFor="edit-interval">Interval (sec)</label>
+                <input
+                  id="edit-interval"
+                  type="number"
+                  min="30"
+                  max="3600"
+                  value={editInterval}
+                  onChange={(e) => setEditInterval(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-timeout">Timeout (ms)</label>
+                <input
+                  id="edit-timeout"
+                  type="number"
+                  min="1000"
+                  max="30000"
+                  value={editTimeout}
+                  onChange={(e) => setEditTimeout(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-threshold">Failure threshold</label>
+                <input
+                  id="edit-threshold"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={editThreshold}
+                  onChange={(e) => setEditThreshold(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="edit-timeout">Timeout (ms)</label>
-              <input
-                id="edit-timeout"
-                type="number"
-                min="1000"
-                max="30000"
-                value={editTimeout}
-                onChange={(e) => setEditTimeout(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-threshold">Failure threshold</label>
-              <input
-                id="edit-threshold"
-                type="number"
-                min="1"
-                max="10"
-                value={editThreshold}
-                onChange={(e) => setEditThreshold(e.target.value)}
-              />
-            </div>
-          </div>
-        )}
+          )}
 
         <div className="button-row mt-4">
           <button type="submit">Save Changes</button>

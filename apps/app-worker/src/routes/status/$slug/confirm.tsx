@@ -17,9 +17,7 @@ function ConfirmStatusPageSubscription() {
   const confirm = useServerFn(confirmStatusPageSubscriptionFn);
 
   const [state, setState] = useState<
-    | { kind: "working" }
-    | { kind: "ok" }
-    | { kind: "error"; message: string }
+    { kind: "working" } | { kind: "ok" } | { kind: "error"; message: string }
   >({ kind: "working" });
 
   useEffect(() => {
@@ -74,4 +72,3 @@ function ConfirmStatusPageSubscription() {
     </div>
   );
 }
-

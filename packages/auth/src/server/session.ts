@@ -1,5 +1,5 @@
-import { getRequestProtocol, useSession } from '@tanstack/react-start/server';
-import { env } from 'cloudflare:workers';
+import { getRequestProtocol, useSession } from "@tanstack/react-start/server";
+import { env } from "cloudflare:workers";
 
 type SessionData = {
   userId?: string;
@@ -13,16 +13,16 @@ export function useAppSession(): ReturnType<typeof useSession<SessionData>> {
 
   // @ts-ignore
   if (!vars.SESSION_SECRET) {
-    throw new Error('SESSION_SECRET is not set');
+    throw new Error("SESSION_SECRET is not set");
   }
 
   return useSession<SessionData>({
-    name: 'app-session',
+    name: "app-session",
     // @ts-ignore
     password: vars.SESSION_SECRET,
     cookie: {
-      secure: getRequestProtocol() === 'https',
-      sameSite: 'lax',
+      secure: getRequestProtocol() === "https",
+      sameSite: "lax",
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60,
     },

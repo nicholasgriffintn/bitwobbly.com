@@ -52,7 +52,7 @@ export function SDKDistributionChart({ data }: SDKDistributionChartProps) {
           formatter={(
             value: number | undefined,
             _name: string | undefined,
-            props: any,
+            props: any
           ) => {
             if (value === undefined) return ["", ""];
             return [

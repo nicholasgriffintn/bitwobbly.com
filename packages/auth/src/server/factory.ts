@@ -1,16 +1,16 @@
-import type { AuthAdapter, AuthConfig } from '../types';
-import { CustomAuthAdapter } from '../adapters/custom-adapter';
-import { CognitoAuthAdapter } from '../adapters/cognito-adapter';
+import type { AuthAdapter, AuthConfig } from "../types";
+import { CustomAuthAdapter } from "../adapters/custom-adapter";
+import { CognitoAuthAdapter } from "../adapters/cognito-adapter";
 
 export function createAuthAdapter(config: AuthConfig): AuthAdapter {
-  if (config.provider !== 'custom' && config.provider !== 'cognito') {
+  if (config.provider !== "custom" && config.provider !== "cognito") {
     throw new Error(`Unsupported AUTH_PROVIDER: ${config.provider}`);
   }
 
-  if (config.provider === 'cognito') {
+  if (config.provider === "cognito") {
     if (!config.cognito) {
       throw new Error(
-        'Cognito configuration required when AUTH_PROVIDER=cognito',
+        "Cognito configuration required when AUTH_PROVIDER=cognito"
       );
     }
     return new CognitoAuthAdapter({

@@ -79,7 +79,7 @@ export default function Settings() {
   const seedDemoData = useServerFn(seedDemoDataFn);
 
   const currentUserTeam = teams?.find(
-    (t) => t.id === (user?.currentTeamId || user?.teamId),
+    (t) => t.id === (user?.currentTeamId || user?.teamId)
   );
   const isOwner = currentUserTeam?.role === "owner";
 
@@ -126,7 +126,7 @@ export default function Settings() {
     const newRole = currentRole === "owner" ? "member" : "owner";
     if (
       !confirm(
-        `Are you sure you want to change this user's role to ${newRole}?`,
+        `Are you sure you want to change this user's role to ${newRole}?`
       )
     )
       return;
@@ -153,7 +153,7 @@ export default function Settings() {
     setError(null);
     if (
       !confirm(
-        "This will replace existing team resources with a full demo setup. Continue?",
+        "This will replace existing team resources with a full demo setup. Continue?"
       )
     ) {
       return;
@@ -306,7 +306,10 @@ export default function Settings() {
             </Button>
           )}
         </CardTitle>
-        <ListContainer isEmpty={!activeInvites.length} emptyMessage="No active invitations.">
+        <ListContainer
+          isEmpty={!activeInvites.length}
+          emptyMessage="No active invitations."
+        >
           {activeInvites.map((invite) => {
             const isExpired = new Date(invite.expiresAt) < new Date();
             return (

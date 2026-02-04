@@ -2,7 +2,7 @@ import { getNumber, isRecord } from "./guards";
 
 export function extractJsonFromEnvelope(
   data: Uint8Array,
-  itemIndex: number,
+  itemIndex: number
 ): unknown | null {
   const decoder = new TextDecoder();
   let offset = 0;
@@ -62,4 +62,3 @@ export function extractJsonFromEnvelope(
 
   return null;
 }
-

@@ -53,14 +53,14 @@ export interface IssueAlertJob {
 export type AlertJob = MonitorAlertJob | IssueAlertJob;
 
 export type AlertTriggerType =
-  | 'new_issue'
-  | 'issue_regression'
-  | 'event_threshold'
-  | 'user_threshold'
-  | 'status_change'
-  | 'high_priority'
-  | 'monitor_down'
-  | 'monitor_recovery';
+  | "new_issue"
+  | "issue_regression"
+  | "event_threshold"
+  | "user_threshold"
+  | "status_change"
+  | "high_priority"
+  | "monitor_down"
+  | "monitor_recovery";
 
 export interface AlertThreshold {
   type: "static" | "percent_change";
@@ -73,12 +73,12 @@ export interface AlertThreshold {
 }
 
 export interface AlertConditions {
-  level?: ('error' | 'warning' | 'info' | 'debug')[];
+  level?: ("error" | "warning" | "info" | "debug")[];
   environment?: string[];
   tags?: Record<string, string>;
   issueAge?: string;
   release?: string;
-  eventType?: ('error' | 'default')[];
+  eventType?: ("error" | "default")[];
   monitorType?: MonitorType[];
   latencyThreshold?: number;
 }

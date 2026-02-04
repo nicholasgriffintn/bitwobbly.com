@@ -35,53 +35,55 @@ const ConditionsSchema = z.object({
   eventType: z.array(z.enum(["error", "default"])).optional(),
 });
 
-const CreateAlertRuleSchema = z.object({
-  name: z.string().min(1).max(100),
-  enabled: z.number().optional(),
-  sourceType: z.enum(["issue", "monitor"]),
-  projectId: z.string().optional().nullable(),
-  monitorId: z.string().optional().nullable(),
-  environment: z.string().optional().nullable(),
-  triggerType: z.enum([
-    "new_issue",
-    "issue_regression",
-    "event_threshold",
-    "user_threshold",
-    "status_change",
-    "high_priority",
-    "monitor_down",
-    "monitor_recovery",
-  ]),
-  conditions: ConditionsSchema.optional().nullable(),
-  threshold: ThresholdSchema.optional().nullable(),
-  channelId: z.string(),
-  actionIntervalSeconds: z.number().min(300).max(86400).optional(),
-  ownerId: z.string().optional().nullable(),
-}).superRefine((data, ctx) => {
-  if (data.sourceType === "monitor" && !data.monitorId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "monitorId is required for monitor rules",
-      path: ["monitorId"],
-    });
-  }
+const CreateAlertRuleSchema = z
+  .object({
+    name: z.string().min(1).max(100),
+    enabled: z.number().optional(),
+    sourceType: z.enum(["issue", "monitor"]),
+    projectId: z.string().optional().nullable(),
+    monitorId: z.string().optional().nullable(),
+    environment: z.string().optional().nullable(),
+    triggerType: z.enum([
+      "new_issue",
+      "issue_regression",
+      "event_threshold",
+      "user_threshold",
+      "status_change",
+      "high_priority",
+      "monitor_down",
+      "monitor_recovery",
+    ]),
+    conditions: ConditionsSchema.optional().nullable(),
+    threshold: ThresholdSchema.optional().nullable(),
+    channelId: z.string(),
+    actionIntervalSeconds: z.number().min(300).max(86400).optional(),
+    ownerId: z.string().optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.sourceType === "monitor" && !data.monitorId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "monitorId is required for monitor rules",
+        path: ["monitorId"],
+      });
+    }
 
-  if (data.sourceType === "monitor" && data.projectId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "projectId is not valid for monitor rules",
-      path: ["projectId"],
-    });
-  }
+    if (data.sourceType === "monitor" && data.projectId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "projectId is not valid for monitor rules",
+        path: ["projectId"],
+      });
+    }
 
-  if (data.sourceType === "issue" && data.monitorId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "monitorId is not valid for issue rules",
-      path: ["monitorId"],
-    });
-  }
-});
+    if (data.sourceType === "issue" && data.monitorId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "monitorId is not valid for issue rules",
+        path: ["monitorId"],
+      });
+    }
+  });
 
 const UpdateAlertRuleSchema = z.object({
   id: z.string(),
@@ -116,7 +118,7 @@ export const listAlertRulesFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const rules = await listAlertRules(db, teamId);
     return { rules };
-  },
+  }
 );
 
 export const getAlertRuleFn = createServerFn({ method: "GET" })
@@ -140,7 +142,7 @@ export const createAlertRuleFn = createServerFn({ method: "POST" })
     const channelExists = await notificationChannelExists(
       db,
       teamId,
-      data.channelId,
+      data.channelId
     );
     if (!channelExists) throw new Error("Notification channel not found");
 
@@ -203,7 +205,7 @@ export const updateAlertRuleFn = createServerFn({ method: "POST" })
       const channelExists = await notificationChannelExists(
         db,
         teamId,
-        data.channelId,
+        data.channelId
       );
       if (!channelExists) throw new Error("Notification channel not found");
     }
@@ -262,7 +264,7 @@ export const listAlertRuleFiresFn = createServerFn({ method: "GET" })
       db,
       teamId,
       data.ruleId,
-      data.limit || 50,
+      data.limit || 50
     );
     return { fires };
   });

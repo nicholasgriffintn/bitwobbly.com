@@ -4,7 +4,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { schema } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
-import { requireOwner, useAppSession } from '@bitwobbly/auth/server';
+import { requireOwner, useAppSession } from "@bitwobbly/auth/server";
 
 import { getDb } from "../lib/db";
 import { CreateTeamInputSchema } from "../validators/teams";
@@ -26,7 +26,7 @@ import {
   updateTeamName,
   deleteTeam,
 } from "../repositories/teams";
-import { requireTeam } from '../lib/auth-middleware';
+import { requireTeam } from "../lib/auth-middleware";
 import { upsertSloTarget } from "../repositories/slo-targets";
 
 const JoinTeamSchema = z.object({
@@ -53,10 +53,21 @@ export const createTeamFn = createServerFn({ method: "POST" })
     const { teamId } = await createTeam(db, userId, data.name);
 
     try {
-      await upsertSloTarget(db, teamId, "team", teamId, DEFAULT_TEAM_SLO_TARGET_PPM);
+      await upsertSloTarget(
+        db,
+        teamId,
+        "team",
+        teamId,
+        DEFAULT_TEAM_SLO_TARGET_PPM
+      );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      if (!(message.toLowerCase().includes("no such table") && message.includes("slo_targets"))) {
+      if (
+        !(
+          message.toLowerCase().includes("no such table") &&
+          message.includes("slo_targets")
+        )
+      ) {
         throw e;
       }
     }
@@ -101,7 +112,7 @@ export const getUserTeamsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
 
     return await getUserTeams(db, userId);
-  },
+  }
 );
 
 export const switchTeamFn = createServerFn({ method: "POST" })
@@ -145,7 +156,7 @@ export const getCurrentTeamFn = createServerFn({ method: "GET" }).handler(
     }
 
     return await getTeamById(db, user[0].currentTeamId);
-  },
+  }
 );
 
 export const listTeamMembersFn = createServerFn({ method: "GET" }).handler(
@@ -155,12 +166,12 @@ export const listTeamMembersFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const members = await listTeamMembers(db, teamId);
     return { members };
-  },
+  }
 );
 
-export const removeTeamMemberFn = createServerFn({ method: 'POST' })
+export const removeTeamMemberFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ userId: z.string() }).parse(data),
+    z.object({ userId: z.string() }).parse(data)
   )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
@@ -171,11 +182,11 @@ export const removeTeamMemberFn = createServerFn({ method: 'POST' })
     return { ok: true };
   });
 
-export const updateMemberRoleFn = createServerFn({ method: 'POST' })
+export const updateMemberRoleFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
-      .object({ userId: z.string(), role: z.enum(['owner', 'member']) })
-      .parse(data),
+      .object({ userId: z.string(), role: z.enum(["owner", "member"]) })
+      .parse(data)
   )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
@@ -193,18 +204,18 @@ export const listTeamInvitesFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const invites = await listTeamInvites(db, teamId);
     return { invites };
-  },
+  }
 );
 
-export const createTeamInviteFn = createServerFn({ method: 'POST' })
+export const createTeamInviteFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
       .object({
         email: z.string().email().optional(),
-        role: z.enum(['owner', 'member']),
+        role: z.enum(["owner", "member"]),
         expiresInDays: z.number().default(7),
       })
-      .parse(data),
+      .parse(data)
   )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
@@ -217,14 +228,14 @@ export const createTeamInviteFn = createServerFn({ method: 'POST' })
       actorId,
       data.email,
       data.role,
-      data.expiresInDays,
+      data.expiresInDays
     );
     return { inviteCode: result.inviteCode };
   });
 
-export const revokeTeamInviteFn = createServerFn({ method: 'POST' })
+export const revokeTeamInviteFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ inviteCode: z.string() }).parse(data),
+    z.object({ inviteCode: z.string() }).parse(data)
   )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
@@ -235,9 +246,9 @@ export const revokeTeamInviteFn = createServerFn({ method: 'POST' })
     return { ok: true };
   });
 
-export const updateTeamNameFn = createServerFn({ method: 'POST' })
+export const updateTeamNameFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ name: z.string().min(1) }).parse(data),
+    z.object({ name: z.string().min(1) }).parse(data)
   )
   .handler(async ({ data }) => {
     const { userId: actorId, teamId } = await requireTeam();
@@ -256,5 +267,5 @@ export const deleteTeamFn = createServerFn({ method: "POST" }).handler(
     await requireOwner(db, teamId, actorId);
     await deleteTeam(db, teamId);
     return { ok: true };
-  },
+  }
 );

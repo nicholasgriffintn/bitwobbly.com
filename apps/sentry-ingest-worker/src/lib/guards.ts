@@ -3,9 +3,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function isProjectCache(
-  value: unknown,
+  value: unknown
 ): value is { id: string; teamId: string } {
   if (!isRecord(value)) return false;
   return typeof value.id === "string" && typeof value.teamId === "string";
 }
-

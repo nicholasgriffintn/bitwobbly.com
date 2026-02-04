@@ -84,4 +84,3 @@ export function configHelp(type: string) {
   }
   return null;
 }
-

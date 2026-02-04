@@ -25,7 +25,7 @@ async function getResendApiKey(): Promise<string> {
     new GetParameterCommand({
       Name: RESEND_API_KEY_PARAM,
       WithDecryption: true,
-    }),
+    })
   );
 
   cachedApiKey = (response.Parameter?.Value ?? "").trim();
@@ -52,7 +52,7 @@ type EmailType =
 function getEmailTemplate(
   type: EmailType,
   code: string,
-  userAttributes: Record<string, string>,
+  userAttributes: Record<string, string>
 ): { subject: string; html: string } {
   const name = userAttributes.name || userAttributes.given_name || "";
 
@@ -320,7 +320,7 @@ function getEmailType(triggerSource: string): EmailType {
 async function sendEmail(
   to: string,
   subject: string,
-  html: string,
+  html: string
 ): Promise<void> {
   const apiKey = await getResendApiKey();
 
@@ -351,7 +351,7 @@ export async function handler(event: CognitoEvent): Promise<void> {
     if (event.request.code) {
       const { plaintext } = await decrypt(
         keyring,
-        Buffer.from(event.request.code, "base64"),
+        Buffer.from(event.request.code, "base64")
       );
       plainTextCode = Buffer.from(plaintext).toString("utf-8");
     }
@@ -366,7 +366,7 @@ export async function handler(event: CognitoEvent): Promise<void> {
     const { subject, html } = getEmailTemplate(
       emailType,
       plainTextCode,
-      event.request.userAttributes,
+      event.request.userAttributes
     );
 
     await sendEmail(emailAddress, subject, html);

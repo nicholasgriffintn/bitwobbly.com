@@ -36,7 +36,9 @@ export function ListRow({
           {title}
           {badges}
         </div>
-        {subtitle && <div className={resolvedSubtitleClassName}>{subtitle}</div>}
+        {subtitle && (
+          <div className={resolvedSubtitleClassName}>{subtitle}</div>
+        )}
       </div>
       {actions && <div className="button-row">{actions}</div>}
     </div>

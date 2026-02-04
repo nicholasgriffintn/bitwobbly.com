@@ -78,9 +78,9 @@ export const statusPages = sqliteTable(
   (table) => ({
     teamSlugUnique: uniqueIndex("status_pages_team_slug_unique").on(
       table.teamId,
-      table.slug,
+      table.slug
     ),
-  }),
+  })
 );
 
 export const components = sqliteTable("components", {
@@ -108,7 +108,7 @@ export const statusPageComponents = sqliteTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.statusPageId, table.componentId] }),
-  }),
+  })
 );
 
 export const componentMonitors = sqliteTable(
@@ -123,7 +123,7 @@ export const componentMonitors = sqliteTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.componentId, table.monitorId] }),
-  }),
+  })
 );
 
 export const componentDependencies = sqliteTable(
@@ -137,8 +137,10 @@ export const componentDependencies = sqliteTable(
       .references(() => components.id, { onDelete: "cascade" }),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.componentId, table.dependsOnComponentId] }),
-  }),
+    pk: primaryKey({
+      columns: [table.componentId, table.dependsOnComponentId],
+    }),
+  })
 );
 
 export const suppressions = sqliteTable("suppressions", {
@@ -164,8 +166,10 @@ export const suppressionScopes = sqliteTable(
     scopeId: text("scope_id").notNull(),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.suppressionId, table.scopeType, table.scopeId] }),
-  }),
+    pk: primaryKey({
+      columns: [table.suppressionId, table.scopeType, table.scopeId],
+    }),
+  })
 );
 
 export const incidents = sqliteTable("incidents", {
@@ -205,7 +209,7 @@ export const incidentComponents = sqliteTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.incidentId, table.componentId] }),
-  }),
+  })
 );
 
 export const statusPageSubscribers = sqliteTable(
@@ -227,9 +231,9 @@ export const statusPageSubscribers = sqliteTable(
   },
   (table) => ({
     statusPageSubscriberUnique: uniqueIndex(
-      "status_page_subscribers_status_page_channel_endpoint_unique",
+      "status_page_subscribers_status_page_channel_endpoint_unique"
     ).on(table.statusPageId, table.channelType, table.endpoint),
-  }),
+  })
 );
 
 export const statusPageSubscriberEvents = sqliteTable(
@@ -248,11 +252,11 @@ export const statusPageSubscriberEvents = sqliteTable(
       .references(() => incidents.id, { onDelete: "cascade" }),
     incidentUpdateId: text("incident_update_id").references(
       () => incidentUpdates.id,
-      { onDelete: "cascade" },
+      { onDelete: "cascade" }
     ),
     createdAt: text("created_at").notNull(),
     sentAt: text("sent_at"),
-  },
+  }
 );
 
 export const statusPageSubscriberAuditLogs = sqliteTable(
@@ -262,13 +266,19 @@ export const statusPageSubscriberAuditLogs = sqliteTable(
     statusPageId: text("status_page_id")
       .notNull()
       .references(() => statusPages.id, { onDelete: "cascade" }),
-    subscriberId: text("subscriber_id").references(() => statusPageSubscribers.id, {
-      onDelete: "cascade",
-    }),
+    subscriberId: text("subscriber_id").references(
+      () => statusPageSubscribers.id,
+      {
+        onDelete: "cascade",
+      }
+    ),
     action: text("action").notNull(),
-    meta: text("meta", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    meta: text("meta", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
     createdAt: text("created_at").notNull(),
-  },
+  }
 );
 
 export const notificationChannels = sqliteTable("notification_channels", {
@@ -282,53 +292,53 @@ export const notificationChannels = sqliteTable("notification_channels", {
   createdAt: text("created_at").notNull(),
 });
 
-export const alertRules = sqliteTable('alert_rules', {
-  id: text('id').primaryKey(),
-  teamId: text('team_id')
+export const alertRules = sqliteTable("alert_rules", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id")
     .notNull()
     .references(() => teams.id),
-  name: text('name').notNull(),
-  enabled: integer('enabled').notNull().default(1),
-  sourceType: text('source_type').notNull(),
-  projectId: text('project_id'),
-  monitorId: text('monitor_id').references(() => monitors.id),
-  environment: text('environment'),
-  triggerType: text('trigger_type').notNull(),
-  conditionsJson: text('conditions_json'),
-  thresholdJson: text('threshold_json'),
-  channelId: text('channel_id')
+  name: text("name").notNull(),
+  enabled: integer("enabled").notNull().default(1),
+  sourceType: text("source_type").notNull(),
+  projectId: text("project_id"),
+  monitorId: text("monitor_id").references(() => monitors.id),
+  environment: text("environment"),
+  triggerType: text("trigger_type").notNull(),
+  conditionsJson: text("conditions_json"),
+  thresholdJson: text("threshold_json"),
+  channelId: text("channel_id")
     .notNull()
     .references(() => notificationChannels.id),
-  actionIntervalSeconds: integer('action_interval_seconds')
+  actionIntervalSeconds: integer("action_interval_seconds")
     .notNull()
     .default(3600),
-  lastTriggeredAt: integer('last_triggered_at'),
-  ownerId: text('owner_id'),
+  lastTriggeredAt: integer("last_triggered_at"),
+  ownerId: text("owner_id"),
 
-  createdAt: text('created_at').notNull(),
+  createdAt: text("created_at").notNull(),
 });
 
-export const alertRuleStates = sqliteTable('alert_rule_states', {
-  id: text('id').primaryKey(),
-  ruleId: text('rule_id')
+export const alertRuleStates = sqliteTable("alert_rule_states", {
+  id: text("id").primaryKey(),
+  ruleId: text("rule_id")
     .notNull()
     .references(() => alertRules.id),
-  issueId: text('issue_id').notNull(),
-  status: text('status').notNull(),
-  triggeredAt: integer('triggered_at').notNull(),
-  resolvedAt: integer('resolved_at'),
+  issueId: text("issue_id").notNull(),
+  status: text("status").notNull(),
+  triggeredAt: integer("triggered_at").notNull(),
+  resolvedAt: integer("resolved_at"),
 });
 
-export const alertRuleFires = sqliteTable('alert_rule_fires', {
-  id: text('id').primaryKey(),
-  ruleId: text('rule_id')
+export const alertRuleFires = sqliteTable("alert_rule_fires", {
+  id: text("id").primaryKey(),
+  ruleId: text("rule_id")
     .notNull()
     .references(() => alertRules.id),
-  issueId: text('issue_id'),
-  eventId: text('event_id'),
-  severity: text('severity').notNull(),
-  triggerReason: text('trigger_reason').notNull(),
-  firedAt: integer('fired_at').notNull(),
+  issueId: text("issue_id"),
+  eventId: text("event_id"),
+  severity: text("severity").notNull(),
+  triggerReason: text("trigger_reason").notNull(),
+  firedAt: integer("fired_at").notNull(),
 });
 
 export const users = sqliteTable("users", {
@@ -376,9 +386,9 @@ export const sloTargets = sqliteTable(
     teamScopeUnique: uniqueIndex("slo_targets_team_scope_unique").on(
       table.teamId,
       table.scopeType,
-      table.scopeId,
+      table.scopeId
     ),
-  }),
+  })
 );
 
 export const userTeams = sqliteTable(
@@ -395,7 +405,7 @@ export const userTeams = sqliteTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.userId, table.teamId] }),
-  }),
+  })
 );
 
 export const teamInvites = sqliteTable("team_invites", {

@@ -75,7 +75,7 @@ export const listSentryProjectsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(env.DB);
     const projects = await listSentryProjects(db, teamId);
     return { projects };
-  },
+  }
 );
 
 export const createSentryProjectFn = createServerFn({ method: "POST" })
@@ -108,7 +108,7 @@ export const getSentryProjectDsnFn = createServerFn({ method: "GET" })
       db,
       teamId,
       data.projectId,
-      ingestHost,
+      ingestHost
     );
     if (!result) throw new Error("Project not found");
     return result;

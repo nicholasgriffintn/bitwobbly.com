@@ -60,7 +60,7 @@ flowchart TD
 
 | App                            | Purpose                                                                                                                                  |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/app-worker`              | React dashboard + API. Manages monitors, status pages, notification channels, issue tracking projects, and auth.                      |
+| `apps/app-worker`              | React dashboard + API. Manages monitors, status pages, notification channels, issue tracking projects, and auth.                         |
 | `apps/scheduler-worker`        | Cron-triggered dispatcher. Finds due monitors and enqueues check jobs.                                                                   |
 | `apps/checker-worker`          | Queue consumer. Performs HTTP checks, tracks failures, opens/resolves incidents via Durable Objects, writes metrics to Analytics Engine. |
 | `apps/notifier-worker`         | Queue consumer. Delivers alerts via webhooks and email (Resend API).                                                                     |

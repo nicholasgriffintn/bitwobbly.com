@@ -1,7 +1,10 @@
 import { getRequestProtocol, useSession } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 
-import { isStatusPageUnlocked as isUnlocked, nextUnlockedMap } from "./status-page-unlock";
+import {
+  isStatusPageUnlocked as isUnlocked,
+  nextUnlockedMap,
+} from "./status-page-unlock";
 
 type StatusPageSessionData = {
   unlocked?: Record<string, number>;
@@ -33,14 +36,14 @@ export function useStatusPageSession(): ReturnType<
 
 export function isStatusPageUnlocked(
   session: Awaited<ReturnType<typeof useStatusPageSession>>,
-  slug: string,
+  slug: string
 ): boolean {
   return isUnlocked(session.data.unlocked, slug);
 }
 
 export async function unlockStatusPage(
   session: Awaited<ReturnType<typeof useStatusPageSession>>,
-  slug: string,
+  slug: string
 ): Promise<void> {
   await session.update({
     ...session.data,

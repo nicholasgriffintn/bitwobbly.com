@@ -60,7 +60,7 @@ export async function sendIssueAlertEmail({
   const triggerDescription = getTriggerDescription(
     triggerType,
     triggerValue,
-    threshold,
+    threshold
   );
   const firstSeen = new Date(issue.firstSeenAt * 1000).toLocaleString();
   const lastSeen = new Date(issue.lastSeenAt * 1000).toLocaleString();
@@ -126,7 +126,7 @@ export async function sendIssueAlertEmail({
 function getTriggerDescription(
   triggerType: string,
   triggerValue?: number,
-  threshold?: number,
+  threshold?: number
 ): string {
   switch (triggerType) {
     case "new_issue":

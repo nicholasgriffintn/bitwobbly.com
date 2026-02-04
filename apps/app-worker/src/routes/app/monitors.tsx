@@ -57,7 +57,7 @@ function Monitors() {
   const [groups, setGroups] = useState<MonitorGroup[]>(initialGroups);
   const [error, setError] = useState<string | null>(null);
   const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(
-    null,
+    null
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -205,8 +205,11 @@ function Monitors() {
             byGroupId.set(gid, arr);
           }
 
-          const sections: Array<{ id: string; title: string; items: Monitor[] }> =
-            [];
+          const sections: Array<{
+            id: string;
+            title: string;
+            items: Monitor[];
+          }> = [];
 
           for (const g of groups) {
             const items = byGroupId.get(g.id) || [];
@@ -216,7 +219,11 @@ function Monitors() {
 
           const ungrouped = byGroupId.get(null) || [];
           if (ungrouped.length) {
-            sections.push({ id: "__ungrouped__", title: "Ungrouped", items: ungrouped });
+            sections.push({
+              id: "__ungrouped__",
+              title: "Ungrouped",
+              items: ungrouped,
+            });
           }
 
           const renderMonitorRow = (monitor: Monitor) => {
@@ -242,13 +249,16 @@ function Monitors() {
                   <>
                     {monitor.url ? <div>{monitor.url}</div> : null}
                     <div className={monitor.url ? "mt-1" : ""}>
-                      <StatusBadge status={status}>{toTitleCase(status)}</StatusBadge>
+                      <StatusBadge status={status}>
+                        {toTitleCase(status)}
+                      </StatusBadge>
                       {" · "}
                       <Badge size="small">{toTitleCase(monitor.type)}</Badge>
                       {isMetricsExpandable && (
                         <>
                           {" · "}
-                          {monitor.intervalSeconds}s interval · {monitor.timeoutMs}ms timeout ·{" "}
+                          {monitor.intervalSeconds}s interval ·{" "}
+                          {monitor.timeoutMs}ms timeout ·{" "}
                           {monitor.failureThreshold} failures
                         </>
                       )}
@@ -262,7 +272,9 @@ function Monitors() {
                         type="button"
                         variant="outline"
                         onClick={() =>
-                          setExpandedMonitorId(isMetricsExpanded ? null : monitor.id)
+                          setExpandedMonitorId(
+                            isMetricsExpanded ? null : monitor.id
+                          )
                         }
                       >
                         {isMetricsExpanded ? "Hide" : "Metrics"}
@@ -277,7 +289,11 @@ function Monitors() {
                         Set Status
                       </Button>
                     )}
-                    <Button type="button" variant="outline" onClick={() => startEditing(monitor)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => startEditing(monitor)}
+                    >
                       Edit
                     </Button>
                     {isMetricsExpandable && (

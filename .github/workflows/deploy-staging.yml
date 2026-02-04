@@ -3,15 +3,15 @@ name: Deploy to Staging
 on:
   workflow_run:
     workflows:
-      - 'Unit Tests'
-    branches: ['main']
+      - "Unit Tests"
+    branches: ["main"]
     types:
       - completed
     files:
-      - 'apps/**'
-      - 'packages/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-staging.yml'
+      - "apps/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-staging.yml"
   workflow_dispatch:
 
 jobs:

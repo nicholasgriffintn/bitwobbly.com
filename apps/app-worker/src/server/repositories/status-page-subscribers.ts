@@ -1,4 +1,10 @@
-import { schema, nowIso, randomId, sha256Hex, type DB } from "@bitwobbly/shared";
+import {
+  schema,
+  nowIso,
+  randomId,
+  sha256Hex,
+  type DB,
+} from "@bitwobbly/shared";
 import { and, eq, inArray } from "drizzle-orm";
 
 export type StatusPageDigestCadence = "immediate" | "daily" | "weekly";
@@ -8,7 +14,7 @@ export async function getSubscriberByEndpoint(
   db: DB,
   statusPageId: string,
   channelType: StatusPageSubscriberChannel,
-  endpoint: string,
+  endpoint: string
 ) {
   const rows = await db
     .select()
@@ -17,8 +23,8 @@ export async function getSubscriberByEndpoint(
       and(
         eq(schema.statusPageSubscribers.statusPageId, statusPageId),
         eq(schema.statusPageSubscribers.channelType, channelType),
-        eq(schema.statusPageSubscribers.endpoint, endpoint),
-      ),
+        eq(schema.statusPageSubscribers.endpoint, endpoint)
+      )
     )
     .limit(1);
   return rows[0] || null;
@@ -33,7 +39,7 @@ export async function createOrRefreshSubscription(
     digestCadence: StatusPageDigestCadence;
     confirmToken: string;
     confirmExpiresAt: number;
-  },
+  }
 ): Promise<{ subscriberId: string }> {
   const now = nowIso();
   const confirmTokenHash = await sha256Hex(input.confirmToken);
@@ -42,7 +48,7 @@ export async function createOrRefreshSubscription(
     db,
     input.statusPageId,
     input.channelType,
-    input.endpoint,
+    input.endpoint
   );
 
   if (existing) {
@@ -79,7 +85,7 @@ export async function createOrRefreshSubscription(
 
 export async function confirmSubscriptionByToken(
   db: DB,
-  input: { statusPageId: string; confirmToken: string; nowSec: number },
+  input: { statusPageId: string; confirmToken: string; nowSec: number }
 ): Promise<{ subscriberId: string } | null> {
   const tokenHash = await sha256Hex(input.confirmToken);
   const rows = await db
@@ -88,8 +94,8 @@ export async function confirmSubscriptionByToken(
     .where(
       and(
         eq(schema.statusPageSubscribers.statusPageId, input.statusPageId),
-        eq(schema.statusPageSubscribers.confirmTokenHash, tokenHash),
-      ),
+        eq(schema.statusPageSubscribers.confirmTokenHash, tokenHash)
+      )
     )
     .limit(2);
 
@@ -117,7 +123,7 @@ export async function confirmSubscriptionByToken(
 
 export async function unsubscribeById(
   db: DB,
-  input: { statusPageId: string; subscriberId: string },
+  input: { statusPageId: string; subscriberId: string }
 ): Promise<boolean> {
   const sub = await db
     .select({ id: schema.statusPageSubscribers.id })
@@ -125,8 +131,8 @@ export async function unsubscribeById(
     .where(
       and(
         eq(schema.statusPageSubscribers.statusPageId, input.statusPageId),
-        eq(schema.statusPageSubscribers.id, input.subscriberId),
-      ),
+        eq(schema.statusPageSubscribers.id, input.subscriberId)
+      )
     )
     .limit(1);
 
@@ -152,7 +158,7 @@ export async function insertSubscriptionAuditLog(
     subscriberId?: string | null;
     action: string;
     meta?: Record<string, unknown> | null;
-  },
+  }
 ) {
   await db.insert(schema.statusPageSubscriberAuditLogs).values({
     id: randomId("spal"),
@@ -166,7 +172,7 @@ export async function insertSubscriptionAuditLog(
 
 export async function listDeliverableSubscribersForStatusPage(
   db: DB,
-  statusPageId: string,
+  statusPageId: string
 ): Promise<
   Array<{
     id: string;
@@ -184,8 +190,8 @@ export async function listDeliverableSubscribersForStatusPage(
     .where(
       and(
         eq(schema.statusPageSubscribers.statusPageId, statusPageId),
-        eq(schema.statusPageSubscribers.status, "active"),
-      ),
+        eq(schema.statusPageSubscribers.status, "active")
+      )
     );
 
   return rows.map((r) => ({
@@ -203,7 +209,7 @@ export async function createSubscriberEvent(
     eventType: "incident_created" | "incident_updated" | "incident_resolved";
     incidentId: string;
     incidentUpdateId?: string | null;
-  },
+  }
 ): Promise<{ eventId: string }> {
   const eventId = randomId("spev");
   await db.insert(schema.statusPageSubscriberEvents).values({
@@ -222,7 +228,7 @@ export async function createSubscriberEvent(
 export async function listStatusPageIdsForComponents(
   db: DB,
   teamId: string,
-  componentIds: string[],
+  componentIds: string[]
 ): Promise<string[]> {
   if (!componentIds.length) return [];
   const rows = await db
@@ -233,15 +239,11 @@ export async function listStatusPageIdsForComponents(
     .from(schema.statusPageComponents)
     .innerJoin(
       schema.statusPages,
-      eq(schema.statusPages.id, schema.statusPageComponents.statusPageId),
+      eq(schema.statusPages.id, schema.statusPageComponents.statusPageId)
     )
     .where(inArray(schema.statusPageComponents.componentId, componentIds));
 
   return Array.from(
-    new Set(
-      rows
-        .filter((r) => r.teamId === teamId)
-        .map((r) => r.statusPageId),
-    ),
+    new Set(rows.filter((r) => r.teamId === teamId).map((r) => r.statusPageId))
   );
 }

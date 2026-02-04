@@ -147,7 +147,7 @@ export const signOutFn = createServerFn({ method: "POST" }).handler(
 
     await signOutHandler(adapter);
     throw redirect({ to: "/login" });
-  },
+  }
 );
 
 export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
@@ -175,7 +175,7 @@ export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
       email: session.data.email ?? null,
       hasCognitoSession: Boolean(session.data.cognitoSession),
     };
-  },
+  }
 );
 
 const VerifyMFASchema = z.object({
@@ -225,7 +225,7 @@ export const setupMFAFn = createServerFn({ method: "POST" }).handler(
     });
 
     return await setupMFAHandler(adapter);
-  },
+  }
 );
 
 export const verifyMFASetupFn = createServerFn({ method: "POST" })

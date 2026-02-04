@@ -4,7 +4,7 @@ export async function withCache<T>(
   kv: KVNamespace,
   cacheKey: string,
   fetchFn: () => Promise<T>,
-  ttl: number = DEFAULT_TTL,
+  ttl: number = DEFAULT_TTL
 ): Promise<T> {
   const cached = await kv.get(cacheKey);
   if (cached) {
@@ -21,10 +21,10 @@ export function analyticsKey(
   projectId: number,
   startDate: string,
   endDate: string,
-  extra?: string,
+  extra?: string
 ): string {
-  const start = startDate.split('T')[0];
-  const end = endDate.split('T')[0];
+  const start = startDate.split("T")[0];
+  const end = endDate.split("T")[0];
   const base = `analytics:${type}:${projectId}:${start}:${end}`;
   return extra ? `${base}:${extra}` : base;
 }

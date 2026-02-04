@@ -2,7 +2,10 @@ import { schema } from "@bitwobbly/shared";
 
 import type { DB } from "../lib/db";
 
-export async function acquireQueueDedupe(db: DB, key: string): Promise<boolean> {
+export async function acquireQueueDedupe(
+  db: DB,
+  key: string
+): Promise<boolean> {
   const result = await db
     .insert(schema.queueDedupe)
     .values({ key, createdAt: new Date().toISOString() })
@@ -11,4 +14,3 @@ export async function acquireQueueDedupe(db: DB, key: string): Promise<boolean> 
 
   return Boolean(result.meta.changes);
 }
-

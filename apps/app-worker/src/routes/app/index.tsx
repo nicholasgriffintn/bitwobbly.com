@@ -1,15 +1,15 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link } from "@tanstack/react-router";
 
-import { listMonitorsFn } from '@/server/functions/monitors';
-import { listStatusPagesFn } from '@/server/functions/status-pages';
-import { listOpenIncidentsFn } from '@/server/functions/incidents';
-import { listChannelsFn } from '@/server/functions/notification-channels';
-import { toTitleCase } from '@/utils/format';
-import { Card, CardTitle, Page, PageHeader } from '@/components/layout';
-import { ListContainer, ListRow } from '@/components/list';
-import { Badge, Button, StatusBadge, isStatusType } from '@/components/ui';
+import { listMonitorsFn } from "@/server/functions/monitors";
+import { listStatusPagesFn } from "@/server/functions/status-pages";
+import { listOpenIncidentsFn } from "@/server/functions/incidents";
+import { listChannelsFn } from "@/server/functions/notification-channels";
+import { toTitleCase } from "@/utils/format";
+import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
+import { ListContainer, ListRow } from "@/components/list";
+import { Badge, Button, StatusBadge, isStatusType } from "@/components/ui";
 
-export const Route = createFileRoute('/app/')({
+export const Route = createFileRoute("/app/")({
   component: Overview,
   loader: async () => {
     const [monitorsRes, pagesRes, incidentsRes, channelsRes] =
@@ -36,13 +36,13 @@ function Overview() {
     channels,
   } = Route.useLoaderData();
 
-  const upCount = monitors.filter((m) => m.state?.lastStatus === 'up').length;
+  const upCount = monitors.filter((m) => m.state?.lastStatus === "up").length;
   const downCount = monitors.filter(
-    (m) => m.state?.lastStatus === 'down',
+    (m) => m.state?.lastStatus === "down"
   ).length;
 
   const overallStatus =
-    downCount > 0 ? 'degraded' : upCount > 0 ? 'operational' : 'unknown';
+    downCount > 0 ? "degraded" : upCount > 0 ? "operational" : "unknown";
 
   const hasCompletedSetup =
     monitors.length > 0 && channels.length > 0 && pages.length > 0;
@@ -69,24 +69,24 @@ function Overview() {
         <div className="flex items-center gap-3">
           <span
             className={`status-indicator ${overallStatus} h-3 w-3 rounded-full ${
-              overallStatus === 'operational'
-                ? 'bg-[color:var(--green)]'
-                : overallStatus === 'degraded'
-                  ? 'bg-[color:var(--red)]'
-                  : 'bg-[color:var(--muted)]'
+              overallStatus === "operational"
+                ? "bg-[color:var(--green)]"
+                : overallStatus === "degraded"
+                  ? "bg-[color:var(--red)]"
+                  : "bg-[color:var(--muted)]"
             }`}
           />
           <div>
             <div className="font-semibold text-lg">
-              {overallStatus === 'operational'
-                ? 'All systems operational'
-                : overallStatus === 'degraded'
-                  ? 'System degraded'
-                  : 'No monitors configured'}
+              {overallStatus === "operational"
+                ? "All systems operational"
+                : overallStatus === "degraded"
+                  ? "System degraded"
+                  : "No monitors configured"}
             </div>
             <div className="muted">
               {upCount} up · {downCount} down · {incidents.length} open incident
-              {incidents.length !== 1 ? 's' : ''}
+              {incidents.length !== 1 ? "s" : ""}
             </div>
           </div>
         </div>
@@ -103,7 +103,7 @@ function Overview() {
           <div className="metric-label">Monitors down</div>
           <div
             className={`metric-value ${
-              downCount > 0 ? 'text-[color:var(--red)]' : ''
+              downCount > 0 ? "text-[color:var(--red)]" : ""
             }`}
           >
             {downCount}
@@ -113,7 +113,7 @@ function Overview() {
           <div className="metric-label">Open incidents</div>
           <div
             className={`metric-value ${
-              incidents.length > 0 ? 'text-[color:var(--orange)]' : ''
+              incidents.length > 0 ? "text-[color:var(--orange)]" : ""
             }`}
           >
             {incidents.length}
@@ -234,13 +234,13 @@ function Overview() {
                       status={
                         isStatusType(incident.status)
                           ? incident.status
-                          : 'unknown'
+                          : "unknown"
                       }
                     >
                       {toTitleCase(
                         isStatusType(incident.status)
                           ? incident.status
-                          : 'unknown',
+                          : "unknown"
                       )}
                     </StatusBadge>
                   </>
@@ -277,8 +277,8 @@ function Overview() {
             emptyMessage="No monitors yet."
           >
             {monitors.slice(0, 5).map((monitor) => {
-              const rawStatus = monitor.state?.lastStatus ?? 'unknown';
-              const status = isStatusType(rawStatus) ? rawStatus : 'unknown';
+              const rawStatus = monitor.state?.lastStatus ?? "unknown";
+              const status = isStatusType(rawStatus) ? rawStatus : "unknown";
 
               return (
                 <ListRow
@@ -324,7 +324,7 @@ function Overview() {
                     type="button"
                     variant="outline"
                     onClick={() =>
-                      window.open(`/status/${page.slug}`, '_blank')
+                      window.open(`/status/${page.slug}`, "_blank")
                     }
                   >
                     View

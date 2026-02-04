@@ -32,13 +32,16 @@ export const Route = createFileRoute("/api/status/$slug/availability")({
           if (!success) {
             return Response.json(
               { ok: false, error: "Rate limit exceeded" },
-              { status: 429, headers: { "Retry-After": "60" } },
+              { status: 429, headers: { "Retry-After": "60" } }
             );
           }
 
           const page = await getExternalStatusPageBySlug(db, params.slug);
           if (!page) {
-            return Response.json({ ok: false, error: "Not found" }, { status: 404 });
+            return Response.json(
+              { ok: false, error: "Not found" },
+              { status: 404 }
+            );
           }
 
           if (page.accessMode === "private") {
@@ -46,7 +49,7 @@ export const Route = createFileRoute("/api/status/$slug/availability")({
             if (!isStatusPageUnlocked(session, params.slug)) {
               return Response.json(
                 { ok: false, error: "password_required" },
-                { status: 401 },
+                { status: 401 }
               );
             }
           }
@@ -64,7 +67,10 @@ export const Route = createFileRoute("/api/status/$slug/availability")({
             bucket: data.bucket,
           });
           if (res.kind === "not_found") {
-            return Response.json({ ok: false, error: "Not found" }, { status: 404 });
+            return Response.json(
+              { ok: false, error: "Not found" },
+              { status: 404 }
+            );
           }
 
           return Response.json({ ok: true, ...res });
@@ -72,16 +78,15 @@ export const Route = createFileRoute("/api/status/$slug/availability")({
           if (error instanceof z.ZodError) {
             return Response.json(
               { ok: false, error: "Invalid query params" },
-              { status: 400 },
+              { status: 400 }
             );
           }
           return Response.json(
             { ok: false, error: "Internal server error" },
-            { status: 500 },
+            { status: 500 }
           );
         }
       },
     },
   },
 });
-

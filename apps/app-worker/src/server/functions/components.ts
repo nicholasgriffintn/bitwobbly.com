@@ -19,10 +19,11 @@ import {
   getComponentsForStatusPage,
   getComponentById,
 } from "../repositories/components";
+import { getStatusPageById } from "../repositories/status-pages";
 import {
-  getStatusPageById,
-} from "../repositories/status-pages";
-import { clearAllStatusPageCaches, clearStatusPageCache } from "../services/status-snapshots";
+  clearAllStatusPageCaches,
+  clearStatusPageCache,
+} from "../services/status-snapshots";
 import {
   getComponentUptimeMetrics,
   getComponentMetrics,
@@ -63,7 +64,7 @@ export const listComponentsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const components = await listComponents(db, teamId);
     return { components };
-  },
+  }
 );
 
 export const createComponentFn = createServerFn({ method: "POST" })
@@ -126,7 +127,7 @@ export const unlinkMonitorFn = createServerFn({ method: "POST" })
       db,
       teamId,
       data.componentId,
-      data.monitorId,
+      data.monitorId
     );
 
     await clearAllStatusPageCaches(db, vars.KV, teamId);
@@ -140,7 +141,12 @@ export const linkDependencyFn = createServerFn({ method: "POST" })
     const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    await linkDependency(db, teamId, data.componentId, data.dependsOnComponentId);
+    await linkDependency(
+      db,
+      teamId,
+      data.componentId,
+      data.dependsOnComponentId
+    );
 
     await clearAllStatusPageCaches(db, vars.KV, teamId);
 
@@ -153,7 +159,12 @@ export const unlinkDependencyFn = createServerFn({ method: "POST" })
     const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
-    await unlinkDependency(db, teamId, data.componentId, data.dependsOnComponentId);
+    await unlinkDependency(
+      db,
+      teamId,
+      data.componentId,
+      data.dependsOnComponentId
+    );
 
     await clearAllStatusPageCaches(db, vars.KV, teamId);
 
@@ -175,7 +186,7 @@ export const linkToPageFn = createServerFn({ method: "POST" })
       teamId,
       data.statusPageId,
       data.componentId,
-      data.sortOrder || 0,
+      data.sortOrder || 0
     );
 
     await clearStatusPageCache(db, vars.KV, teamId, page.id);
@@ -185,7 +196,7 @@ export const linkToPageFn = createServerFn({ method: "POST" })
 
 export const unlinkFromPageFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ statusPageId: z.string(), componentId: z.string() }).parse(data),
+    z.object({ statusPageId: z.string(), componentId: z.string() }).parse(data)
   )
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
@@ -199,7 +210,7 @@ export const unlinkFromPageFn = createServerFn({ method: "POST" })
       db,
       teamId,
       data.statusPageId,
-      data.componentId,
+      data.componentId
     );
 
     await clearStatusPageCache(db, vars.KV, teamId, page.id);
@@ -216,7 +227,7 @@ export const getPageComponentsFn = createServerFn({ method: "GET" })
     const components = await getComponentsForStatusPage(
       db,
       teamId,
-      data.statusPageId,
+      data.statusPageId
     );
     return { components };
   });
@@ -257,7 +268,7 @@ export const getComponentUptimeFn = createServerFn({ method: "GET" })
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
       monitorIds,
-      periodDays,
+      periodDays
     );
 
     return uptime;
@@ -289,7 +300,7 @@ export const getComponentMetricsFn = createServerFn({ method: "GET" })
       component.name,
       monitorIds,
       data.from,
-      data.to,
+      data.to
     );
 
     return metrics;

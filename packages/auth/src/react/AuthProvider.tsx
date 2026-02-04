@@ -14,7 +14,7 @@ export type AuthContextValue = {
   signUp: (
     email: string,
     password: string,
-    inviteCode: string,
+    inviteCode: string
   ) => Promise<void>;
   signOut: () => Promise<void>;
   setupMFA: () => Promise<MFASetupResult>;
@@ -71,7 +71,7 @@ export function AuthProvider({
         setLoading(false);
       }
     },
-    [signInFn],
+    [signInFn]
   );
 
   const signUp = useCallback(
@@ -92,7 +92,7 @@ export function AuthProvider({
         setLoading(false);
       }
     },
-    [signUpFn],
+    [signUpFn]
   );
 
   const signOut = useCallback(async () => {
@@ -139,7 +139,7 @@ export function AuthProvider({
         throw err;
       }
     },
-    [verifyMFASetupFn],
+    [verifyMFASetupFn]
   );
 
   const disableMFA = useCallback(async () => {
@@ -179,7 +179,7 @@ export function AuthProvider({
       disableMFA,
       disableMFAFn,
       loading,
-    ],
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

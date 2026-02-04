@@ -8,633 +8,633 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as SetupMfaRouteImport } from './routes/setup-mfa'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as NewPasswordRouteImport } from './routes/new-password'
-import { Route as MfaChallengeRouteImport } from './routes/mfa-challenge'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as JoinRouteImport } from './routes/join'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as AuthErrorRouteImport } from './routes/auth-error'
-import { Route as AppRouteImport } from './routes/app'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as StatusSlugRouteImport } from './routes/status/$slug'
-import { Route as AppStatusPagesRouteImport } from './routes/app/status-pages'
-import { Route as AppSettingsRouteImport } from './routes/app/settings'
-import { Route as AppNotificationsRouteImport } from './routes/app/notifications'
-import { Route as AppMonitorsRouteImport } from './routes/app/monitors'
-import { Route as AppMaintenanceRouteImport } from './routes/app/maintenance'
-import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
-import { Route as AppComponentsRouteImport } from './routes/app/components'
-import { Route as AppIssuesIndexRouteImport } from './routes/app/issues/index'
-import { Route as StatusSlugUnsubscribeRouteImport } from './routes/status/$slug/unsubscribe'
-import { Route as StatusSlugConfirmRouteImport } from './routes/status/$slug/confirm'
-import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.$monitorId'
-import { Route as ApiHeartbeatsMonitorIdRouteImport } from './routes/api.heartbeats.$monitorId'
-import { Route as AppIssuesProjectIdIndexRouteImport } from './routes/app/issues/$projectId/index'
-import { Route as ApiStatusSlugAvailabilityRouteImport } from './routes/api.status.$slug.availability'
-import { Route as AppIssuesProjectIdIssueIssueIdRouteImport } from './routes/app/issues/$projectId/issue/$issueId'
-import { Route as ApiStatusSlugReportsAvailabilityMonthlyRouteImport } from './routes/api.status.$slug.reports.availability.monthly'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as VerifyEmailRouteImport } from "./routes/verify-email";
+import { Route as SetupMfaRouteImport } from "./routes/setup-mfa";
+import { Route as ResetPasswordRouteImport } from "./routes/reset-password";
+import { Route as OnboardingRouteImport } from "./routes/onboarding";
+import { Route as NewPasswordRouteImport } from "./routes/new-password";
+import { Route as MfaChallengeRouteImport } from "./routes/mfa-challenge";
+import { Route as LoginRouteImport } from "./routes/login";
+import { Route as JoinRouteImport } from "./routes/join";
+import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password";
+import { Route as AuthErrorRouteImport } from "./routes/auth-error";
+import { Route as AppRouteImport } from "./routes/app";
+import { Route as IndexRouteImport } from "./routes/index";
+import { Route as AppIndexRouteImport } from "./routes/app/index";
+import { Route as StatusSlugRouteImport } from "./routes/status/$slug";
+import { Route as AppStatusPagesRouteImport } from "./routes/app/status-pages";
+import { Route as AppSettingsRouteImport } from "./routes/app/settings";
+import { Route as AppNotificationsRouteImport } from "./routes/app/notifications";
+import { Route as AppMonitorsRouteImport } from "./routes/app/monitors";
+import { Route as AppMaintenanceRouteImport } from "./routes/app/maintenance";
+import { Route as AppIncidentsRouteImport } from "./routes/app/incidents";
+import { Route as AppComponentsRouteImport } from "./routes/app/components";
+import { Route as AppIssuesIndexRouteImport } from "./routes/app/issues/index";
+import { Route as StatusSlugUnsubscribeRouteImport } from "./routes/status/$slug/unsubscribe";
+import { Route as StatusSlugConfirmRouteImport } from "./routes/status/$slug/confirm";
+import { Route as ApiWebhooksMonitorIdRouteImport } from "./routes/api.webhooks.$monitorId";
+import { Route as ApiHeartbeatsMonitorIdRouteImport } from "./routes/api.heartbeats.$monitorId";
+import { Route as AppIssuesProjectIdIndexRouteImport } from "./routes/app/issues/$projectId/index";
+import { Route as ApiStatusSlugAvailabilityRouteImport } from "./routes/api.status.$slug.availability";
+import { Route as AppIssuesProjectIdIssueIssueIdRouteImport } from "./routes/app/issues/$projectId/issue/$issueId";
+import { Route as ApiStatusSlugReportsAvailabilityMonthlyRouteImport } from "./routes/api.status.$slug.reports.availability.monthly";
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
+  id: "/verify-email",
+  path: "/verify-email",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SetupMfaRoute = SetupMfaRouteImport.update({
-  id: '/setup-mfa',
-  path: '/setup-mfa',
+  id: "/setup-mfa",
+  path: "/setup-mfa",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+  id: "/reset-password",
+  path: "/reset-password",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
+  id: "/onboarding",
+  path: "/onboarding",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const NewPasswordRoute = NewPasswordRouteImport.update({
-  id: '/new-password',
-  path: '/new-password',
+  id: "/new-password",
+  path: "/new-password",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const MfaChallengeRoute = MfaChallengeRouteImport.update({
-  id: '/mfa-challenge',
-  path: '/mfa-challenge',
+  id: "/mfa-challenge",
+  path: "/mfa-challenge",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const JoinRoute = JoinRouteImport.update({
-  id: '/join',
-  path: '/join',
+  id: "/join",
+  path: "/join",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
+  id: "/forgot-password",
+  path: "/forgot-password",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthErrorRoute = AuthErrorRouteImport.update({
-  id: '/auth-error',
-  path: '/auth-error',
+  id: "/auth-error",
+  path: "/auth-error",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
+  id: "/app",
+  path: "/app",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const StatusSlugRoute = StatusSlugRouteImport.update({
-  id: '/status/$slug',
-  path: '/status/$slug',
+  id: "/status/$slug",
+  path: "/status/$slug",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppStatusPagesRoute = AppStatusPagesRouteImport.update({
-  id: '/status-pages',
-  path: '/status-pages',
+  id: "/status-pages",
+  path: "/status-pages",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+  id: "/settings",
+  path: "/settings",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
+  id: "/notifications",
+  path: "/notifications",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppMonitorsRoute = AppMonitorsRouteImport.update({
-  id: '/monitors',
-  path: '/monitors',
+  id: "/monitors",
+  path: "/monitors",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppMaintenanceRoute = AppMaintenanceRouteImport.update({
-  id: '/maintenance',
-  path: '/maintenance',
+  id: "/maintenance",
+  path: "/maintenance",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppIncidentsRoute = AppIncidentsRouteImport.update({
-  id: '/incidents',
-  path: '/incidents',
+  id: "/incidents",
+  path: "/incidents",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppComponentsRoute = AppComponentsRouteImport.update({
-  id: '/components',
-  path: '/components',
+  id: "/components",
+  path: "/components",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppIssuesIndexRoute = AppIssuesIndexRouteImport.update({
-  id: '/issues/',
-  path: '/issues/',
+  id: "/issues/",
+  path: "/issues/",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const StatusSlugUnsubscribeRoute = StatusSlugUnsubscribeRouteImport.update({
-  id: '/unsubscribe',
-  path: '/unsubscribe',
+  id: "/unsubscribe",
+  path: "/unsubscribe",
   getParentRoute: () => StatusSlugRoute,
-} as any)
+} as any);
 const StatusSlugConfirmRoute = StatusSlugConfirmRouteImport.update({
-  id: '/confirm',
-  path: '/confirm',
+  id: "/confirm",
+  path: "/confirm",
   getParentRoute: () => StatusSlugRoute,
-} as any)
+} as any);
 const ApiWebhooksMonitorIdRoute = ApiWebhooksMonitorIdRouteImport.update({
-  id: '/api/webhooks/$monitorId',
-  path: '/api/webhooks/$monitorId',
+  id: "/api/webhooks/$monitorId",
+  path: "/api/webhooks/$monitorId",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiHeartbeatsMonitorIdRoute = ApiHeartbeatsMonitorIdRouteImport.update({
-  id: '/api/heartbeats/$monitorId',
-  path: '/api/heartbeats/$monitorId',
+  id: "/api/heartbeats/$monitorId",
+  path: "/api/heartbeats/$monitorId",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppIssuesProjectIdIndexRoute = AppIssuesProjectIdIndexRouteImport.update({
-  id: '/issues/$projectId/',
-  path: '/issues/$projectId/',
+  id: "/issues/$projectId/",
+  path: "/issues/$projectId/",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const ApiStatusSlugAvailabilityRoute =
   ApiStatusSlugAvailabilityRouteImport.update({
-    id: '/api/status/$slug/availability',
-    path: '/api/status/$slug/availability',
+    id: "/api/status/$slug/availability",
+    path: "/api/status/$slug/availability",
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const AppIssuesProjectIdIssueIssueIdRoute =
   AppIssuesProjectIdIssueIssueIdRouteImport.update({
-    id: '/issues/$projectId/issue/$issueId',
-    path: '/issues/$projectId/issue/$issueId',
+    id: "/issues/$projectId/issue/$issueId",
+    path: "/issues/$projectId/issue/$issueId",
     getParentRoute: () => AppRoute,
-  } as any)
+  } as any);
 const ApiStatusSlugReportsAvailabilityMonthlyRoute =
   ApiStatusSlugReportsAvailabilityMonthlyRouteImport.update({
-    id: '/api/status/$slug/reports/availability/monthly',
-    path: '/api/status/$slug/reports/availability/monthly',
+    id: "/api/status/$slug/reports/availability/monthly",
+    path: "/api/status/$slug/reports/availability/monthly",
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/app': typeof AppRouteWithChildren
-  '/auth-error': typeof AuthErrorRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/join': typeof JoinRoute
-  '/login': typeof LoginRoute
-  '/mfa-challenge': typeof MfaChallengeRoute
-  '/new-password': typeof NewPasswordRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/setup-mfa': typeof SetupMfaRoute
-  '/verify-email': typeof VerifyEmailRoute
-  '/app/components': typeof AppComponentsRoute
-  '/app/incidents': typeof AppIncidentsRoute
-  '/app/maintenance': typeof AppMaintenanceRoute
-  '/app/monitors': typeof AppMonitorsRoute
-  '/app/notifications': typeof AppNotificationsRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/status-pages': typeof AppStatusPagesRoute
-  '/status/$slug': typeof StatusSlugRouteWithChildren
-  '/app/': typeof AppIndexRoute
-  '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
-  '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
-  '/status/$slug/confirm': typeof StatusSlugConfirmRoute
-  '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
-  '/app/issues/': typeof AppIssuesIndexRoute
-  '/api/status/$slug/availability': typeof ApiStatusSlugAvailabilityRoute
-  '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
-  '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
-  '/api/status/$slug/reports/availability/monthly': typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
+  "/": typeof IndexRoute;
+  "/app": typeof AppRouteWithChildren;
+  "/auth-error": typeof AuthErrorRoute;
+  "/forgot-password": typeof ForgotPasswordRoute;
+  "/join": typeof JoinRoute;
+  "/login": typeof LoginRoute;
+  "/mfa-challenge": typeof MfaChallengeRoute;
+  "/new-password": typeof NewPasswordRoute;
+  "/onboarding": typeof OnboardingRoute;
+  "/reset-password": typeof ResetPasswordRoute;
+  "/setup-mfa": typeof SetupMfaRoute;
+  "/verify-email": typeof VerifyEmailRoute;
+  "/app/components": typeof AppComponentsRoute;
+  "/app/incidents": typeof AppIncidentsRoute;
+  "/app/maintenance": typeof AppMaintenanceRoute;
+  "/app/monitors": typeof AppMonitorsRoute;
+  "/app/notifications": typeof AppNotificationsRoute;
+  "/app/settings": typeof AppSettingsRoute;
+  "/app/status-pages": typeof AppStatusPagesRoute;
+  "/status/$slug": typeof StatusSlugRouteWithChildren;
+  "/app/": typeof AppIndexRoute;
+  "/api/heartbeats/$monitorId": typeof ApiHeartbeatsMonitorIdRoute;
+  "/api/webhooks/$monitorId": typeof ApiWebhooksMonitorIdRoute;
+  "/status/$slug/confirm": typeof StatusSlugConfirmRoute;
+  "/status/$slug/unsubscribe": typeof StatusSlugUnsubscribeRoute;
+  "/app/issues/": typeof AppIssuesIndexRoute;
+  "/api/status/$slug/availability": typeof ApiStatusSlugAvailabilityRoute;
+  "/app/issues/$projectId/": typeof AppIssuesProjectIdIndexRoute;
+  "/app/issues/$projectId/issue/$issueId": typeof AppIssuesProjectIdIssueIssueIdRoute;
+  "/api/status/$slug/reports/availability/monthly": typeof ApiStatusSlugReportsAvailabilityMonthlyRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/auth-error': typeof AuthErrorRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/join': typeof JoinRoute
-  '/login': typeof LoginRoute
-  '/mfa-challenge': typeof MfaChallengeRoute
-  '/new-password': typeof NewPasswordRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/setup-mfa': typeof SetupMfaRoute
-  '/verify-email': typeof VerifyEmailRoute
-  '/app/components': typeof AppComponentsRoute
-  '/app/incidents': typeof AppIncidentsRoute
-  '/app/maintenance': typeof AppMaintenanceRoute
-  '/app/monitors': typeof AppMonitorsRoute
-  '/app/notifications': typeof AppNotificationsRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/status-pages': typeof AppStatusPagesRoute
-  '/status/$slug': typeof StatusSlugRouteWithChildren
-  '/app': typeof AppIndexRoute
-  '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
-  '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
-  '/status/$slug/confirm': typeof StatusSlugConfirmRoute
-  '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
-  '/app/issues': typeof AppIssuesIndexRoute
-  '/api/status/$slug/availability': typeof ApiStatusSlugAvailabilityRoute
-  '/app/issues/$projectId': typeof AppIssuesProjectIdIndexRoute
-  '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
-  '/api/status/$slug/reports/availability/monthly': typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
+  "/": typeof IndexRoute;
+  "/auth-error": typeof AuthErrorRoute;
+  "/forgot-password": typeof ForgotPasswordRoute;
+  "/join": typeof JoinRoute;
+  "/login": typeof LoginRoute;
+  "/mfa-challenge": typeof MfaChallengeRoute;
+  "/new-password": typeof NewPasswordRoute;
+  "/onboarding": typeof OnboardingRoute;
+  "/reset-password": typeof ResetPasswordRoute;
+  "/setup-mfa": typeof SetupMfaRoute;
+  "/verify-email": typeof VerifyEmailRoute;
+  "/app/components": typeof AppComponentsRoute;
+  "/app/incidents": typeof AppIncidentsRoute;
+  "/app/maintenance": typeof AppMaintenanceRoute;
+  "/app/monitors": typeof AppMonitorsRoute;
+  "/app/notifications": typeof AppNotificationsRoute;
+  "/app/settings": typeof AppSettingsRoute;
+  "/app/status-pages": typeof AppStatusPagesRoute;
+  "/status/$slug": typeof StatusSlugRouteWithChildren;
+  "/app": typeof AppIndexRoute;
+  "/api/heartbeats/$monitorId": typeof ApiHeartbeatsMonitorIdRoute;
+  "/api/webhooks/$monitorId": typeof ApiWebhooksMonitorIdRoute;
+  "/status/$slug/confirm": typeof StatusSlugConfirmRoute;
+  "/status/$slug/unsubscribe": typeof StatusSlugUnsubscribeRoute;
+  "/app/issues": typeof AppIssuesIndexRoute;
+  "/api/status/$slug/availability": typeof ApiStatusSlugAvailabilityRoute;
+  "/app/issues/$projectId": typeof AppIssuesProjectIdIndexRoute;
+  "/app/issues/$projectId/issue/$issueId": typeof AppIssuesProjectIdIssueIssueIdRoute;
+  "/api/status/$slug/reports/availability/monthly": typeof ApiStatusSlugReportsAvailabilityMonthlyRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/app': typeof AppRouteWithChildren
-  '/auth-error': typeof AuthErrorRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/join': typeof JoinRoute
-  '/login': typeof LoginRoute
-  '/mfa-challenge': typeof MfaChallengeRoute
-  '/new-password': typeof NewPasswordRoute
-  '/onboarding': typeof OnboardingRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/setup-mfa': typeof SetupMfaRoute
-  '/verify-email': typeof VerifyEmailRoute
-  '/app/components': typeof AppComponentsRoute
-  '/app/incidents': typeof AppIncidentsRoute
-  '/app/maintenance': typeof AppMaintenanceRoute
-  '/app/monitors': typeof AppMonitorsRoute
-  '/app/notifications': typeof AppNotificationsRoute
-  '/app/settings': typeof AppSettingsRoute
-  '/app/status-pages': typeof AppStatusPagesRoute
-  '/status/$slug': typeof StatusSlugRouteWithChildren
-  '/app/': typeof AppIndexRoute
-  '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
-  '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
-  '/status/$slug/confirm': typeof StatusSlugConfirmRoute
-  '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
-  '/app/issues/': typeof AppIssuesIndexRoute
-  '/api/status/$slug/availability': typeof ApiStatusSlugAvailabilityRoute
-  '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
-  '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
-  '/api/status/$slug/reports/availability/monthly': typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/app": typeof AppRouteWithChildren;
+  "/auth-error": typeof AuthErrorRoute;
+  "/forgot-password": typeof ForgotPasswordRoute;
+  "/join": typeof JoinRoute;
+  "/login": typeof LoginRoute;
+  "/mfa-challenge": typeof MfaChallengeRoute;
+  "/new-password": typeof NewPasswordRoute;
+  "/onboarding": typeof OnboardingRoute;
+  "/reset-password": typeof ResetPasswordRoute;
+  "/setup-mfa": typeof SetupMfaRoute;
+  "/verify-email": typeof VerifyEmailRoute;
+  "/app/components": typeof AppComponentsRoute;
+  "/app/incidents": typeof AppIncidentsRoute;
+  "/app/maintenance": typeof AppMaintenanceRoute;
+  "/app/monitors": typeof AppMonitorsRoute;
+  "/app/notifications": typeof AppNotificationsRoute;
+  "/app/settings": typeof AppSettingsRoute;
+  "/app/status-pages": typeof AppStatusPagesRoute;
+  "/status/$slug": typeof StatusSlugRouteWithChildren;
+  "/app/": typeof AppIndexRoute;
+  "/api/heartbeats/$monitorId": typeof ApiHeartbeatsMonitorIdRoute;
+  "/api/webhooks/$monitorId": typeof ApiWebhooksMonitorIdRoute;
+  "/status/$slug/confirm": typeof StatusSlugConfirmRoute;
+  "/status/$slug/unsubscribe": typeof StatusSlugUnsubscribeRoute;
+  "/app/issues/": typeof AppIssuesIndexRoute;
+  "/api/status/$slug/availability": typeof ApiStatusSlugAvailabilityRoute;
+  "/app/issues/$projectId/": typeof AppIssuesProjectIdIndexRoute;
+  "/app/issues/$projectId/issue/$issueId": typeof AppIssuesProjectIdIssueIssueIdRoute;
+  "/api/status/$slug/reports/availability/monthly": typeof ApiStatusSlugReportsAvailabilityMonthlyRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
-    | '/'
-    | '/app'
-    | '/auth-error'
-    | '/forgot-password'
-    | '/join'
-    | '/login'
-    | '/mfa-challenge'
-    | '/new-password'
-    | '/onboarding'
-    | '/reset-password'
-    | '/setup-mfa'
-    | '/verify-email'
-    | '/app/components'
-    | '/app/incidents'
-    | '/app/maintenance'
-    | '/app/monitors'
-    | '/app/notifications'
-    | '/app/settings'
-    | '/app/status-pages'
-    | '/status/$slug'
-    | '/app/'
-    | '/api/heartbeats/$monitorId'
-    | '/api/webhooks/$monitorId'
-    | '/status/$slug/confirm'
-    | '/status/$slug/unsubscribe'
-    | '/app/issues/'
-    | '/api/status/$slug/availability'
-    | '/app/issues/$projectId/'
-    | '/app/issues/$projectId/issue/$issueId'
-    | '/api/status/$slug/reports/availability/monthly'
-  fileRoutesByTo: FileRoutesByTo
+    | "/"
+    | "/app"
+    | "/auth-error"
+    | "/forgot-password"
+    | "/join"
+    | "/login"
+    | "/mfa-challenge"
+    | "/new-password"
+    | "/onboarding"
+    | "/reset-password"
+    | "/setup-mfa"
+    | "/verify-email"
+    | "/app/components"
+    | "/app/incidents"
+    | "/app/maintenance"
+    | "/app/monitors"
+    | "/app/notifications"
+    | "/app/settings"
+    | "/app/status-pages"
+    | "/status/$slug"
+    | "/app/"
+    | "/api/heartbeats/$monitorId"
+    | "/api/webhooks/$monitorId"
+    | "/status/$slug/confirm"
+    | "/status/$slug/unsubscribe"
+    | "/app/issues/"
+    | "/api/status/$slug/availability"
+    | "/app/issues/$projectId/"
+    | "/app/issues/$projectId/issue/$issueId"
+    | "/api/status/$slug/reports/availability/monthly";
+  fileRoutesByTo: FileRoutesByTo;
   to:
-    | '/'
-    | '/auth-error'
-    | '/forgot-password'
-    | '/join'
-    | '/login'
-    | '/mfa-challenge'
-    | '/new-password'
-    | '/onboarding'
-    | '/reset-password'
-    | '/setup-mfa'
-    | '/verify-email'
-    | '/app/components'
-    | '/app/incidents'
-    | '/app/maintenance'
-    | '/app/monitors'
-    | '/app/notifications'
-    | '/app/settings'
-    | '/app/status-pages'
-    | '/status/$slug'
-    | '/app'
-    | '/api/heartbeats/$monitorId'
-    | '/api/webhooks/$monitorId'
-    | '/status/$slug/confirm'
-    | '/status/$slug/unsubscribe'
-    | '/app/issues'
-    | '/api/status/$slug/availability'
-    | '/app/issues/$projectId'
-    | '/app/issues/$projectId/issue/$issueId'
-    | '/api/status/$slug/reports/availability/monthly'
+    | "/"
+    | "/auth-error"
+    | "/forgot-password"
+    | "/join"
+    | "/login"
+    | "/mfa-challenge"
+    | "/new-password"
+    | "/onboarding"
+    | "/reset-password"
+    | "/setup-mfa"
+    | "/verify-email"
+    | "/app/components"
+    | "/app/incidents"
+    | "/app/maintenance"
+    | "/app/monitors"
+    | "/app/notifications"
+    | "/app/settings"
+    | "/app/status-pages"
+    | "/status/$slug"
+    | "/app"
+    | "/api/heartbeats/$monitorId"
+    | "/api/webhooks/$monitorId"
+    | "/status/$slug/confirm"
+    | "/status/$slug/unsubscribe"
+    | "/app/issues"
+    | "/api/status/$slug/availability"
+    | "/app/issues/$projectId"
+    | "/app/issues/$projectId/issue/$issueId"
+    | "/api/status/$slug/reports/availability/monthly";
   id:
-    | '__root__'
-    | '/'
-    | '/app'
-    | '/auth-error'
-    | '/forgot-password'
-    | '/join'
-    | '/login'
-    | '/mfa-challenge'
-    | '/new-password'
-    | '/onboarding'
-    | '/reset-password'
-    | '/setup-mfa'
-    | '/verify-email'
-    | '/app/components'
-    | '/app/incidents'
-    | '/app/maintenance'
-    | '/app/monitors'
-    | '/app/notifications'
-    | '/app/settings'
-    | '/app/status-pages'
-    | '/status/$slug'
-    | '/app/'
-    | '/api/heartbeats/$monitorId'
-    | '/api/webhooks/$monitorId'
-    | '/status/$slug/confirm'
-    | '/status/$slug/unsubscribe'
-    | '/app/issues/'
-    | '/api/status/$slug/availability'
-    | '/app/issues/$projectId/'
-    | '/app/issues/$projectId/issue/$issueId'
-    | '/api/status/$slug/reports/availability/monthly'
-  fileRoutesById: FileRoutesById
+    | "__root__"
+    | "/"
+    | "/app"
+    | "/auth-error"
+    | "/forgot-password"
+    | "/join"
+    | "/login"
+    | "/mfa-challenge"
+    | "/new-password"
+    | "/onboarding"
+    | "/reset-password"
+    | "/setup-mfa"
+    | "/verify-email"
+    | "/app/components"
+    | "/app/incidents"
+    | "/app/maintenance"
+    | "/app/monitors"
+    | "/app/notifications"
+    | "/app/settings"
+    | "/app/status-pages"
+    | "/status/$slug"
+    | "/app/"
+    | "/api/heartbeats/$monitorId"
+    | "/api/webhooks/$monitorId"
+    | "/status/$slug/confirm"
+    | "/status/$slug/unsubscribe"
+    | "/app/issues/"
+    | "/api/status/$slug/availability"
+    | "/app/issues/$projectId/"
+    | "/app/issues/$projectId/issue/$issueId"
+    | "/api/status/$slug/reports/availability/monthly";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRouteWithChildren
-  AuthErrorRoute: typeof AuthErrorRoute
-  ForgotPasswordRoute: typeof ForgotPasswordRoute
-  JoinRoute: typeof JoinRoute
-  LoginRoute: typeof LoginRoute
-  MfaChallengeRoute: typeof MfaChallengeRoute
-  NewPasswordRoute: typeof NewPasswordRoute
-  OnboardingRoute: typeof OnboardingRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
-  SetupMfaRoute: typeof SetupMfaRoute
-  VerifyEmailRoute: typeof VerifyEmailRoute
-  StatusSlugRoute: typeof StatusSlugRouteWithChildren
-  ApiHeartbeatsMonitorIdRoute: typeof ApiHeartbeatsMonitorIdRoute
-  ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute
-  ApiStatusSlugAvailabilityRoute: typeof ApiStatusSlugAvailabilityRoute
-  ApiStatusSlugReportsAvailabilityMonthlyRoute: typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
+  IndexRoute: typeof IndexRoute;
+  AppRoute: typeof AppRouteWithChildren;
+  AuthErrorRoute: typeof AuthErrorRoute;
+  ForgotPasswordRoute: typeof ForgotPasswordRoute;
+  JoinRoute: typeof JoinRoute;
+  LoginRoute: typeof LoginRoute;
+  MfaChallengeRoute: typeof MfaChallengeRoute;
+  NewPasswordRoute: typeof NewPasswordRoute;
+  OnboardingRoute: typeof OnboardingRoute;
+  ResetPasswordRoute: typeof ResetPasswordRoute;
+  SetupMfaRoute: typeof SetupMfaRoute;
+  VerifyEmailRoute: typeof VerifyEmailRoute;
+  StatusSlugRoute: typeof StatusSlugRouteWithChildren;
+  ApiHeartbeatsMonitorIdRoute: typeof ApiHeartbeatsMonitorIdRoute;
+  ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute;
+  ApiStatusSlugAvailabilityRoute: typeof ApiStatusSlugAvailabilityRoute;
+  ApiStatusSlugReportsAvailabilityMonthlyRoute: typeof ApiStatusSlugReportsAvailabilityMonthlyRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/verify-email': {
-      id: '/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/setup-mfa': {
-      id: '/setup-mfa'
-      path: '/setup-mfa'
-      fullPath: '/setup-mfa'
-      preLoaderRoute: typeof SetupMfaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/new-password': {
-      id: '/new-password'
-      path: '/new-password'
-      fullPath: '/new-password'
-      preLoaderRoute: typeof NewPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mfa-challenge': {
-      id: '/mfa-challenge'
-      path: '/mfa-challenge'
-      fullPath: '/mfa-challenge'
-      preLoaderRoute: typeof MfaChallengeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join': {
-      id: '/join'
-      path: '/join'
-      fullPath: '/join'
-      preLoaderRoute: typeof JoinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth-error': {
-      id: '/auth-error'
-      path: '/auth-error'
-      fullPath: '/auth-error'
-      preLoaderRoute: typeof AuthErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/': {
-      id: '/app/'
-      path: '/'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/status/$slug': {
-      id: '/status/$slug'
-      path: '/status/$slug'
-      fullPath: '/status/$slug'
-      preLoaderRoute: typeof StatusSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/status-pages': {
-      id: '/app/status-pages'
-      path: '/status-pages'
-      fullPath: '/app/status-pages'
-      preLoaderRoute: typeof AppStatusPagesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/notifications': {
-      id: '/app/notifications'
-      path: '/notifications'
-      fullPath: '/app/notifications'
-      preLoaderRoute: typeof AppNotificationsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/monitors': {
-      id: '/app/monitors'
-      path: '/monitors'
-      fullPath: '/app/monitors'
-      preLoaderRoute: typeof AppMonitorsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/maintenance': {
-      id: '/app/maintenance'
-      path: '/maintenance'
-      fullPath: '/app/maintenance'
-      preLoaderRoute: typeof AppMaintenanceRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/incidents': {
-      id: '/app/incidents'
-      path: '/incidents'
-      fullPath: '/app/incidents'
-      preLoaderRoute: typeof AppIncidentsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/components': {
-      id: '/app/components'
-      path: '/components'
-      fullPath: '/app/components'
-      preLoaderRoute: typeof AppComponentsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/issues/': {
-      id: '/app/issues/'
-      path: '/issues'
-      fullPath: '/app/issues/'
-      preLoaderRoute: typeof AppIssuesIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/status/$slug/unsubscribe': {
-      id: '/status/$slug/unsubscribe'
-      path: '/unsubscribe'
-      fullPath: '/status/$slug/unsubscribe'
-      preLoaderRoute: typeof StatusSlugUnsubscribeRouteImport
-      parentRoute: typeof StatusSlugRoute
-    }
-    '/status/$slug/confirm': {
-      id: '/status/$slug/confirm'
-      path: '/confirm'
-      fullPath: '/status/$slug/confirm'
-      preLoaderRoute: typeof StatusSlugConfirmRouteImport
-      parentRoute: typeof StatusSlugRoute
-    }
-    '/api/webhooks/$monitorId': {
-      id: '/api/webhooks/$monitorId'
-      path: '/api/webhooks/$monitorId'
-      fullPath: '/api/webhooks/$monitorId'
-      preLoaderRoute: typeof ApiWebhooksMonitorIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/heartbeats/$monitorId': {
-      id: '/api/heartbeats/$monitorId'
-      path: '/api/heartbeats/$monitorId'
-      fullPath: '/api/heartbeats/$monitorId'
-      preLoaderRoute: typeof ApiHeartbeatsMonitorIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/issues/$projectId/': {
-      id: '/app/issues/$projectId/'
-      path: '/issues/$projectId'
-      fullPath: '/app/issues/$projectId/'
-      preLoaderRoute: typeof AppIssuesProjectIdIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/api/status/$slug/availability': {
-      id: '/api/status/$slug/availability'
-      path: '/api/status/$slug/availability'
-      fullPath: '/api/status/$slug/availability'
-      preLoaderRoute: typeof ApiStatusSlugAvailabilityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/issues/$projectId/issue/$issueId': {
-      id: '/app/issues/$projectId/issue/$issueId'
-      path: '/issues/$projectId/issue/$issueId'
-      fullPath: '/app/issues/$projectId/issue/$issueId'
-      preLoaderRoute: typeof AppIssuesProjectIdIssueIssueIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/api/status/$slug/reports/availability/monthly': {
-      id: '/api/status/$slug/reports/availability/monthly'
-      path: '/api/status/$slug/reports/availability/monthly'
-      fullPath: '/api/status/$slug/reports/availability/monthly'
-      preLoaderRoute: typeof ApiStatusSlugReportsAvailabilityMonthlyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/verify-email": {
+      id: "/verify-email";
+      path: "/verify-email";
+      fullPath: "/verify-email";
+      preLoaderRoute: typeof VerifyEmailRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/setup-mfa": {
+      id: "/setup-mfa";
+      path: "/setup-mfa";
+      fullPath: "/setup-mfa";
+      preLoaderRoute: typeof SetupMfaRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/reset-password": {
+      id: "/reset-password";
+      path: "/reset-password";
+      fullPath: "/reset-password";
+      preLoaderRoute: typeof ResetPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/onboarding": {
+      id: "/onboarding";
+      path: "/onboarding";
+      fullPath: "/onboarding";
+      preLoaderRoute: typeof OnboardingRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/new-password": {
+      id: "/new-password";
+      path: "/new-password";
+      fullPath: "/new-password";
+      preLoaderRoute: typeof NewPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/mfa-challenge": {
+      id: "/mfa-challenge";
+      path: "/mfa-challenge";
+      fullPath: "/mfa-challenge";
+      preLoaderRoute: typeof MfaChallengeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/login": {
+      id: "/login";
+      path: "/login";
+      fullPath: "/login";
+      preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/join": {
+      id: "/join";
+      path: "/join";
+      fullPath: "/join";
+      preLoaderRoute: typeof JoinRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/forgot-password": {
+      id: "/forgot-password";
+      path: "/forgot-password";
+      fullPath: "/forgot-password";
+      preLoaderRoute: typeof ForgotPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/auth-error": {
+      id: "/auth-error";
+      path: "/auth-error";
+      fullPath: "/auth-error";
+      preLoaderRoute: typeof AuthErrorRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/app": {
+      id: "/app";
+      path: "/app";
+      fullPath: "/app";
+      preLoaderRoute: typeof AppRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/app/": {
+      id: "/app/";
+      path: "/";
+      fullPath: "/app/";
+      preLoaderRoute: typeof AppIndexRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/status/$slug": {
+      id: "/status/$slug";
+      path: "/status/$slug";
+      fullPath: "/status/$slug";
+      preLoaderRoute: typeof StatusSlugRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/app/status-pages": {
+      id: "/app/status-pages";
+      path: "/status-pages";
+      fullPath: "/app/status-pages";
+      preLoaderRoute: typeof AppStatusPagesRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/app/settings": {
+      id: "/app/settings";
+      path: "/settings";
+      fullPath: "/app/settings";
+      preLoaderRoute: typeof AppSettingsRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/app/notifications": {
+      id: "/app/notifications";
+      path: "/notifications";
+      fullPath: "/app/notifications";
+      preLoaderRoute: typeof AppNotificationsRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/app/monitors": {
+      id: "/app/monitors";
+      path: "/monitors";
+      fullPath: "/app/monitors";
+      preLoaderRoute: typeof AppMonitorsRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/app/maintenance": {
+      id: "/app/maintenance";
+      path: "/maintenance";
+      fullPath: "/app/maintenance";
+      preLoaderRoute: typeof AppMaintenanceRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/app/incidents": {
+      id: "/app/incidents";
+      path: "/incidents";
+      fullPath: "/app/incidents";
+      preLoaderRoute: typeof AppIncidentsRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/app/components": {
+      id: "/app/components";
+      path: "/components";
+      fullPath: "/app/components";
+      preLoaderRoute: typeof AppComponentsRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/app/issues/": {
+      id: "/app/issues/";
+      path: "/issues";
+      fullPath: "/app/issues/";
+      preLoaderRoute: typeof AppIssuesIndexRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/status/$slug/unsubscribe": {
+      id: "/status/$slug/unsubscribe";
+      path: "/unsubscribe";
+      fullPath: "/status/$slug/unsubscribe";
+      preLoaderRoute: typeof StatusSlugUnsubscribeRouteImport;
+      parentRoute: typeof StatusSlugRoute;
+    };
+    "/status/$slug/confirm": {
+      id: "/status/$slug/confirm";
+      path: "/confirm";
+      fullPath: "/status/$slug/confirm";
+      preLoaderRoute: typeof StatusSlugConfirmRouteImport;
+      parentRoute: typeof StatusSlugRoute;
+    };
+    "/api/webhooks/$monitorId": {
+      id: "/api/webhooks/$monitorId";
+      path: "/api/webhooks/$monitorId";
+      fullPath: "/api/webhooks/$monitorId";
+      preLoaderRoute: typeof ApiWebhooksMonitorIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/heartbeats/$monitorId": {
+      id: "/api/heartbeats/$monitorId";
+      path: "/api/heartbeats/$monitorId";
+      fullPath: "/api/heartbeats/$monitorId";
+      preLoaderRoute: typeof ApiHeartbeatsMonitorIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/app/issues/$projectId/": {
+      id: "/app/issues/$projectId/";
+      path: "/issues/$projectId";
+      fullPath: "/app/issues/$projectId/";
+      preLoaderRoute: typeof AppIssuesProjectIdIndexRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/api/status/$slug/availability": {
+      id: "/api/status/$slug/availability";
+      path: "/api/status/$slug/availability";
+      fullPath: "/api/status/$slug/availability";
+      preLoaderRoute: typeof ApiStatusSlugAvailabilityRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/app/issues/$projectId/issue/$issueId": {
+      id: "/app/issues/$projectId/issue/$issueId";
+      path: "/issues/$projectId/issue/$issueId";
+      fullPath: "/app/issues/$projectId/issue/$issueId";
+      preLoaderRoute: typeof AppIssuesProjectIdIssueIssueIdRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/api/status/$slug/reports/availability/monthly": {
+      id: "/api/status/$slug/reports/availability/monthly";
+      path: "/api/status/$slug/reports/availability/monthly";
+      fullPath: "/api/status/$slug/reports/availability/monthly";
+      preLoaderRoute: typeof ApiStatusSlugReportsAvailabilityMonthlyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
 interface AppRouteChildren {
-  AppComponentsRoute: typeof AppComponentsRoute
-  AppIncidentsRoute: typeof AppIncidentsRoute
-  AppMaintenanceRoute: typeof AppMaintenanceRoute
-  AppMonitorsRoute: typeof AppMonitorsRoute
-  AppNotificationsRoute: typeof AppNotificationsRoute
-  AppSettingsRoute: typeof AppSettingsRoute
-  AppStatusPagesRoute: typeof AppStatusPagesRoute
-  AppIndexRoute: typeof AppIndexRoute
-  AppIssuesIndexRoute: typeof AppIssuesIndexRoute
-  AppIssuesProjectIdIndexRoute: typeof AppIssuesProjectIdIndexRoute
-  AppIssuesProjectIdIssueIssueIdRoute: typeof AppIssuesProjectIdIssueIssueIdRoute
+  AppComponentsRoute: typeof AppComponentsRoute;
+  AppIncidentsRoute: typeof AppIncidentsRoute;
+  AppMaintenanceRoute: typeof AppMaintenanceRoute;
+  AppMonitorsRoute: typeof AppMonitorsRoute;
+  AppNotificationsRoute: typeof AppNotificationsRoute;
+  AppSettingsRoute: typeof AppSettingsRoute;
+  AppStatusPagesRoute: typeof AppStatusPagesRoute;
+  AppIndexRoute: typeof AppIndexRoute;
+  AppIssuesIndexRoute: typeof AppIssuesIndexRoute;
+  AppIssuesProjectIdIndexRoute: typeof AppIssuesProjectIdIndexRoute;
+  AppIssuesProjectIdIssueIssueIdRoute: typeof AppIssuesProjectIdIssueIssueIdRoute;
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -649,23 +649,23 @@ const AppRouteChildren: AppRouteChildren = {
   AppIssuesIndexRoute: AppIssuesIndexRoute,
   AppIssuesProjectIdIndexRoute: AppIssuesProjectIdIndexRoute,
   AppIssuesProjectIdIssueIssueIdRoute: AppIssuesProjectIdIssueIssueIdRoute,
-}
+};
 
-const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren);
 
 interface StatusSlugRouteChildren {
-  StatusSlugConfirmRoute: typeof StatusSlugConfirmRoute
-  StatusSlugUnsubscribeRoute: typeof StatusSlugUnsubscribeRoute
+  StatusSlugConfirmRoute: typeof StatusSlugConfirmRoute;
+  StatusSlugUnsubscribeRoute: typeof StatusSlugUnsubscribeRoute;
 }
 
 const StatusSlugRouteChildren: StatusSlugRouteChildren = {
   StatusSlugConfirmRoute: StatusSlugConfirmRoute,
   StatusSlugUnsubscribeRoute: StatusSlugUnsubscribeRoute,
-}
+};
 
 const StatusSlugRouteWithChildren = StatusSlugRoute._addFileChildren(
-  StatusSlugRouteChildren,
-)
+  StatusSlugRouteChildren
+);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -686,16 +686,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStatusSlugAvailabilityRoute: ApiStatusSlugAvailabilityRoute,
   ApiStatusSlugReportsAvailabilityMonthlyRoute:
     ApiStatusSlugReportsAvailabilityMonthlyRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+import type { createStart } from "@tanstack/react-start";
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
   }
 }

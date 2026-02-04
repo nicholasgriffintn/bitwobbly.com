@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from "react";
 
 export function ForgotPasswordForm({
   onSubmit,
@@ -7,7 +7,7 @@ export function ForgotPasswordForm({
   onSubmit: (code: string) => Promise<void>;
   className?: string;
 }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -21,7 +21,7 @@ export function ForgotPasswordForm({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (email.length === 0) {
-      setError('Enter your email address');
+      setError("Enter your email address");
       return;
     }
     setLoading(true);
@@ -29,7 +29,7 @@ export function ForgotPasswordForm({
     try {
       await onSubmit(email);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Request failed');
+      setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export function ForgotPasswordForm({
       </div>
       {error && <div className="form-error">{error}</div>}
       <button type="submit" disabled={loading || email.length === 0}>
-        {loading ? 'Submitting...' : 'Submit'}
+        {loading ? "Submitting..." : "Submit"}
       </button>
     </form>
   );

@@ -5,8 +5,14 @@ import { z } from "zod";
 import { getDb } from "../lib/db";
 import { requireTeam } from "../lib/auth-middleware";
 import { percentToPpm, ppmToPercent } from "../lib/availability";
-import { getEffectiveSloTarget, upsertSloTarget } from "../repositories/slo-targets";
-import { resolveAvailabilityScope, type AvailabilityScopeType } from "../repositories/availability";
+import {
+  getEffectiveSloTarget,
+  upsertSloTarget,
+} from "../repositories/slo-targets";
+import {
+  resolveAvailabilityScope,
+  type AvailabilityScopeType,
+} from "../repositories/availability";
 
 const ScopeTypeSchema = z.enum(["monitor", "component", "status_page"]);
 
@@ -32,7 +38,7 @@ export const getSloTargetFn = createServerFn({ method: "GET" })
       db,
       teamId,
       scope.scope.type,
-      scope.scope.id,
+      scope.scope.id
     );
 
     return {
@@ -67,7 +73,18 @@ export const upsertSloTargetFn = createServerFn({ method: "POST" })
     });
 
     const targetPpm = percentToPpm(data.target_percent);
-    await upsertSloTarget(db, teamId, scope.scope.type, scope.scope.id, targetPpm);
+    await upsertSloTarget(
+      db,
+      teamId,
+      scope.scope.type,
+      scope.scope.id,
+      targetPpm
+    );
 
-    return { ok: true, scope: scope.scope, target_ppm: targetPpm, target_percent: ppmToPercent(targetPpm) };
+    return {
+      ok: true,
+      scope: scope.scope,
+      target_ppm: targetPpm,
+      target_percent: ppmToPercent(targetPpm),
+    };
   });

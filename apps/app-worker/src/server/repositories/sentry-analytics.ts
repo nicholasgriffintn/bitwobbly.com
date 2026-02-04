@@ -43,7 +43,7 @@ export interface TopErrorMessages {
 export async function getEventVolumeBySDK(
   config: R2SQLConfig,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<EventVolumeBySDK[]> {
   const startTimestamp = requireUnixSeconds(startDate, "startDate");
   const endTimestamp = requireUnixSeconds(endDate, "endDate");
@@ -72,8 +72,8 @@ export async function getEventVolumeBySDK(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -105,12 +105,12 @@ export async function getEventVolumeBySDK(
   }
 
   return Array.from(grouped.values()).sort(
-    (a, b) => b.event_count - a.event_count,
+    (a, b) => b.event_count - a.event_count
   );
 }
 
 export async function getClockDriftStats(
-  config: R2SQLConfig,
+  config: R2SQLConfig
 ): Promise<ClockDriftStats[]> {
   const query = `
     SELECT
@@ -133,8 +133,8 @@ export async function getClockDriftStats(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -160,7 +160,7 @@ export async function getClockDriftStats(
 export async function getItemTypeDistribution(
   config: R2SQLConfig,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<ItemTypeDistribution[]> {
   const startTimestamp = requireUnixSeconds(startDate, "startDate");
   const endTimestamp = requireUnixSeconds(endDate, "endDate");
@@ -184,8 +184,8 @@ export async function getItemTypeDistribution(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -211,7 +211,7 @@ export async function getErrorRateByRelease(
   config: R2SQLConfig,
   projectId: number,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<ErrorRateByRelease[]> {
   const pid = requireFiniteInt(projectId, "projectId");
   const startTimestamp = requireUnixSeconds(startDate, "startDate");
@@ -243,8 +243,8 @@ export async function getErrorRateByRelease(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -286,7 +286,7 @@ export async function getErrorRateByRelease(
 export async function getTopErrorMessages(
   config: R2SQLConfig,
   projectId: number,
-  limit: number = 20,
+  limit: number = 20
 ): Promise<TopErrorMessages[]> {
   const pid = requireFiniteInt(projectId, "projectId");
   const safeLimit = clampFiniteInt(limit, 1, 100, 20);
@@ -312,8 +312,8 @@ export async function getTopErrorMessages(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -358,7 +358,7 @@ export async function getEventVolumeTimeseries(
   projectId: number,
   startDate: string,
   endDate: string,
-  interval: "hour" | "day" = "hour",
+  interval: "hour" | "day" = "hour"
 ): Promise<{ timestamp: string; event_count: number }[]> {
   const pid = requireFiniteInt(projectId, "projectId");
   const startTimestamp = requireUnixSeconds(startDate, "startDate");
@@ -385,8 +385,8 @@ export async function getEventVolumeTimeseries(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -409,7 +409,7 @@ export async function getEventVolumeTimeseries(
       const hourBucket = bucketKey.substring(0, 13) + ":00:00.000Z";
       grouped.set(
         hourBucket,
-        (grouped.get(hourBucket) || 0) + (count as number),
+        (grouped.get(hourBucket) || 0) + (count as number)
       );
     } else {
       const dayBucket = bucketKey.substring(0, 10);
@@ -433,7 +433,7 @@ export async function getEventVolumeStats(
   config: R2SQLConfig,
   projectId: number,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<EventVolumeStats> {
   const pid = requireFiniteInt(projectId, "projectId");
   const startTimestamp = requireUnixSeconds(startDate, "startDate");
@@ -455,8 +455,8 @@ export async function getEventVolumeStats(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -495,7 +495,7 @@ export async function getEventVolumeTimeseriesBreakdown(
   projectId: number,
   startDate: string,
   endDate: string,
-  interval: "hour" | "day" = "hour",
+  interval: "hour" | "day" = "hour"
 ): Promise<EventVolumeTimeseriesBreakdown[]> {
   const pid = requireFiniteInt(projectId, "projectId");
   const startTimestamp = requireUnixSeconds(startDate, "startDate");
@@ -521,8 +521,8 @@ export async function getEventVolumeTimeseriesBreakdown(
 
   const result = await executeR2SQL<RawResult>(
     config,
-    'bitwobbly-issues-catalog',
-    query,
+    "bitwobbly-issues-catalog",
+    query
   );
 
   const isSuccess = result?.success === true;
@@ -545,7 +545,7 @@ export async function getEventVolumeTimeseriesBreakdown(
       const hourBucket = bucketKey.substring(0, 13) + ":00:00.000Z";
       grouped.set(
         hourBucket,
-        (grouped.get(hourBucket) || 0) + (count as number),
+        (grouped.get(hourBucket) || 0) + (count as number)
       );
     } else {
       const dayBucket = bucketKey.substring(0, 10);
@@ -573,7 +573,7 @@ export async function getSDKDistribution(
   config: R2SQLConfig,
   projectId: number,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<SDKDistribution[]> {
   const pid = requireFiniteInt(projectId, "projectId");
   const startTimestamp = requireUnixSeconds(startDate, "startDate");
@@ -595,8 +595,8 @@ export async function getSDKDistribution(
 
   const totalResult = await executeR2SQL<TotalResult>(
     config,
-    'bitwobbly-issues-catalog',
-    totalQuery,
+    "bitwobbly-issues-catalog",
+    totalQuery
   );
 
   const totalIsSuccess = totalResult?.success === true;
@@ -631,8 +631,8 @@ export async function getSDKDistribution(
 
   const result = await executeR2SQL<DistributionResult>(
     config,
-    'bitwobbly-issues-catalog',
-    distributionQuery,
+    "bitwobbly-issues-catalog",
+    distributionQuery
   );
 
   const isSuccess = result?.success === true;

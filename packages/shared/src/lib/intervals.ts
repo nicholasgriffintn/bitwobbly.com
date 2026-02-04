@@ -27,7 +27,7 @@ export function mergeIntervals(intervals: Interval[]): Interval[] {
 
 export function clampIntervals(
   intervals: Interval[],
-  range: Interval,
+  range: Interval
 ): Interval[] {
   const clamped: Interval[] = [];
   for (const interval of intervals) {
@@ -42,7 +42,10 @@ export function sumIntervalSeconds(intervals: Interval[]): number {
   return intervals.reduce((sum, i) => sum + (i.end - i.start), 0);
 }
 
-export function subtractIntervals(base: Interval[], subtract: Interval[]): Interval[] {
+export function subtractIntervals(
+  base: Interval[],
+  subtract: Interval[]
+): Interval[] {
   const a = mergeIntervals(base);
   const b = mergeIntervals(subtract);
   if (!a.length) return [];
@@ -75,9 +78,8 @@ export function subtractIntervals(base: Interval[], subtract: Interval[]): Inter
 
 export function sumOverlapSeconds(
   intervals: Interval[],
-  range: Interval,
+  range: Interval
 ): number {
   const merged = mergeIntervals(clampIntervals(intervals, range));
   return sumIntervalSeconds(merged);
 }
-

@@ -27,7 +27,7 @@ const CreateChannelSchema = z
       if (data.type === "email" && !data.to) return false;
       return true;
     },
-    { message: "Missing required fields for selected type" },
+    { message: "Missing required fields for selected type" }
   );
 
 export const listChannelsFn = createServerFn({ method: "GET" }).handler(
@@ -37,7 +37,7 @@ export const listChannelsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const channels = await listNotificationChannels(db, teamId);
     return { channels };
-  },
+  }
 );
 
 export const createChannelFn = createServerFn({ method: "POST" })

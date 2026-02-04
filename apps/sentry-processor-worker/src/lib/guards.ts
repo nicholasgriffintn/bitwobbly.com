@@ -4,7 +4,7 @@ export function isRecord(value: unknown): value is Record<string, {}> {
 
 export function getString(
   obj: Record<string, {}>,
-  key: string,
+  key: string
 ): string | undefined {
   const v = obj[key];
   return typeof v === "string" ? v : undefined;
@@ -12,7 +12,7 @@ export function getString(
 
 export function getNumber(
   obj: Record<string, {}>,
-  key: string,
+  key: string
 ): number | undefined {
   const v = obj[key];
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
@@ -20,7 +20,7 @@ export function getNumber(
 
 export function getArray(
   obj: Record<string, {}>,
-  key: string,
+  key: string
 ): {}[] | undefined {
   const v = obj[key];
   return Array.isArray(v) ? (v as {}[]) : undefined;
@@ -45,7 +45,7 @@ export function parseStringArray(value: unknown): string[] | null {
 }
 
 export function parseStringRecord(
-  value: unknown,
+  value: unknown
 ): Record<string, string> | null {
   if (!isRecord(value)) return null;
   const out: Record<string, string> = {};

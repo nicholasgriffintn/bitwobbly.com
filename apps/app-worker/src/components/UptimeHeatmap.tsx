@@ -27,7 +27,7 @@ export function UptimeHeatmap({ data }: UptimeHeatmapProps) {
       acc[date].push(point);
       return acc;
     },
-    {},
+    {}
   );
 
   const dailyStatuses = Object.entries(groupedByDay).map(([date, points]) => {

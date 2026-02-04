@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from "react";
 
 export function ResetPasswordForm({
   onSubmit,
@@ -7,9 +7,9 @@ export function ResetPasswordForm({
   onSubmit: (data: { code: string; password: string }) => Promise<void>;
   className?: string;
 }) {
-  const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -23,15 +23,15 @@ export function ResetPasswordForm({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (code.length < 6) {
-      setError('Enter the 6-digit code');
+      setError("Enter the 6-digit code");
       return;
     }
     if (password.length === 0) {
-      setError('Enter your new password');
+      setError("Enter your new password");
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
     setLoading(true);
@@ -39,7 +39,7 @@ export function ResetPasswordForm({
     try {
       await onSubmit({ code, password });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Request failed');
+      setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ export function ResetPasswordForm({
         type="submit"
         disabled={loading || code.length < 6 || password.length === 0}
       >
-        {loading ? 'Submitting...' : 'Submit'}
+        {loading ? "Submitting..." : "Submit"}
       </button>
     </form>
   );

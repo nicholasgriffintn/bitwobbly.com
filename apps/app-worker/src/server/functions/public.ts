@@ -19,7 +19,10 @@ import {
   unlockStatusPage,
   useStatusPageSession,
 } from "../lib/status-page-session";
-import { rebuildStatusSnapshot, type StatusSnapshot } from "../services/status-snapshots";
+import {
+  rebuildStatusSnapshot,
+  type StatusSnapshot,
+} from "../services/status-snapshots";
 import { requireTeam } from "../lib/auth-middleware";
 
 export type PublicStatusResult =
@@ -68,7 +71,7 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
 
       const cached = await vars.KV.get(
         getPublicStatusSnapshotCacheKey(data.slug),
-        "json",
+        "json"
       );
       if (isStatusSnapshot(cached)) {
         return { kind: "snapshot", snapshot: cached };
@@ -79,7 +82,7 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
         vars.KV,
         data.slug,
         vars.CLOUDFLARE_ACCOUNT_ID,
-        vars.CLOUDFLARE_API_TOKEN,
+        vars.CLOUDFLARE_API_TOKEN
       );
 
       if (!snapshot) {
@@ -97,7 +100,7 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
 
     const cached = await vars.KV.get(
       getTeamStatusSnapshotCacheKey(teamId, data.slug),
-      "json",
+      "json"
     );
     if (isStatusSnapshot(cached)) {
       return { kind: "snapshot", snapshot: cached };
@@ -109,7 +112,7 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
-      { teamId, includePrivate: true },
+      { teamId, includePrivate: true }
     );
 
     if (!snapshot) {

@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from "react";
 
-import { useAuth } from '../react/AuthProvider';
+import { useAuth } from "../react/AuthProvider";
 
 export function LoginForm({
   onSuccess,
@@ -10,19 +10,19 @@ export function LoginForm({
   className?: string;
 }) {
   const { signIn, loading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!email.trim() || !password) {
-      setError('Enter email and password to continue.');
+      setError("Enter email and password to continue.");
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError("Password must be at least 8 characters.");
       return;
     }
     setError(null);
@@ -33,12 +33,12 @@ export function LoginForm({
     } catch (err: unknown) {
       if (
         err &&
-        typeof err === 'object' &&
-        ('isRedirect' in err || 'isSerializedRedirect' in err)
+        typeof err === "object" &&
+        ("isRedirect" in err || "isSerializedRedirect" in err)
       ) {
         throw err;
       }
-      setError(err instanceof Error ? err.message : 'Sign in failed');
+      setError(err instanceof Error ? err.message : "Sign in failed");
     } finally {
       setSubmitting(false);
     }
@@ -78,7 +78,7 @@ export function LoginForm({
       </div>
       {error && <div className="form-error">{error}</div>}
       <button type="submit" disabled={loading || submitting}>
-        {submitting ? 'Signing in...' : 'Sign In'}
+        {submitting ? "Signing in..." : "Sign In"}
       </button>
     </form>
   );

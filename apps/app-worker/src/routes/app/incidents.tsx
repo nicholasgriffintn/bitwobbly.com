@@ -70,7 +70,7 @@ export default function Incidents() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updatingIncident, setUpdatingIncident] = useState<Incident | null>(
-    null,
+    null
   );
 
   const deleteIncident = useServerFn(deleteIncidentFn);
@@ -125,9 +125,14 @@ export default function Incidents() {
 
       <Card>
         <CardTitle>Incidents</CardTitle>
-        <ListContainer isEmpty={!incidents.length} emptyMessage="No incidents recorded.">
+        <ListContainer
+          isEmpty={!incidents.length}
+          emptyMessage="No incidents recorded."
+        >
           {incidents.map((incident) => {
-            const status = isStatusType(incident.status) ? incident.status : "unknown";
+            const status = isStatusType(incident.status)
+              ? incident.status
+              : "unknown";
 
             return (
               <ListRow
@@ -144,13 +149,13 @@ export default function Incidents() {
                     Started {formatDate(incident.startedAt)}
                     {incident.resolvedAt &&
                       ` · Resolved ${formatDate(incident.resolvedAt)}`}
-                    {' · '}
+                    {" · "}
                     {getStatusPageName(incident.statusPageId)}
                   </>
                 }
                 actions={
                   <>
-                    {incident.status !== 'resolved' && (
+                    {incident.status !== "resolved" && (
                       <Button
                         type="button"
                         variant="outline"

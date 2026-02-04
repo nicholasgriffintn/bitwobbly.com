@@ -28,7 +28,7 @@ const CreateSuppressionSchema = z
         z.object({
           scope_type: ScopeTypeSchema,
           scope_id: z.string().min(1),
-        }),
+        })
       )
       .min(1),
   })
@@ -58,7 +58,7 @@ export const listSuppressionsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const suppressions = await listSuppressions(db, teamId);
     return { suppressions };
-  },
+  }
 );
 
 export const createSuppressionFn = createServerFn({ method: "POST" })
@@ -97,4 +97,3 @@ export const deleteSuppressionFn = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
-

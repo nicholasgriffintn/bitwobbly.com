@@ -325,7 +325,7 @@ export function AlertRuleModal({
           {TRIGGER_TYPES.filter((t) =>
             ruleSourceType === "monitor"
               ? ["monitor_down", "monitor_recovery"].includes(t.value)
-              : !["monitor_down", "monitor_recovery"].includes(t.value),
+              : !["monitor_down", "monitor_recovery"].includes(t.value)
           ).map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
@@ -424,7 +424,7 @@ export function AlertRuleModal({
                         setRuleFilterLevel([...ruleFilterLevel, level]);
                       } else {
                         setRuleFilterLevel(
-                          ruleFilterLevel.filter((l) => l !== level),
+                          ruleFilterLevel.filter((l) => l !== level)
                         );
                       }
                     }}

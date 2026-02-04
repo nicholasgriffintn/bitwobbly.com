@@ -15,7 +15,7 @@ export const Route = createFileRoute("/verify-email")({
       throw redirect({ to: "/app" });
     }
     if (!email && !user) {
-      throw redirect({ to: '/login' });
+      throw redirect({ to: "/login" });
     }
   },
   component: VerifyEmail,
@@ -26,7 +26,7 @@ function VerifyEmail() {
 
   const handleVerify = async (code: string) => {
     await verifyEmailFn({ data: { code } });
-    await navigate({ to: '/login' });
+    await navigate({ to: "/login" });
   };
 
   const handleResend = async () => {

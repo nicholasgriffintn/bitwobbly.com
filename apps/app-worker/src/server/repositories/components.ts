@@ -29,7 +29,8 @@ export async function listComponents(db: DB, teamId: string) {
     ? await db
         .select({
           componentId: schema.componentDependencies.componentId,
-          dependsOnComponentId: schema.componentDependencies.dependsOnComponentId,
+          dependsOnComponentId:
+            schema.componentDependencies.dependsOnComponentId,
         })
         .from(schema.componentDependencies)
         .where(inArray(schema.componentDependencies.componentId, ids))
@@ -52,7 +53,7 @@ export async function listComponents(db: DB, teamId: string) {
 export async function createComponent(
   db: DB,
   teamId: string,
-  input: { name: string; description?: string },
+  input: { name: string; description?: string }
 ) {
   const id = randomId("cmp");
   await db.insert(schema.components).values({
@@ -69,7 +70,7 @@ export async function updateComponent(
   db: DB,
   teamId: string,
   componentId: string,
-  input: { name?: string; description?: string | null },
+  input: { name?: string; description?: string | null }
 ) {
   await db
     .update(schema.components)
@@ -77,15 +78,15 @@ export async function updateComponent(
     .where(
       and(
         eq(schema.components.teamId, teamId),
-        eq(schema.components.id, componentId),
-      ),
+        eq(schema.components.id, componentId)
+      )
     );
 }
 
 export async function deleteComponent(
   db: DB,
   teamId: string,
-  componentId: string,
+  componentId: string
 ) {
   await db
     .delete(schema.componentMonitors)
@@ -104,15 +105,15 @@ export async function deleteComponent(
     .where(
       and(
         eq(schema.components.teamId, teamId),
-        eq(schema.components.id, componentId),
-      ),
+        eq(schema.components.id, componentId)
+      )
     );
 }
 
 export async function getComponentById(
   db: DB,
   teamId: string,
-  componentId: string,
+  componentId: string
 ) {
   const components = await db
     .select()
@@ -120,8 +121,8 @@ export async function getComponentById(
     .where(
       and(
         eq(schema.components.teamId, teamId),
-        eq(schema.components.id, componentId),
-      ),
+        eq(schema.components.id, componentId)
+      )
     )
     .limit(1);
 
@@ -144,7 +145,7 @@ export async function listComponentMonitorStates(db: DB, componentId: string) {
     .from(schema.componentMonitors)
     .innerJoin(
       schema.monitorState,
-      eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId),
+      eq(schema.monitorState.monitorId, schema.componentMonitors.monitorId)
     )
     .where(eq(schema.componentMonitors.componentId, componentId));
 }
@@ -153,7 +154,7 @@ export async function linkMonitorToComponent(
   db: DB,
   teamId: string,
   componentId: string,
-  monitorId: string,
+  monitorId: string
 ) {
   const component = await getComponentById(db, teamId, componentId);
   if (!component) {
@@ -164,10 +165,7 @@ export async function linkMonitorToComponent(
     .select({ id: schema.monitors.id })
     .from(schema.monitors)
     .where(
-      and(
-        eq(schema.monitors.teamId, teamId),
-        eq(schema.monitors.id, monitorId),
-      ),
+      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.id, monitorId))
     )
     .limit(1);
 
@@ -185,7 +183,7 @@ export async function unlinkMonitorFromComponent(
   db: DB,
   teamId: string,
   componentId: string,
-  monitorId: string,
+  monitorId: string
 ) {
   const component = await getComponentById(db, teamId, componentId);
   if (!component) {
@@ -196,10 +194,7 @@ export async function unlinkMonitorFromComponent(
     .select({ id: schema.monitors.id })
     .from(schema.monitors)
     .where(
-      and(
-        eq(schema.monitors.teamId, teamId),
-        eq(schema.monitors.id, monitorId),
-      ),
+      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.id, monitorId))
     )
     .limit(1);
 
@@ -212,8 +207,8 @@ export async function unlinkMonitorFromComponent(
     .where(
       and(
         eq(schema.componentMonitors.componentId, componentId),
-        eq(schema.componentMonitors.monitorId, monitorId),
-      ),
+        eq(schema.componentMonitors.monitorId, monitorId)
+      )
     );
 }
 
@@ -221,7 +216,7 @@ export async function linkDependency(
   db: DB,
   teamId: string,
   componentId: string,
-  dependsOnComponentId: string,
+  dependsOnComponentId: string
 ) {
   if (componentId === dependsOnComponentId) {
     throw new Error("A component cannot depend on itself");
@@ -231,7 +226,8 @@ export async function linkDependency(
   if (!component) throw new Error("Component not found or access denied");
 
   const dependency = await getComponentById(db, teamId, dependsOnComponentId);
-  if (!dependency) throw new Error("Dependency component not found or access denied");
+  if (!dependency)
+    throw new Error("Dependency component not found or access denied");
 
   await db
     .insert(schema.componentDependencies)
@@ -243,25 +239,32 @@ export async function unlinkDependency(
   db: DB,
   teamId: string,
   componentId: string,
-  dependsOnComponentId: string,
+  dependsOnComponentId: string
 ) {
   const component = await getComponentById(db, teamId, componentId);
   if (!component) throw new Error("Component not found or access denied");
 
   const dependency = await getComponentById(db, teamId, dependsOnComponentId);
-  if (!dependency) throw new Error("Dependency component not found or access denied");
+  if (!dependency)
+    throw new Error("Dependency component not found or access denied");
 
   await db
     .delete(schema.componentDependencies)
     .where(
       and(
         eq(schema.componentDependencies.componentId, componentId),
-        eq(schema.componentDependencies.dependsOnComponentId, dependsOnComponentId),
-      ),
+        eq(
+          schema.componentDependencies.dependsOnComponentId,
+          dependsOnComponentId
+        )
+      )
     );
 }
 
-export async function listComponentDependencies(db: DB, componentIds: string[]) {
+export async function listComponentDependencies(
+  db: DB,
+  componentIds: string[]
+) {
   if (!componentIds.length) return new Map<string, string[]>();
   const rows = await db
     .select({
@@ -285,7 +288,7 @@ export async function linkComponentToStatusPage(
   teamId: string,
   statusPageId: string,
   componentId: string,
-  sortOrder: number = 0,
+  sortOrder: number = 0
 ) {
   const statusPage = await db
     .select({ id: schema.statusPages.id })
@@ -293,8 +296,8 @@ export async function linkComponentToStatusPage(
     .where(
       and(
         eq(schema.statusPages.teamId, teamId),
-        eq(schema.statusPages.id, statusPageId),
-      ),
+        eq(schema.statusPages.id, statusPageId)
+      )
     )
     .limit(1);
 
@@ -317,7 +320,7 @@ export async function unlinkComponentFromStatusPage(
   db: DB,
   teamId: string,
   statusPageId: string,
-  componentId: string,
+  componentId: string
 ) {
   const statusPage = await db
     .select({ id: schema.statusPages.id })
@@ -325,8 +328,8 @@ export async function unlinkComponentFromStatusPage(
     .where(
       and(
         eq(schema.statusPages.teamId, teamId),
-        eq(schema.statusPages.id, statusPageId),
-      ),
+        eq(schema.statusPages.id, statusPageId)
+      )
     )
     .limit(1);
 
@@ -344,15 +347,15 @@ export async function unlinkComponentFromStatusPage(
     .where(
       and(
         eq(schema.statusPageComponents.statusPageId, statusPageId),
-        eq(schema.statusPageComponents.componentId, componentId),
-      ),
+        eq(schema.statusPageComponents.componentId, componentId)
+      )
     );
 }
 
 export async function getComponentsForStatusPage(
   db: DB,
   teamId: string,
-  statusPageId: string,
+  statusPageId: string
 ) {
   const statusPage = await db
     .select({ id: schema.statusPages.id })
@@ -360,8 +363,8 @@ export async function getComponentsForStatusPage(
     .where(
       and(
         eq(schema.statusPages.teamId, teamId),
-        eq(schema.statusPages.id, statusPageId),
-      ),
+        eq(schema.statusPages.id, statusPageId)
+      )
     )
     .limit(1);
 
@@ -381,7 +384,7 @@ export async function getComponentsForStatusPage(
     .from(schema.statusPageComponents)
     .innerJoin(
       schema.components,
-      eq(schema.components.id, schema.statusPageComponents.componentId),
+      eq(schema.components.id, schema.statusPageComponents.componentId)
     )
     .where(eq(schema.statusPageComponents.statusPageId, statusPageId))
     .orderBy(schema.statusPageComponents.sortOrder);
@@ -392,7 +395,7 @@ export async function updateComponentStatus(
   db: DB,
   teamId: string,
   componentId: string,
-  status: string,
+  status: string
 ) {
   const statusUpdatedAt = Math.floor(Date.now() / 1000);
   await db
@@ -404,15 +407,15 @@ export async function updateComponentStatus(
     .where(
       and(
         eq(schema.components.teamId, teamId),
-        eq(schema.components.id, componentId),
-      ),
+        eq(schema.components.id, componentId)
+      )
     );
 }
 
 export async function getComponentStatus(
   db: DB,
   teamId: string,
-  componentId: string,
+  componentId: string
 ) {
   const component = await db
     .select({
@@ -423,8 +426,8 @@ export async function getComponentStatus(
     .where(
       and(
         eq(schema.components.teamId, teamId),
-        eq(schema.components.id, componentId),
-      ),
+        eq(schema.components.id, componentId)
+      )
     )
     .limit(1);
 

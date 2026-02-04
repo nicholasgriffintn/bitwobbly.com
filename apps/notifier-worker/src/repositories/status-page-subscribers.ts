@@ -1,7 +1,10 @@
 import { nowIso, schema, sha256Hex, type DB } from "@bitwobbly/shared";
 import { and, eq } from "drizzle-orm";
 
-export async function getStatusPageSubscriberById(db: DB, subscriberId: string) {
+export async function getStatusPageSubscriberById(
+  db: DB,
+  subscriberId: string
+) {
   const rows = await db
     .select()
     .from(schema.statusPageSubscribers)
@@ -25,7 +28,7 @@ export async function activateWebhookSubscriberIfTokenValid(
     subscriberId: string;
     confirmToken: string;
     nowSec: number;
-  },
+  }
 ): Promise<boolean> {
   const tokenHash = await sha256Hex(input.confirmToken);
 
@@ -38,8 +41,8 @@ export async function activateWebhookSubscriberIfTokenValid(
     .where(
       and(
         eq(schema.statusPageSubscribers.id, input.subscriberId),
-        eq(schema.statusPageSubscribers.confirmTokenHash, tokenHash),
-      ),
+        eq(schema.statusPageSubscribers.confirmTokenHash, tokenHash)
+      )
     )
     .limit(1);
 
@@ -62,4 +65,3 @@ export async function activateWebhookSubscriberIfTokenValid(
 
   return true;
 }
-

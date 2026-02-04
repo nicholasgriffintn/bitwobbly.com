@@ -40,7 +40,7 @@ export async function getAvailabilityForScope(
     toSec: number;
     bucket: "hour" | "day";
     includeDependencies: boolean;
-  },
+  }
 ) {
   const { from, to } = clampRange(input.fromSec, input.toSec);
 
@@ -50,29 +50,39 @@ export async function getAvailabilityForScope(
     includeDependencies: input.includeDependencies,
   });
 
-  const slo = await getEffectiveSloTarget(db, teamId, scope.scope.type, scope.scope.id);
+  const slo = await getEffectiveSloTarget(
+    db,
+    teamId,
+    scope.scope.type,
+    scope.scope.id
+  );
 
   const downtimeIntervals = await listIncidentIntervalsForMonitors(
     db,
     teamId,
     scope.monitorIds,
     from,
-    to,
+    to
   );
 
-  const maintenanceIntervals = await listMaintenanceIntervalsForScope(db, teamId, {
-    componentIds: scope.componentIds,
-    monitorIds: scope.monitorIds,
-    monitorGroupIds: scope.monitorGroupIds,
-    fromSec: from,
-    toSec: to,
-  });
+  const maintenanceIntervals = await listMaintenanceIntervalsForScope(
+    db,
+    teamId,
+    {
+      componentIds: scope.componentIds,
+      monitorIds: scope.monitorIds,
+      monitorGroupIds: scope.monitorGroupIds,
+      fromSec: from,
+      toSec: to,
+    }
+  );
 
-  const { summary, downtimeOutsideMaintenance, maintenance } = computeAvailability({
-    fromSec: from,
-    toSec: to,
-    downtimeIntervals,
-    maintenanceIntervals,
+  const { summary, downtimeOutsideMaintenance, maintenance } =
+    computeAvailability({
+      fromSec: from,
+      toSec: to,
+      downtimeIntervals,
+      maintenanceIntervals,
       targetPpm: slo.slo?.targetPpm ?? null,
     });
 
@@ -89,7 +99,10 @@ export async function getAvailabilityForScope(
     scope: scope.scope,
     range: { from, to },
     summary,
-    buckets: buckets.map((b, idx) => ({ ...b, incidents: incidentBuckets[idx] })),
+    buckets: buckets.map((b, idx) => ({
+      ...b,
+      incidents: incidentBuckets[idx],
+    })),
   };
 }
 
@@ -101,7 +114,7 @@ export async function getMonthlyAvailabilityReport(
     scopeId: string;
     month: string;
     includeDependencies: boolean;
-  },
+  }
 ) {
   const { fromSec, toSec } = utcMonthRange(input.month);
   const scope = await resolveAvailabilityScope(db, teamId, {
@@ -110,30 +123,40 @@ export async function getMonthlyAvailabilityReport(
     includeDependencies: input.includeDependencies,
   });
 
-  const slo = await getEffectiveSloTarget(db, teamId, scope.scope.type, scope.scope.id);
+  const slo = await getEffectiveSloTarget(
+    db,
+    teamId,
+    scope.scope.type,
+    scope.scope.id
+  );
 
   const downtimeIntervals = await listIncidentIntervalsForMonitors(
     db,
     teamId,
     scope.monitorIds,
     fromSec,
-    toSec,
+    toSec
   );
-  const maintenanceIntervals = await listMaintenanceIntervalsForScope(db, teamId, {
-    componentIds: scope.componentIds,
-    monitorIds: scope.monitorIds,
-    monitorGroupIds: scope.monitorGroupIds,
-    fromSec,
-    toSec,
-  });
+  const maintenanceIntervals = await listMaintenanceIntervalsForScope(
+    db,
+    teamId,
+    {
+      componentIds: scope.componentIds,
+      monitorIds: scope.monitorIds,
+      monitorGroupIds: scope.monitorGroupIds,
+      fromSec,
+      toSec,
+    }
+  );
 
-  const { summary, downtimeOutsideMaintenance, maintenance } = computeAvailability({
-    fromSec,
-    toSec,
-    downtimeIntervals,
-    maintenanceIntervals,
-    targetPpm: slo.slo?.targetPpm ?? null,
-  });
+  const { summary, downtimeOutsideMaintenance, maintenance } =
+    computeAvailability({
+      fromSec,
+      toSec,
+      downtimeIntervals,
+      maintenanceIntervals,
+      targetPpm: slo.slo?.targetPpm ?? null,
+    });
 
   const { buckets } = computeAvailabilityBuckets({
     fromSec,
@@ -169,7 +192,7 @@ export async function getPublicAvailabilityForStatusPage(
     toSec?: number | null;
     days: number;
     bucket: "day" | "hour";
-  },
+  }
 ): Promise<
   | { kind: "not_found" }
   | {
@@ -201,7 +224,7 @@ export async function getPublicAvailabilityForStatusPage(
       externalPage.teamId,
       scope.monitorIds,
       fromClamped,
-      toClamped,
+      toClamped
     );
     const maintenanceIntervals = await listMaintenanceIntervalsForScope(
       db,
@@ -212,16 +235,17 @@ export async function getPublicAvailabilityForStatusPage(
         monitorGroupIds: scope.monitorGroupIds,
         fromSec: fromClamped,
         toSec: toClamped,
-      },
+      }
     );
 
-    const { summary, downtimeOutsideMaintenance, maintenance } = computeAvailability({
-      fromSec: fromClamped,
-      toSec: toClamped,
-      downtimeIntervals,
-      maintenanceIntervals,
-      targetPpm: null,
-    });
+    const { summary, downtimeOutsideMaintenance, maintenance } =
+      computeAvailability({
+        fromSec: fromClamped,
+        toSec: toClamped,
+        downtimeIntervals,
+        maintenanceIntervals,
+        targetPpm: null,
+      });
 
     const { buckets } = computeAvailabilityBuckets({
       fromSec: fromClamped,
@@ -250,7 +274,7 @@ export async function getPublicAvailabilityForStatusPage(
     externalPage.teamId,
     scope.monitorIds,
     fromClamped,
-    toClamped,
+    toClamped
   );
   const maintenanceIntervals = await listMaintenanceIntervalsForScope(
     db,
@@ -261,16 +285,17 @@ export async function getPublicAvailabilityForStatusPage(
       monitorGroupIds: scope.monitorGroupIds,
       fromSec: fromClamped,
       toSec: toClamped,
-    },
+    }
   );
 
-  const { summary, downtimeOutsideMaintenance, maintenance } = computeAvailability({
-    fromSec: fromClamped,
-    toSec: toClamped,
-    downtimeIntervals,
-    maintenanceIntervals,
-    targetPpm: null,
-  });
+  const { summary, downtimeOutsideMaintenance, maintenance } =
+    computeAvailability({
+      fromSec: fromClamped,
+      toSec: toClamped,
+      downtimeIntervals,
+      maintenanceIntervals,
+      targetPpm: null,
+    });
 
   const { buckets } = computeAvailabilityBuckets({
     fromSec: fromClamped,

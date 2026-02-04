@@ -8,7 +8,7 @@ import {
 } from "./guards";
 
 export function parseAlertConditions(
-  json: string | null,
+  json: string | null
 ): AlertConditions | null {
   if (!json) return null;
   const parsed = safeJsonParse(json);
@@ -51,7 +51,7 @@ export function parseAlertConditions(
 }
 
 export function parseAlertThreshold(
-  json: string | null,
+  json: string | null
 ): AlertThreshold | null {
   if (!json) return null;
   const parsed = safeJsonParse(json);
@@ -59,7 +59,8 @@ export function parseAlertThreshold(
 
   const type = typeof parsed.type === "string" ? parsed.type : null;
   const windowSeconds =
-    typeof parsed.windowSeconds === "number" && Number.isFinite(parsed.windowSeconds)
+    typeof parsed.windowSeconds === "number" &&
+    Number.isFinite(parsed.windowSeconds)
       ? parsed.windowSeconds
       : null;
   const metric = typeof parsed.metric === "string" ? parsed.metric : null;
@@ -86,16 +87,10 @@ export function parseAlertThreshold(
     critical,
   };
 
-  if (
-    typeof parsed.warning === "number" &&
-    Number.isFinite(parsed.warning)
-  ) {
+  if (typeof parsed.warning === "number" && Number.isFinite(parsed.warning)) {
     out.warning = parsed.warning;
   }
-  if (
-    typeof parsed.resolved === "number" &&
-    Number.isFinite(parsed.resolved)
-  ) {
+  if (typeof parsed.resolved === "number" && Number.isFinite(parsed.resolved)) {
     out.resolved = parsed.resolved;
   }
   if (typeof parsed.comparisonWindow === "string") {
@@ -109,7 +104,7 @@ export function parseAlertThreshold(
 }
 
 export function normaliseLevel(
-  level: string,
+  level: string
 ): "error" | "warning" | "info" | "debug" | null {
   const v = level.toLowerCase();
   if (v === "error" || v === "warning" || v === "info" || v === "debug") {
@@ -125,4 +120,3 @@ export function extractUserId(user: unknown): string | null {
   const ip = typeof user.ip_address === "string" ? user.ip_address : null;
   return id || email || ip;
 }
-

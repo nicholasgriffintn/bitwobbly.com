@@ -8,10 +8,10 @@ export async function signUpHandler(
     email: string;
     password: string;
     inviteCode: string;
-  },
+  }
 ) {
   if (data.inviteCode !== requiredInviteCode) {
-    throw new Error('Invalid invite code');
+    throw new Error("Invalid invite code");
   }
 
   const result = await adapter.signUp(data);
@@ -19,7 +19,7 @@ export async function signUpHandler(
   const session = await useAppSession();
 
   if (
-    'requiresEmailVerification' in result &&
+    "requiresEmailVerification" in result &&
     result.requiresEmailVerification
   ) {
     await session.update({
@@ -45,7 +45,7 @@ export async function signInHandler(
   data: {
     email: string;
     password: string;
-  },
+  }
 ) {
   const result = await adapter.signIn(data);
 
@@ -232,7 +232,7 @@ export async function setupMFAHandler(adapter: AuthAdapter) {
 
 export async function verifyMFASetupHandler(
   adapter: AuthAdapter,
-  code: string,
+  code: string
 ) {
   const session = await useAppSession();
   const cognitoSession = session.data.cognitoSession;
@@ -265,7 +265,7 @@ export async function verifyMFASetupHandler(
 
 export async function newPasswordHandler(
   adapter: AuthAdapter,
-  newPassword: string,
+  newPassword: string
 ) {
   const session = await useAppSession();
   const cognitoSession = session.data.cognitoSession;
@@ -299,7 +299,7 @@ export async function newPasswordHandler(
 export async function verifyEmailHandler(
   adapter: AuthAdapter,
   code: string,
-  email?: string,
+  email?: string
 ) {
   if (!email) {
     const session = await useAppSession();
@@ -319,7 +319,7 @@ export async function verifyEmailHandler(
 
 export async function resendVerificationCodeHandler(
   adapter: AuthAdapter,
-  email?: string,
+  email?: string
 ) {
   if (!email) {
     const session = await useAppSession();
@@ -332,7 +332,7 @@ export async function resendVerificationCodeHandler(
 
   if (!adapter.resendVerificationCode) {
     throw new Error(
-      "Resending verification code not supported by this adapter",
+      "Resending verification code not supported by this adapter"
     );
   }
 
@@ -341,7 +341,7 @@ export async function resendVerificationCodeHandler(
 
 export async function forgotPasswordHandler(
   adapter: AuthAdapter,
-  email: string,
+  email: string
 ) {
   if (!adapter.forgotPassword) {
     throw new Error("Forgot Password not supported by this adapter");
@@ -352,7 +352,7 @@ export async function forgotPasswordHandler(
 
 export async function resetPasswordHandler(
   adapter: AuthAdapter,
-  input: { email?: string; code: string; newPassword: string },
+  input: { email?: string; code: string; newPassword: string }
 ) {
   let email = input.email;
 

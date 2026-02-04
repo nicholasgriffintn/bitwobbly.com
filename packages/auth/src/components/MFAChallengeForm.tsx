@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from "react";
 
 export function MFAChallengeForm({
   onVerify,
@@ -7,7 +7,7 @@ export function MFAChallengeForm({
   onVerify: (code: string) => Promise<void>;
   className?: string;
 }) {
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -21,7 +21,7 @@ export function MFAChallengeForm({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (code.length !== 6) {
-      setError('Enter a 6-digit code');
+      setError("Enter a 6-digit code");
       return;
     }
     setLoading(true);
@@ -31,12 +31,12 @@ export function MFAChallengeForm({
     } catch (err) {
       if (
         err &&
-        typeof err === 'object' &&
-        ('isRedirect' in err || 'isSerializedRedirect' in err)
+        typeof err === "object" &&
+        ("isRedirect" in err || "isSerializedRedirect" in err)
       ) {
         throw err;
       }
-      setError(err instanceof Error ? err.message : 'Verification failed');
+      setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ export function MFAChallengeForm({
           pattern="[0-9]{6}"
           maxLength={6}
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           placeholder="000000"
           disabled={loading}
           required
@@ -65,7 +65,7 @@ export function MFAChallengeForm({
       </div>
       {error && <div className="form-error">{error}</div>}
       <button type="submit" disabled={loading || code.length !== 6}>
-        {loading ? 'Verifying...' : 'Verify'}
+        {loading ? "Verifying..." : "Verify"}
       </button>
     </form>
   );

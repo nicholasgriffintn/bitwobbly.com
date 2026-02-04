@@ -31,7 +31,7 @@ export async function getMonitorMetrics(
   accountId: string,
   apiToken: string,
   monitorId: string,
-  hours: number,
+  hours: number
 ): Promise<MetricsResult> {
   const endTime = new Date();
   const startTime = new Date(endTime.getTime() - hours * 60 * 60 * 1000);
@@ -40,13 +40,7 @@ export async function getMonitorMetrics(
   const startTimestamp = Math.floor(startTime.getTime() / 1000);
   const endTimestamp = Math.floor(endTime.getTime() / 1000);
   const bucketSize =
-    hours <= 1
-      ? 60
-      : hours <= 6
-        ? 300
-        : hours <= 72
-          ? 1800
-          : 3600;
+    hours <= 1 ? 60 : hours <= 6 ? 300 : hours <= 72 ? 1800 : 3600;
 
   const query = `
     SELECT
@@ -74,7 +68,7 @@ export async function getMonitorMetrics(
     const errorText = await response.text();
     console.error(
       `Analytics Engine query failed (${response.status}):`,
-      errorText,
+      errorText
     );
     console.error("Query was:", query);
     throw new Error(`Analytics Engine query failed: ${errorText}`);
@@ -131,7 +125,7 @@ export async function getMonitorMetrics(
     })
     .sort(
       (a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
   const totalChecks = rawData.length;
@@ -155,7 +149,7 @@ export async function getComponentUptimeMetrics(
   accountId: string,
   apiToken: string,
   monitorIds: string[],
-  periodDays: number,
+  periodDays: number
 ): Promise<UptimeMetrics> {
   if (monitorIds.length === 0) {
     return {
@@ -174,7 +168,7 @@ export async function getComponentUptimeMetrics(
 
   const endTime = new Date();
   const startTime = new Date(
-    endTime.getTime() - periodDays * 24 * 60 * 60 * 1000,
+    endTime.getTime() - periodDays * 24 * 60 * 60 * 1000
   );
   const startTimestamp = Math.floor(startTime.getTime() / 1000);
   const endTimestamp = Math.floor(endTime.getTime() / 1000);
@@ -208,7 +202,7 @@ export async function getComponentUptimeMetrics(
     const errorText = await response.text();
     console.error(
       `Analytics Engine query failed (${response.status}):`,
-      errorText,
+      errorText
     );
     throw new Error(`Analytics Engine query failed: ${errorText}`);
   }
@@ -296,11 +290,11 @@ export async function getComponentMetrics(
   componentName: string,
   monitorIds: string[],
   fromTimestamp: number,
-  toTimestamp: number,
+  toTimestamp: number
 ): Promise<ComponentMetrics> {
   if (monitorIds.length === 0) {
     const periodDays = Math.ceil(
-      (toTimestamp - fromTimestamp) / (24 * 60 * 60 * 1000),
+      (toTimestamp - fromTimestamp) / (24 * 60 * 60 * 1000)
     );
     return {
       componentId,
@@ -322,13 +316,13 @@ export async function getComponentMetrics(
   }
 
   const periodDays = Math.ceil(
-    (toTimestamp - fromTimestamp) / (24 * 60 * 60 * 1000),
+    (toTimestamp - fromTimestamp) / (24 * 60 * 60 * 1000)
   );
   const uptime = await getComponentUptimeMetrics(
     accountId,
     apiToken,
     monitorIds,
-    periodDays,
+    periodDays
   );
 
   const startTimestampSec = Math.floor(fromTimestamp / 1000);
@@ -427,7 +421,7 @@ export async function getComponentMetrics(
     })
     .sort(
       (a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
   return {

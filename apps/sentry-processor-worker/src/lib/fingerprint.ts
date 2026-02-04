@@ -26,18 +26,18 @@ interface EventData {
 function normaliseDynamicSegments(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, '{uuid}')
-    .replace(/0x[0-9a-f]+/gi, '{hex}')
-    .replace(/\b\d+\b/g, '{num}')
-    .replace(/https?:\/\/\S+/gi, '{url}')
-    .replace(/\s+/g, ' ')
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, "{uuid}")
+    .replace(/0x[0-9a-f]+/gi, "{hex}")
+    .replace(/\b\d+\b/g, "{num}")
+    .replace(/https?:\/\/\S+/gi, "{url}")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function normaliseTransaction(value: string): string {
   return value
-    .replace(/\b\d+\b/g, ':id')
-    .replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, ':uuid')
+    .replace(/\b\d+\b/g, ":id")
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, ":uuid")
     .trim();
 }
 
@@ -65,9 +65,9 @@ function getCustomFingerprint(event: EventData): string[] | null {
   }
 
   const parts = event.fingerprint
-    .map((part) => (part || '').trim())
+    .map((part) => (part || "").trim())
     .filter(Boolean)
-    .filter((part) => part !== '{{ default }}');
+    .filter((part) => part !== "{{ default }}");
 
   return parts.length ? parts : null;
 }
@@ -75,7 +75,7 @@ function getCustomFingerprint(event: EventData): string[] | null {
 export function computeFingerprint(event: EventData): string {
   const custom = getCustomFingerprint(event);
   if (custom) {
-    return `custom::${custom.join('::')}`;
+    return `custom::${custom.join("::")}`;
   }
 
   const parts: string[] = [];
@@ -88,7 +88,7 @@ export function computeFingerprint(event: EventData): string {
   const frame = getPrimaryFrame(event);
   if (frame) {
     const frameSignature =
-      frame.module || frame.function || frame.filename || 'unknown';
+      frame.module || frame.function || frame.filename || "unknown";
     parts.push(`frame:${frameSignature}`);
   }
 
@@ -104,16 +104,16 @@ export function computeFingerprint(event: EventData): string {
 
   if (!parts.length) {
     if (event.type) return `type:${event.type}`;
-    return 'unknown';
+    return "unknown";
   }
 
-  return parts.join('::');
+  return parts.join("::");
 }
 
 export function generateTitle(event: EventData): string {
   const exception = getPrimaryException(event);
   if (exception?.type) {
-    const value = exception.value || 'Unhandled exception';
+    const value = exception.value || "Unhandled exception";
     return `${exception.type}: ${value}`.slice(0, 180);
   }
 
@@ -125,7 +125,7 @@ export function generateTitle(event: EventData): string {
     return event.transaction.slice(0, 180);
   }
 
-  return 'Untitled Issue';
+  return "Untitled Issue";
 }
 
 export function extractCulprit(event: EventData): string | null {

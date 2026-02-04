@@ -66,7 +66,7 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Failed to load metrics",
+            err instanceof Error ? err.message : "Failed to load metrics"
           );
         }
       } finally {

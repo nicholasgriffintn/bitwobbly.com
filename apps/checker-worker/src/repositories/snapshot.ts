@@ -34,7 +34,7 @@ async function rebuildStatusSnapshot(
     logoUrl: string | null;
     brandColor: string | null;
     customCss: string | null;
-  },
+  }
 ) {
   const db = createDb(env.DB);
 
@@ -48,7 +48,7 @@ async function rebuildStatusSnapshot(
     .from(schema.statusPageComponents)
     .innerJoin(
       schema.components,
-      eq(schema.components.id, schema.statusPageComponents.componentId),
+      eq(schema.components.id, schema.statusPageComponents.componentId)
     )
     .where(eq(schema.statusPageComponents.statusPageId, page.id))
     .orderBy(schema.statusPageComponents.sortOrder);
@@ -66,7 +66,7 @@ async function rebuildStatusSnapshot(
     : [];
 
   const monitorIds = Array.from(
-    new Set(componentMonitorLinks.map((l) => l.monitorId)),
+    new Set(componentMonitorLinks.map((l) => l.monitorId))
   );
   const monitors = monitorIds.length
     ? await db
@@ -76,7 +76,7 @@ async function rebuildStatusSnapshot(
     : [];
 
   const monitorGroupIds = Array.from(
-    new Set(monitors.map((m) => m.groupId).filter((id): id is string => !!id)),
+    new Set(monitors.map((m) => m.groupId).filter((id): id is string => !!id))
   );
 
   const maintenanceMatches =
@@ -89,7 +89,7 @@ async function rebuildStatusSnapshot(
           .from(schema.suppressions)
           .innerJoin(
             schema.suppressionScopes,
-            eq(schema.suppressionScopes.suppressionId, schema.suppressions.id),
+            eq(schema.suppressionScopes.suppressionId, schema.suppressions.id)
           )
           .where(
             and(
@@ -98,45 +98,45 @@ async function rebuildStatusSnapshot(
               lte(schema.suppressions.startsAt, nowSec),
               or(
                 isNull(schema.suppressions.endsAt),
-                gt(schema.suppressions.endsAt, nowSec),
+                gt(schema.suppressions.endsAt, nowSec)
               ),
               or(
                 and(
                   eq(schema.suppressionScopes.scopeType, "component"),
-                  inArray(schema.suppressionScopes.scopeId, componentIds),
+                  inArray(schema.suppressionScopes.scopeId, componentIds)
                 ),
                 and(
                   eq(schema.suppressionScopes.scopeType, "monitor"),
-                  inArray(schema.suppressionScopes.scopeId, monitorIds),
+                  inArray(schema.suppressionScopes.scopeId, monitorIds)
                 ),
                 monitorGroupIds.length
                   ? and(
                       eq(schema.suppressionScopes.scopeType, "monitor_group"),
-                      inArray(schema.suppressionScopes.scopeId, monitorGroupIds),
+                      inArray(schema.suppressionScopes.scopeId, monitorGroupIds)
                     )
                   : and(
                       eq(schema.suppressionScopes.scopeType, "monitor_group"),
-                      inArray(schema.suppressionScopes.scopeId, ["__none__"]),
-                    ),
-              ),
-            ),
+                      inArray(schema.suppressionScopes.scopeId, ["__none__"])
+                    )
+              )
+            )
           )
       : [];
 
   const maintenanceMonitorIds = new Set(
     maintenanceMatches
       .filter((m) => m.scopeType === "monitor")
-      .map((m) => m.scopeId),
+      .map((m) => m.scopeId)
   );
   const maintenanceGroupIds = new Set(
     maintenanceMatches
       .filter((m) => m.scopeType === "monitor_group")
-      .map((m) => m.scopeId),
+      .map((m) => m.scopeId)
   );
   const maintenanceComponentIds = new Set(
     maintenanceMatches
       .filter((m) => m.scopeType === "component")
-      .map((m) => m.scopeId),
+      .map((m) => m.scopeId)
   );
 
   const monitorIdToGroupId = new Map(monitors.map((m) => [m.id, m.groupId]));
@@ -157,14 +157,15 @@ async function rebuildStatusSnapshot(
         .where(inArray(schema.monitorState.monitorId, monitorIds))
     : [];
   const monitorIdToStatus = new Map(
-    monitorStates.map((s) => [s.monitorId, s.lastStatus]),
+    monitorStates.map((s) => [s.monitorId, s.lastStatus])
   );
 
   const dependencyRows = componentIds.length
     ? await db
         .select({
           componentId: schema.componentDependencies.componentId,
-          dependsOnComponentId: schema.componentDependencies.dependsOnComponentId,
+          dependsOnComponentId:
+            schema.componentDependencies.dependsOnComponentId,
         })
         .from(schema.componentDependencies)
         .where(inArray(schema.componentDependencies.componentId, componentIds))
@@ -221,7 +222,7 @@ async function rebuildStatusSnapshot(
     down: 3,
   };
   const statusById = new Map<string, "up" | "unknown" | "maintenance" | "down">(
-    compsWithStatus.map((c: any) => [c.id, c.status]),
+    compsWithStatus.map((c: any) => [c.id, c.status])
   );
 
   for (let i = 0; i < componentIds.length; i++) {
@@ -257,8 +258,8 @@ async function rebuildStatusSnapshot(
       and(
         eq(schema.incidents.teamId, page.teamId),
         eq(schema.incidents.statusPageId, page.id),
-        ne(schema.incidents.status, "resolved"),
-      ),
+        ne(schema.incidents.status, "resolved")
+      )
     )
     .orderBy(schema.incidents.startedAt);
 
@@ -270,14 +271,14 @@ async function rebuildStatusSnapshot(
       and(
         eq(schema.incidents.teamId, page.teamId),
         eq(schema.incidents.statusPageId, page.id),
-        eq(schema.incidents.status, "resolved"),
-      ),
+        eq(schema.incidents.status, "resolved")
+      )
     )
     .orderBy(desc(schema.incidents.startedAt))
     .limit(50);
 
   const recentResolvedIncidents = resolvedIncidents.filter(
-    (i) => (i.resolvedAt || 0) >= cutoffTimestamp,
+    (i) => (i.resolvedAt || 0) >= cutoffTimestamp
   );
 
   const incidents = [...openIncidents, ...recentResolvedIncidents];
@@ -333,7 +334,7 @@ export async function openIncident(
   env: { DB: D1Database },
   teamId: string,
   monitorId: string,
-  reason?: string,
+  reason?: string
 ) {
   const db = createDb(env.DB);
   const incidentId = `inc_${crypto.randomUUID()}`;
@@ -373,7 +374,7 @@ export async function openIncident(
 export async function resolveIncident(
   env: { DB: D1Database },
   monitorId: string,
-  incidentId: string,
+  incidentId: string
 ) {
   const db = createDb(env.DB);
   const resolvedAt = Math.floor(Date.now() / 1000);

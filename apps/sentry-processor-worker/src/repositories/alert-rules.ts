@@ -14,7 +14,7 @@ export async function getProjectTeamId(db: DB, projectId: string) {
 export async function getActiveRulesForProject(
   db: DB,
   projectId: string,
-  teamId: string,
+  teamId: string
 ) {
   return await db
     .select()
@@ -26,16 +26,16 @@ export async function getActiveRulesForProject(
         eq(schema.alertRules.enabled, 1),
         or(
           eq(schema.alertRules.projectId, projectId),
-          isNull(schema.alertRules.projectId),
-        ),
-      ),
+          isNull(schema.alertRules.projectId)
+        )
+      )
     );
 }
 
 export async function countEventsInWindow(
   db: DB,
   issueId: string,
-  windowStart: number,
+  windowStart: number
 ) {
   const result = await db
     .select()
@@ -43,8 +43,8 @@ export async function countEventsInWindow(
     .where(
       and(
         eq(schema.sentryEvents.issueId, issueId),
-        gte(schema.sentryEvents.receivedAt, windowStart),
-      ),
+        gte(schema.sentryEvents.receivedAt, windowStart)
+      )
     );
   return result.length;
 }
@@ -52,7 +52,7 @@ export async function countEventsInWindow(
 export async function getEventsInWindow(
   db: DB,
   issueId: string,
-  windowStart: number,
+  windowStart: number
 ) {
   return await db
     .select({ user: schema.sentryEvents.user })
@@ -60,8 +60,8 @@ export async function getEventsInWindow(
     .where(
       and(
         eq(schema.sentryEvents.issueId, issueId),
-        gte(schema.sentryEvents.receivedAt, windowStart),
-      ),
+        gte(schema.sentryEvents.receivedAt, windowStart)
+      )
     );
 }
 
@@ -69,7 +69,7 @@ export async function getEventsForComparison(
   db: DB,
   issueId: string,
   windowStart: number,
-  windowEnd: number,
+  windowEnd: number
 ) {
   const result = await db
     .select()
@@ -77,8 +77,8 @@ export async function getEventsForComparison(
     .where(
       and(
         eq(schema.sentryEvents.issueId, issueId),
-        gte(schema.sentryEvents.receivedAt, windowStart),
-      ),
+        gte(schema.sentryEvents.receivedAt, windowStart)
+      )
     );
   return result.filter((e) => e.receivedAt < windowEnd).length;
 }
@@ -86,7 +86,7 @@ export async function getEventsForComparison(
 export async function getAlertRuleState(
   db: DB,
   ruleId: string,
-  issueId: string,
+  issueId: string
 ) {
   const results = await db
     .select()
@@ -94,8 +94,8 @@ export async function getAlertRuleState(
     .where(
       and(
         eq(schema.alertRuleStates.ruleId, ruleId),
-        eq(schema.alertRuleStates.issueId, issueId),
-      ),
+        eq(schema.alertRuleStates.issueId, issueId)
+      )
     )
     .limit(1);
   return results[0] || null;
@@ -106,7 +106,7 @@ export async function upsertAlertRuleState(
   ruleId: string,
   issueId: string,
   status: string,
-  triggeredAt: number,
+  triggeredAt: number
 ) {
   const existing = await getAlertRuleState(db, ruleId, issueId);
 
@@ -134,7 +134,7 @@ export async function resolveAlertRuleState(
   db: DB,
   ruleId: string,
   issueId: string,
-  resolvedAt: number,
+  resolvedAt: number
 ) {
   await db
     .update(schema.alertRuleStates)
@@ -145,8 +145,8 @@ export async function resolveAlertRuleState(
     .where(
       and(
         eq(schema.alertRuleStates.ruleId, ruleId),
-        eq(schema.alertRuleStates.issueId, issueId),
-      ),
+        eq(schema.alertRuleStates.issueId, issueId)
+      )
     );
 }
 
@@ -159,7 +159,7 @@ export async function insertAlertRuleFire(
     severity: string;
     triggerReason: string;
     firedAt: number;
-  },
+  }
 ) {
   await db.insert(schema.alertRuleFires).values({
     id: randomId("alf"),
@@ -175,7 +175,7 @@ export async function insertAlertRuleFire(
 export async function updateRuleLastTriggered(
   db: DB,
   ruleId: string,
-  lastTriggeredAt: number,
+  lastTriggeredAt: number
 ) {
   await db
     .update(schema.alertRules)

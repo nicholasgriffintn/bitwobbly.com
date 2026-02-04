@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 
 export async function listActiveDigestSubscribers(
   db: DB,
-  cadence: "daily" | "weekly",
+  cadence: "daily" | "weekly"
 ) {
   return db
     .select({
@@ -13,15 +13,15 @@ export async function listActiveDigestSubscribers(
     .where(
       and(
         eq(schema.statusPageSubscribers.status, "active"),
-        eq(schema.statusPageSubscribers.digestCadence, cadence),
-      ),
+        eq(schema.statusPageSubscribers.digestCadence, cadence)
+      )
     );
 }
 
 export async function listUnsentSubscriberEventIds(
   db: DB,
   subscriberId: string,
-  limit: number,
+  limit: number
 ): Promise<string[]> {
   const rows = await db
     .select({ id: schema.statusPageSubscriberEvents.id })
@@ -29,12 +29,11 @@ export async function listUnsentSubscriberEventIds(
     .where(
       and(
         eq(schema.statusPageSubscriberEvents.subscriberId, subscriberId),
-        isNull(schema.statusPageSubscriberEvents.sentAt),
-      ),
+        isNull(schema.statusPageSubscriberEvents.sentAt)
+      )
     )
     .orderBy(asc(schema.statusPageSubscriberEvents.createdAt))
     .limit(limit);
 
   return rows.map((r) => r.id);
 }
-

@@ -71,14 +71,14 @@ function buildIssueSummary(issue: Issue) {
       lastSeenAt: issue.lastSeenAt,
     },
     null,
-    2,
+    2
   );
 }
 
 function buildInvestigatePrompt(issue: Issue, event: Event | undefined) {
   const eventContext = event
-    ? `\nLatest event:\n- Event ID: ${event.id}\n- Type: ${event.type}\n- Level: ${event.level ?? 'unknown'}\n- Message: ${event.message ?? 'n/a'}\n- Received: ${event.receivedAt}\n- Request: ${event.request?.method ?? 'n/a'} ${event.request?.url ?? ''}\n`
-    : '\nNo event selected yet. Use issue-level signals.\n';
+    ? `\nLatest event:\n- Event ID: ${event.id}\n- Type: ${event.type}\n- Level: ${event.level ?? "unknown"}\n- Message: ${event.message ?? "n/a"}\n- Received: ${event.receivedAt}\n- Request: ${event.request?.method ?? "n/a"} ${event.request?.url ?? ""}\n`
+    : "\nNo event selected yet. Use issue-level signals.\n";
 
   return `Investigate this production issue and explain likely root causes.
 
@@ -100,14 +100,14 @@ Please provide:
 function buildFixPrompt(
   issue: Issue,
   event: Event | undefined,
-  payload: string | null,
+  payload: string | null
 ) {
   const payloadExcerpt = payload
     ? payload.slice(0, 12000)
-    : 'Payload not loaded yet.';
+    : "Payload not loaded yet.";
   const eventDetails = event
-    ? `Event ID: ${event.id}\nEvent type: ${event.type}\nEvent level: ${event.level ?? 'unknown'}\nEvent message: ${event.message ?? 'n/a'}`
-    : 'No event selected.';
+    ? `Event ID: ${event.id}\nEvent type: ${event.type}\nEvent level: ${event.level ?? "unknown"}\nEvent message: ${event.message ?? "n/a"}`
+    : "No event selected.";
 
   return `You are fixing a production issue. Propose a safe patch plan and code change sketch.
 
@@ -161,7 +161,7 @@ function IssueDetail() {
 
   const getEventPayload = useServerFn(getSentryEventPayloadFn);
   const selectedEvent = events.find(
-    (event: Event) => event.id === selectedEventId,
+    (event: Event) => event.id === selectedEventId
   );
   const investigatePrompt = buildInvestigatePrompt(issue, selectedEvent);
   const fixPrompt = buildFixPrompt(issue, selectedEvent, eventPayload);
@@ -204,12 +204,12 @@ function IssueDetail() {
         <div className="p-4">
           {issueSupportsResolution && (
             <div className="mb-2">
-              <strong>Status:</strong>{' '}
+              <strong>Status:</strong>{" "}
               <span className="pill small">{toTitleCase(issue.status)}</span>
             </div>
           )}
           <div className="mb-2">
-            <strong>Level:</strong>{' '}
+            <strong>Level:</strong>{" "}
             <span className={`status ${issue.level}`}>
               {toTitleCase(issue.level)}
             </span>
@@ -258,19 +258,19 @@ function IssueDetail() {
                             <span className={`status ${event.level}`}>
                               {event.level}
                             </span>
-                            {' · '}
+                            {" · "}
                           </>
                         )}
                         {formatRelativeTime(event.receivedAt)}
                         {event.user?.email && (
                           <>
-                            {' · '}
+                            {" · "}
                             User: {event.user.email}
                           </>
                         )}
                         {event.request?.url && (
                           <>
-                            {' · '}
+                            {" · "}
                             {event.request.method} {event.request.url}
                           </>
                         )}
@@ -306,10 +306,7 @@ function IssueDetail() {
                           <strong className="text-sm">Breadcrumbs:</strong>
                           <div className="mt-1">
                             {event.breadcrumbs.slice(-5).map((crumb, idx) => (
-                              <div
-                                key={idx}
-                                className="muted mt-0.5 text-sm"
-                              >
+                              <div key={idx} className="muted mt-0.5 text-sm">
                                 [{crumb.category}] {crumb.message}
                               </div>
                             ))}
@@ -328,13 +325,11 @@ function IssueDetail() {
                 </div>
                 {selectedEventId === event.id && (
                   <div className="border-t border-[color:var(--stroke)] bg-[color:var(--surface-1)] p-4">
-                    <div
-                      className="mb-2 flex flex-wrap items-center justify-between gap-2"
-                    >
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <strong>Event Payload</strong>
                       <div className="button-row">
                         <CopyButton
-                          text={eventPayload || ''}
+                          text={eventPayload || ""}
                           label="Copy payload"
                           disabled={isLoadingPayload || !eventPayload}
                         />
@@ -360,9 +355,7 @@ function IssueDetail() {
                     {isLoadingPayload ? (
                       <div>Loading payload...</div>
                     ) : (
-                      <pre
-                        className="max-h-[400px] overflow-auto whitespace-pre-wrap break-words rounded bg-white p-4 text-sm"
-                      >
+                      <pre className="max-h-[400px] overflow-auto whitespace-pre-wrap break-words rounded bg-white p-4 text-sm">
                         {eventPayload}
                       </pre>
                     )}

@@ -1,8 +1,8 @@
 export default function decode(token: string) {
-  const parts = token.split('.');
+  const parts = token.split(".");
   const header = JSON.parse(atob(parts[0]));
   const payload = JSON.parse(atob(parts[1]));
-  const signature = atob(parts[2].replace(/_/g, '/').replace(/-/g, '+'));
+  const signature = atob(parts[2].replace(/_/g, "/").replace(/-/g, "+"));
 
   return {
     header: header,

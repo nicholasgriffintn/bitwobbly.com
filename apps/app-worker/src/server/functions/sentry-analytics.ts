@@ -38,7 +38,7 @@ export const getClockDriftStatsFn = createServerFn({ method: "GET" }).handler(
       authToken: env.CLOUDFLARE_API_TOKEN,
     };
     return getClockDriftStats(config);
-  },
+  }
 );
 
 export const getItemTypeDistributionFn = createServerFn({ method: "GET" })
@@ -54,7 +54,7 @@ export const getItemTypeDistributionFn = createServerFn({ method: "GET" })
 
 export const getErrorRateByReleaseFn = createServerFn({ method: "GET" })
   .inputValidator(
-    (data: { projectId: string; startDate: string; endDate: string }) => data,
+    (data: { projectId: string; startDate: string; endDate: string }) => data
   )
   .handler(async ({ data }) => {
     await requireAuth(getDb(env.DB));
@@ -70,15 +70,15 @@ export const getErrorRateByReleaseFn = createServerFn({ method: "GET" })
       "releases",
       project.sentryProjectId,
       data.startDate,
-      data.endDate,
+      data.endDate
     );
     return withCache(env.KV, cacheKey, () =>
       getErrorRateByRelease(
         config,
         project.sentryProjectId,
         data.startDate,
-        data.endDate,
-      ),
+        data.endDate
+      )
     );
   });
 
@@ -96,7 +96,7 @@ export const getTopErrorMessagesFn = createServerFn({ method: "GET" })
     };
     const cacheKey = `analytics:errors:${project.sentryProjectId}:${data.limit ?? 20}`;
     return withCache(env.KV, cacheKey, () =>
-      getTopErrorMessages(config, project.sentryProjectId, data.limit),
+      getTopErrorMessages(config, project.sentryProjectId, data.limit)
     );
   });
 
@@ -107,7 +107,7 @@ export const getEventVolumeTimeseriesFn = createServerFn({ method: "GET" })
       startDate: string;
       endDate: string;
       interval?: "hour" | "day";
-    }) => data,
+    }) => data
   )
   .handler(async ({ data }) => {
     await requireAuth(getDb(env.DB));
@@ -124,13 +124,13 @@ export const getEventVolumeTimeseriesFn = createServerFn({ method: "GET" })
       project.sentryProjectId,
       data.startDate,
       data.endDate,
-      data.interval,
+      data.interval
     );
   });
 
 export const getEventVolumeStatsFn = createServerFn({ method: "GET" })
   .inputValidator(
-    (data: { projectId: string; startDate: string; endDate: string }) => data,
+    (data: { projectId: string; startDate: string; endDate: string }) => data
   )
   .handler(async ({ data }) => {
     await requireAuth(getDb(env.DB));
@@ -146,15 +146,15 @@ export const getEventVolumeStatsFn = createServerFn({ method: "GET" })
       "stats",
       project.sentryProjectId,
       data.startDate,
-      data.endDate,
+      data.endDate
     );
     return withCache(env.KV, cacheKey, () =>
       getEventVolumeStats(
         config,
         project.sentryProjectId,
         data.startDate,
-        data.endDate,
-      ),
+        data.endDate
+      )
     );
   });
 
@@ -167,7 +167,7 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
       startDate: string;
       endDate: string;
       interval?: "hour" | "day";
-    }) => data,
+    }) => data
   )
   .handler(async ({ data }) => {
     await requireAuth(getDb(env.DB));
@@ -184,7 +184,7 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
       project.sentryProjectId,
       data.startDate,
       data.endDate,
-      data.interval,
+      data.interval
     );
     return withCache(env.KV, cacheKey, () =>
       getEventVolumeTimeseriesBreakdown(
@@ -192,14 +192,14 @@ export const getEventVolumeTimeseriesBreakdownFn = createServerFn({
         project.sentryProjectId,
         data.startDate,
         data.endDate,
-        data.interval,
-      ),
+        data.interval
+      )
     );
   });
 
 export const getSDKDistributionFn = createServerFn({ method: "GET" })
   .inputValidator(
-    (data: { projectId: string; startDate: string; endDate: string }) => data,
+    (data: { projectId: string; startDate: string; endDate: string }) => data
   )
   .handler(async ({ data }) => {
     await requireAuth(getDb(env.DB));
@@ -215,14 +215,14 @@ export const getSDKDistributionFn = createServerFn({ method: "GET" })
       "sdk",
       project.sentryProjectId,
       data.startDate,
-      data.endDate,
+      data.endDate
     );
     return withCache(env.KV, cacheKey, () =>
       getSDKDistribution(
         config,
         project.sentryProjectId,
         data.startDate,
-        data.endDate,
-      ),
+        data.endDate
+      )
     );
   });

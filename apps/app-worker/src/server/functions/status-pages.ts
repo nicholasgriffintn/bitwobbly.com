@@ -23,7 +23,8 @@ const StatusPageAccessModeSchema = z.enum(["public", "private", "internal"]);
 type StatusPageAccessMode = z.infer<typeof StatusPageAccessModeSchema>;
 
 function toStatusPageAccessMode(mode: string): StatusPageAccessMode {
-  if (mode === "public" || mode === "private" || mode === "internal") return mode;
+  if (mode === "public" || mode === "private" || mode === "internal")
+    return mode;
   return "public";
 }
 
@@ -69,7 +70,7 @@ export const listStatusPagesFn = createServerFn({ method: "GET" }).handler(
       created_at: p.createdAt,
     }));
     return { status_pages };
-  },
+  }
 );
 
 export const createStatusPageFn = createServerFn({ method: "POST" })
@@ -89,7 +90,9 @@ export const createStatusPageFn = createServerFn({ method: "POST" })
       ...data,
       access_mode: data.access_mode,
       password_hash:
-        data.access_mode === "private" ? await hashPassword(data.password!.trim()) : null,
+        data.access_mode === "private"
+          ? await hashPassword(data.password!.trim())
+          : null,
       logo_url: data.logo_url?.trim() || undefined,
       brand_color: data.brand_color?.trim() || "#007bff",
       custom_css: data.custom_css?.trim() || undefined,
@@ -101,7 +104,7 @@ export const createStatusPageFn = createServerFn({ method: "POST" })
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
-      { teamId, includePrivate: true },
+      { teamId, includePrivate: true }
     );
 
     return { ok: true, ...created };
@@ -150,7 +153,9 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
         if (updates.password!.trim().length < 8) {
           throw new Error("Password must be at least 8 characters");
         }
-        processedUpdates.password_hash = await hashPassword(updates.password!.trim());
+        processedUpdates.password_hash = await hashPassword(
+          updates.password!.trim()
+        );
       }
     } else {
       // Leaving private mode clears the password.
@@ -168,7 +173,7 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
       newSlug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
-      { teamId, includePrivate: true },
+      { teamId, includePrivate: true }
     );
 
     if (updates.slug && updates.slug !== page.slug) {
@@ -213,7 +218,7 @@ export const rebuildStatusPageFn = createServerFn({ method: "POST" })
       data.slug,
       vars.CLOUDFLARE_ACCOUNT_ID,
       vars.CLOUDFLARE_API_TOKEN,
-      { teamId, includePrivate: true },
+      { teamId, includePrivate: true }
     );
     return { ok: true, snapshot };
   });

@@ -7,7 +7,7 @@ export async function insertStatusPageAuditLog(
     subscriberId?: string | null;
     action: string;
     meta?: Record<string, unknown> | null;
-  },
+  }
 ) {
   await db.insert(schema.statusPageSubscriberAuditLogs).values({
     id: randomId("spal"),
@@ -18,4 +18,3 @@ export async function insertStatusPageAuditLog(
     createdAt: nowIso(),
   });
 }
-

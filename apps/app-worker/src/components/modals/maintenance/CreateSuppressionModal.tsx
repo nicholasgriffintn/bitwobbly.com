@@ -52,8 +52,10 @@ export function CreateSuppressionModal({
   }, [isOpen]);
 
   const scopeOptions = useMemo(() => {
-    if (scopeType === "monitor") return monitors.map((m) => ({ id: m.id, label: m.name }));
-    if (scopeType === "monitor_group") return groups.map((g) => ({ id: g.id, label: g.name }));
+    if (scopeType === "monitor")
+      return monitors.map((m) => ({ id: m.id, label: m.name }));
+    if (scopeType === "monitor_group")
+      return groups.map((g) => ({ id: g.id, label: g.name }));
     return components.map((c) => ({ id: c.id, label: c.name }));
   }, [components, groups, monitors, scopeType]);
 
@@ -92,7 +94,11 @@ export function CreateSuppressionModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create maintenance or silence">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create maintenance or silence"
+    >
       {error ? <div className="form-error">{error}</div> : null}
 
       <form className="form" onSubmit={onCreate}>
@@ -100,7 +106,9 @@ export function CreateSuppressionModal({
         <select
           id="kind"
           value={kind}
-          onChange={(e) => setKind(e.target.value === "silence" ? "silence" : "maintenance")}
+          onChange={(e) =>
+            setKind(e.target.value === "silence" ? "silence" : "maintenance")
+          }
         >
           <option value="maintenance">Maintenance window</option>
           <option value="silence">Alert silence</option>
@@ -111,7 +119,9 @@ export function CreateSuppressionModal({
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={kind === "maintenance" ? "Database upgrade" : "Noise suppression"}
+          placeholder={
+            kind === "maintenance" ? "Database upgrade" : "Noise suppression"
+          }
           required
         />
 
@@ -144,7 +154,12 @@ export function CreateSuppressionModal({
         </select>
 
         <label htmlFor="scope">Scope</label>
-        <select id="scope" value={scopeId} onChange={(e) => setScopeId(e.target.value)} required>
+        <select
+          id="scope"
+          value={scopeId}
+          onChange={(e) => setScopeId(e.target.value)}
+          required
+        >
           <option value="">Select…</option>
           {scopeOptions.map((o) => (
             <option key={o.id} value={o.id}>
@@ -162,7 +177,9 @@ export function CreateSuppressionModal({
           required
         />
 
-        <label htmlFor="ends">Ends (local time){kind === "maintenance" ? "" : " (optional)"}</label>
+        <label htmlFor="ends">
+          Ends (local time){kind === "maintenance" ? "" : " (optional)"}
+        </label>
         <input
           id="ends"
           type="datetime-local"
@@ -178,4 +195,3 @@ export function CreateSuppressionModal({
     </Modal>
   );
 }
-

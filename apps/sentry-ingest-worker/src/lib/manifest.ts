@@ -49,7 +49,7 @@ export function buildManifests(
   projectId: string,
   sentryProjectId: number,
   r2Key: string,
-  receivedAt: Date,
+  receivedAt: Date
 ): ManifestRecord[] {
   const receivedAtUnix = Math.floor(receivedAt.getTime() / 1000);
   const manifests: ManifestRecord[] = [];

@@ -4,7 +4,7 @@ import { eq, and, desc } from "drizzle-orm";
 export async function createSentryProject(
   db: DB,
   teamId: string,
-  input: { name: string; platform?: string; componentId?: string },
+  input: { name: string; platform?: string; componentId?: string }
 ) {
   const id = randomId("spr");
 
@@ -54,7 +54,7 @@ export async function listSentryProjects(db: DB, teamId: string) {
 export async function getSentryProject(
   db: DB,
   teamId: string,
-  projectId: string,
+  projectId: string
 ) {
   const projects = await db
     .select()
@@ -62,8 +62,8 @@ export async function getSentryProject(
     .where(
       and(
         eq(schema.sentryProjects.id, projectId),
-        eq(schema.sentryProjects.teamId, teamId),
-      ),
+        eq(schema.sentryProjects.teamId, teamId)
+      )
     )
     .limit(1);
 
@@ -78,7 +78,7 @@ export async function updateSentryProject(
     name?: string;
     platform?: string | null;
     componentId?: string | null;
-  },
+  }
 ) {
   const project = await getSentryProject(db, teamId, projectId);
   if (!project) return null;
@@ -95,8 +95,8 @@ export async function updateSentryProject(
     .where(
       and(
         eq(schema.sentryProjects.id, projectId),
-        eq(schema.sentryProjects.teamId, teamId),
-      ),
+        eq(schema.sentryProjects.teamId, teamId)
+      )
     );
 
   return getSentryProject(db, teamId, projectId);
@@ -106,7 +106,7 @@ export async function getSentryProjectDsn(
   db: DB,
   teamId: string,
   projectId: string,
-  ingestHost: string,
+  ingestHost: string
 ) {
   const project = await getSentryProject(db, teamId, projectId);
   if (!project) return null;
@@ -117,8 +117,8 @@ export async function getSentryProjectDsn(
     .where(
       and(
         eq(schema.sentryKeys.projectId, projectId),
-        eq(schema.sentryKeys.status, "active"),
-      ),
+        eq(schema.sentryKeys.status, "active")
+      )
     )
     .limit(1);
 
@@ -132,7 +132,7 @@ export async function getSentryProjectDsn(
 export async function deleteSentryProject(
   db: DB,
   teamId: string,
-  projectId: string,
+  projectId: string
 ) {
   const project = await getSentryProject(db, teamId, projectId);
   if (!project) return null;
@@ -154,8 +154,8 @@ export async function deleteSentryProject(
     .where(
       and(
         eq(schema.sentryProjects.id, projectId),
-        eq(schema.sentryProjects.teamId, teamId),
-      ),
+        eq(schema.sentryProjects.teamId, teamId)
+      )
     );
 
   return project;

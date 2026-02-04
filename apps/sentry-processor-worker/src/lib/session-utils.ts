@@ -38,11 +38,12 @@ export function normaliseSessionStatus(status?: string): string {
   return "unknown";
 }
 
-export function deriveAggregateStatus(aggregate: Record<string, unknown>): string {
+export function deriveAggregateStatus(
+  aggregate: Record<string, unknown>
+): string {
   if ((getNumber(aggregate, "crashed") ?? 0) !== 0) return "crashed";
   if ((getNumber(aggregate, "errored") ?? 0) !== 0) return "errored";
   if ((getNumber(aggregate, "abnormal") ?? 0) !== 0) return "abnormal";
   if ((getNumber(aggregate, "exited") ?? 0) !== 0) return "exited";
   return "ok";
 }
-

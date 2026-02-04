@@ -25,7 +25,7 @@ export async function upsertIssue(
     title: string;
     level: string;
     culprit?: string | null;
-  },
+  }
 ): Promise<UpsertIssueResult> {
   const existing = await db
     .select()
@@ -33,8 +33,8 @@ export async function upsertIssue(
     .where(
       and(
         eq(schema.sentryIssues.projectId, projectId),
-        eq(schema.sentryIssues.fingerprint, data.fingerprint),
-      ),
+        eq(schema.sentryIssues.fingerprint, data.fingerprint)
+      )
     )
     .limit(1);
 
@@ -141,7 +141,7 @@ export async function insertEvent(
       level?: string;
       data?: { [key: string]: {} };
     }> | null;
-  },
+  }
 ) {
   await db
     .insert(schema.sentryEvents)
@@ -166,7 +166,7 @@ export async function insertSession(
     environment?: string | null;
     userAgent?: string | null;
     receivedAt: number;
-  },
+  }
 ) {
   await db.insert(schema.sentrySessions).values({
     id: randomId("ses"),
@@ -196,7 +196,7 @@ export async function insertClientReport(
       quantity: number;
     }> | null;
     receivedAt: number;
-  },
+  }
 ) {
   await db.insert(schema.sentryClientReports).values({
     id: randomId("cr"),

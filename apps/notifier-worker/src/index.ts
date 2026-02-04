@@ -7,15 +7,18 @@ import { withSentry } from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
 import { sendAlertEmail, sendIssueAlertEmail } from "./lib/email";
-import { getDb } from './lib/db';
-import { handleStatusPageJob, type StatusPageJob } from "./lib/status-page-jobs";
+import { getDb } from "./lib/db";
+import {
+  handleStatusPageJob,
+  type StatusPageJob,
+} from "./lib/status-page-jobs";
 import {
   getAlertRuleById,
   getChannelById,
   getIssueById,
   getProjectById,
   getAlertRulesForMonitor,
-} from './repositories/alert-rules';
+} from "./repositories/alert-rules";
 import { acquireQueueDedupe } from "./repositories/queue-dedupe";
 
 const handler = {
@@ -87,16 +90,16 @@ export default withSentry<Env, AlertJob>(
     environment: "production",
     tracesSampleRate: 0.2,
   }),
-  handler,
+  handler
 );
 
 async function handleMonitorAlert(
   job: MonitorAlertJob,
   env: Env,
-  db: ReturnType<typeof getDb>,
+  db: ReturnType<typeof getDb>
 ) {
   const triggerType =
-    job.status === 'down' ? 'monitor_down' : 'monitor_recovery';
+    job.status === "down" ? "monitor_down" : "monitor_recovery";
   const rules = await getAlertRulesForMonitor(db, job.monitor_id, triggerType);
 
   if (!rules.length) return;
@@ -109,14 +112,14 @@ async function handleMonitorAlert(
     try {
       cfg = JSON.parse(channel.configJson);
     } catch {
-      console.warn('invalid channel config', channel.type);
+      console.warn("invalid channel config", channel.type);
       continue;
     }
 
-    if (channel.type === 'webhook') {
+    if (channel.type === "webhook") {
       await sendWebhook(cfg as { url?: string }, {
         alert_id: job.alert_id,
-        type: 'monitor',
+        type: "monitor",
         team_id: job.team_id,
         monitor_id: job.monitor_id,
         status: job.status,
@@ -124,13 +127,13 @@ async function handleMonitorAlert(
         incident_id: job.incident_id,
         ts: new Date().toISOString(),
       });
-    } else if (channel.type === 'email') {
+    } else if (channel.type === "email") {
       const emailConfig = cfg as { to?: string };
       const to = emailConfig.to;
       if (!to) continue;
 
       const statusText =
-        job.status === 'down' ? 'Service Down' : 'Service Recovered';
+        job.status === "down" ? "Service Down" : "Service Recovered";
 
       await sendAlertEmail({
         email: to,
@@ -149,7 +152,7 @@ async function handleMonitorAlert(
 async function handleIssueAlert(
   job: IssueAlertJob,
   env: Env,
-  db: ReturnType<typeof getDb>,
+  db: ReturnType<typeof getDb>
 ) {
   const rule = await getAlertRuleById(db, job.rule_id);
   if (!rule) {
@@ -237,7 +240,7 @@ async function handleIssueAlert(
 
 async function sendWebhook(
   config: { url?: string },
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): Promise<void> {
   const url = config.url;
   if (!url) return;

@@ -116,12 +116,12 @@ export default function StatusPages() {
   const onToggleComponent = async (
     pageId: string,
     componentId: string,
-    checked: boolean,
+    checked: boolean
   ) => {
     setError(null);
     try {
       const linked = pageComponents.some(
-        (pc) => pc.componentId === componentId,
+        (pc) => pc.componentId === componentId
       );
       if (checked && !linked) {
         await linkToPage({
@@ -162,7 +162,10 @@ export default function StatusPages() {
 
       <Card>
         <CardTitle>Status pages</CardTitle>
-        <ListContainer isEmpty={!pages.length} emptyMessage="No status pages yet.">
+        <ListContainer
+          isEmpty={!pages.length}
+          emptyMessage="No status pages yet."
+        >
           {pages.map((page) => {
             const isExpanded = expandedPageId === page.id;
 
@@ -184,7 +187,9 @@ export default function StatusPages() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setExpandedPageId(isExpanded ? null : page.id)}
+                      onClick={() =>
+                        setExpandedPageId(isExpanded ? null : page.id)
+                      }
                     >
                       {isExpanded ? "Hide" : "Components"}
                     </Button>

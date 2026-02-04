@@ -1,6 +1,6 @@
 export async function statusPageUnsubscribeSig(
   sessionSecret: string,
-  subscriberId: string,
+  subscriberId: string
 ): Promise<string> {
   if (!sessionSecret?.trim()) {
     throw new Error("Missing SESSION_SECRET");
@@ -8,18 +8,19 @@ export async function statusPageUnsubscribeSig(
   if (!subscriberId?.trim()) {
     throw new Error("Missing subscriber id");
   }
-  return sha256Hex(
-    `${sessionSecret}:status_page_unsubscribe:${subscriberId}`,
-  );
+  return sha256Hex(`${sessionSecret}:status_page_unsubscribe:${subscriberId}`);
 }
 
 export async function verifyStatusPageUnsubscribeSig(
   sessionSecret: string,
   subscriberId: string,
-  sig: string,
+  sig: string
 ): Promise<boolean> {
   try {
-    const expected = await statusPageUnsubscribeSig(sessionSecret, subscriberId);
+    const expected = await statusPageUnsubscribeSig(
+      sessionSecret,
+      subscriberId
+    );
     return expected === sig;
   } catch {
     return false;

@@ -36,7 +36,7 @@ export interface QueryResult<T = unknown> {
 export async function executeR2SQL<T = unknown>(
   config: R2SQLConfig,
   bucketName: string,
-  query: string,
+  query: string
 ): Promise<QueryResult<T>> {
   const url = `https://api.sql.cloudflarestorage.com/api/v1/accounts/${config.accountId}/r2-sql/query/${bucketName}`;
 

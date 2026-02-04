@@ -1,7 +1,7 @@
 // NOTE: Details on api can be found here: https://docs.aws.amazon.com/cli/latest/reference/cognito-idp/
-import { AwsClient } from 'aws4fetch';
-import { nowIso, randomId, schema, type DB } from '@bitwobbly/shared';
-import { eq } from 'drizzle-orm';
+import { AwsClient } from "aws4fetch";
+import { nowIso, randomId, schema, type DB } from "@bitwobbly/shared";
+import { eq } from "drizzle-orm";
 
 import type {
   AuthAdapter,
@@ -14,8 +14,8 @@ import type {
   MFAChallengeInput,
   NewPasswordInput,
   CognitoConfig,
-} from '../types';
-import { getVerifier } from './lib/cognito/jwt';
+} from "../types";
+import { getVerifier } from "./lib/cognito/jwt";
 
 type AuthenticationResultResponse = {
   AvailableChallenges?: string[];
@@ -53,7 +53,7 @@ type SignUpResponse = {
 
 type ChallengeHandler = (
   authData: AuthenticationResultResponse,
-  email: string,
+  email: string
 ) => SignInResult;
 
 const CHALLENGE_HANDLERS: Record<string, ChallengeHandler> = {
@@ -103,12 +103,12 @@ export class CognitoAuthAdapter implements AuthAdapter {
   constructor(config: CognitoConfig & { db: DB }) {
     if (!config.region || !config.userPoolId || !config.clientId) {
       throw new Error(
-        "Cognito configuration is incomplete. Please provide region, userPoolId, and clientId.",
+        "Cognito configuration is incomplete. Please provide region, userPoolId, and clientId."
       );
     }
 
     this.client = new AwsClient({
-      service: 'cognito-idp',
+      service: "cognito-idp",
       region: config.region,
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
@@ -119,7 +119,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
     this.verifier = getVerifier({
       awsRegion: config.region,
       userPoolId: config.userPoolId,
-      tokenType: 'access',
+      tokenType: "access",
       appClientId: config.clientId,
     });
   }
@@ -129,16 +129,16 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
-      'raw',
+      "raw",
       encoder.encode(this.hmacKey),
-      { name: 'HMAC', hash: 'SHA-256' },
+      { name: "HMAC", hash: "SHA-256" },
       false,
-      ['sign'],
+      ["sign"]
     );
     const signature = await crypto.subtle.sign(
-      'HMAC',
+      "HMAC",
       key,
-      encoder.encode(username + this.clientId),
+      encoder.encode(username + this.clientId)
     );
     return btoa(String.fromCharCode(...new Uint8Array(signature)));
   }
@@ -151,24 +151,24 @@ export class CognitoAuthAdapter implements AuthAdapter {
       .limit(1);
 
     if (existing.length > 0) {
-      throw new Error('User with this email already exists');
+      throw new Error("User with this email already exists");
     }
 
     const hash = await this.computeHash(input.email);
 
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const signUpResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.SignUp',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.SignUp",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
         Username: input.email,
         Password: input.password,
-        UserAttributes: [{ Name: 'email', Value: input.email }],
+        UserAttributes: [{ Name: "email", Value: input.email }],
         SecretHash: hash,
       }),
     });
@@ -176,15 +176,15 @@ export class CognitoAuthAdapter implements AuthAdapter {
     if (!signUpResult.ok) {
       const errorData = (await signUpResult.json()) as CognitoErrorResponse;
 
-      if (errorData.__type === 'UsernameExistsException') {
-        throw new Error('User with this email already exists');
+      if (errorData.__type === "UsernameExistsException") {
+        throw new Error("User with this email already exists");
       }
 
-      if (errorData.__type === 'InvalidPasswordException') {
+      if (errorData.__type === "InvalidPasswordException") {
         throw new Error(errorData.message);
       }
 
-      console.error('Cognito SignUp Error:', errorData);
+      console.error("Cognito SignUp Error:", errorData);
       throw new Error(`Failed to create user in Cognito`);
     }
 
@@ -192,16 +192,16 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const cognitoSub = signUpData.UserSub;
     if (!cognitoSub) {
-      throw new Error('Failed to create user in Cognito');
+      throw new Error("Failed to create user in Cognito");
     }
 
-    const userId = randomId('usr');
+    const userId = randomId("usr");
     const createdAt = nowIso();
-    const tempTeamId = randomId('team');
+    const tempTeamId = randomId("team");
 
     await this.db
       .insert(schema.teams)
-      .values({ id: tempTeamId, name: 'Default Team', createdAt });
+      .values({ id: tempTeamId, name: "Default Team", createdAt });
 
     await this.db.insert(schema.users).values({
       id: userId,
@@ -209,7 +209,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
       passwordHash: null,
       teamId: tempTeamId,
       currentTeamId: tempTeamId,
-      authProvider: 'cognito',
+      authProvider: "cognito",
       cognitoSub,
       mfaEnabled: 0,
       emailVerified: signUpData.UserConfirmed ? 1 : 0,
@@ -219,7 +219,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
     await this.db.insert(schema.userTeams).values({
       userId,
       teamId: tempTeamId,
-      role: 'owner',
+      role: "owner",
       joinedAt: createdAt,
     });
 
@@ -228,7 +228,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
       email: input.email,
       teamId: tempTeamId,
       currentTeamId: tempTeamId,
-      authProvider: 'cognito',
+      authProvider: "cognito",
       cognitoSub,
       mfaEnabled: false,
       emailVerified: signUpData.UserConfirmed || false,
@@ -251,19 +251,19 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const authResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
-        AuthFlow: 'USER_PASSWORD_AUTH',
+        AuthFlow: "USER_PASSWORD_AUTH",
         AuthParameters: {
           USERNAME: input.email,
           PASSWORD: input.password,
-          SECRET_HASH: hash || '',
+          SECRET_HASH: hash || "",
         },
       }),
     });
@@ -271,21 +271,21 @@ export class CognitoAuthAdapter implements AuthAdapter {
     if (!authResult.ok) {
       const errorData = (await authResult.json()) as CognitoErrorResponse;
 
-      if (errorData.__type === 'UserNotConfirmedException') {
+      if (errorData.__type === "UserNotConfirmedException") {
         return {
           requiresEmailVerification: true,
           email: input.email,
         };
       }
 
-      if (errorData.__type === 'PasswordResetRequiredException') {
+      if (errorData.__type === "PasswordResetRequiredException") {
         return {
           requiresPasswordReset: true,
           email: input.email,
         };
       }
 
-      throw new Error('Invalid email or password');
+      throw new Error("Invalid email or password");
     }
 
     const authData = (await authResult.json()) as AuthenticationResultResponse;
@@ -307,13 +307,13 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const accessToken = authData.AuthenticationResult?.AccessToken;
     if (!accessToken) {
-      throw new Error('Failed to authenticate with Cognito');
+      throw new Error("Failed to authenticate with Cognito");
     }
 
     const auth = await this.verifier.verify(accessToken);
 
     if (!auth?.payload?.sub) {
-      throw new Error('Invalid token payload');
+      throw new Error("Invalid token payload");
     }
 
     const cognitoSub = auth.payload.sub;
@@ -324,7 +324,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
       .limit(1);
 
     if (!users.length) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     const userData = users[0];
@@ -335,7 +335,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
         email: userData.email,
         teamId: userData.teamId,
         currentTeamId: userData.currentTeamId,
-        authProvider: 'cognito',
+        authProvider: "cognito",
         cognitoSub: userData.cognitoSub,
         mfaEnabled: userData.mfaEnabled === 1,
         emailVerified: userData.emailVerified === 1,
@@ -396,7 +396,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
       email: userData.email,
       teamId: userData.teamId,
       currentTeamId: userData.currentTeamId,
-      authProvider: 'cognito',
+      authProvider: "cognito",
       cognitoSub: userData.cognitoSub,
       mfaEnabled: userData.mfaEnabled === 1,
       emailVerified: userData.emailVerified === 1,
@@ -405,7 +405,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
   }
 
   async createSession(userId: string): Promise<{ sessionToken: string }> {
-    const sessionToken = randomId('sess');
+    const sessionToken = randomId("sess");
 
     const expiresAt = new Date();
 
@@ -421,7 +421,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
   }
 
   async validateSession(
-    sessionToken: string,
+    sessionToken: string
   ): Promise<{ userId: string } | null> {
     const sessions = await this.db
       .select()
@@ -458,12 +458,12 @@ export class CognitoAuthAdapter implements AuthAdapter {
   }): Promise<MFASetupResult> {
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const associateResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target':
-          'AWSCognitoIdentityProviderService.AssociateSoftwareToken',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target":
+          "AWSCognitoIdentityProviderService.AssociateSoftwareToken",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         Session: input.session,
@@ -472,8 +472,8 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     if (!associateResult.ok) {
       const errorData = await associateResult.json();
-      console.error('Cognito MFA Setup Error:', errorData);
-      throw new Error('Failed to start MFA setup');
+      console.error("Cognito MFA Setup Error:", errorData);
+      throw new Error("Failed to start MFA setup");
     }
 
     const associateData = (await associateResult.json()) as {
@@ -482,14 +482,14 @@ export class CognitoAuthAdapter implements AuthAdapter {
     };
 
     if (!associateData.SecretCode) {
-      throw new Error('Failed to retrieve MFA secret');
+      throw new Error("Failed to retrieve MFA secret");
     }
 
-    const issuer = 'BitWobbly';
+    const issuer = "BitWobbly";
     const otpauth = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(
-      input.email,
+      input.email
     )}?secret=${encodeURIComponent(associateData.SecretCode)}&issuer=${encodeURIComponent(
-      issuer,
+      issuer
     )}`;
     return {
       secret: associateData.SecretCode,
@@ -503,11 +503,11 @@ export class CognitoAuthAdapter implements AuthAdapter {
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
 
     const verifyResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.VerifySoftwareToken',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.VerifySoftwareToken",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         UserCode: input.code,
@@ -517,36 +517,36 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     if (!verifyResult.ok) {
       const errorData = await verifyResult.json();
-      console.error('Cognito MFA Verify Token Error:', errorData);
-      throw new Error('MFA setup verification failed');
+      console.error("Cognito MFA Verify Token Error:", errorData);
+      throw new Error("MFA setup verification failed");
     }
 
     const verifyData = (await verifyResult.json()) as { Session?: string };
 
     const challengeResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target':
-          'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target":
+          "AWSCognitoIdentityProviderService.RespondToAuthChallenge",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
-        ChallengeName: 'MFA_SETUP',
+        ChallengeName: "MFA_SETUP",
         Session: verifyData.Session || input.session,
         ChallengeResponses: {
           USERNAME: input.email,
           SOFTWARE_TOKEN_MFA_CODE: input.code,
-          SECRET_HASH: hash || '',
+          SECRET_HASH: hash || "",
         },
       }),
     });
 
     if (!challengeResult.ok) {
       const errorData = await challengeResult.json();
-      console.error('Cognito MFA Setup Challenge Error:', errorData);
-      throw new Error('MFA setup failed');
+      console.error("Cognito MFA Setup Challenge Error:", errorData);
+      throw new Error("MFA setup failed");
     }
 
     const authData =
@@ -554,13 +554,13 @@ export class CognitoAuthAdapter implements AuthAdapter {
     const accessToken = authData.AuthenticationResult?.AccessToken;
 
     if (!accessToken) {
-      throw new Error('MFA setup failed');
+      throw new Error("MFA setup failed");
     }
 
     const auth = await this.verifier.verify(accessToken);
 
     if (!auth?.payload?.sub) {
-      throw new Error('Invalid token payload');
+      throw new Error("Invalid token payload");
     }
 
     const cognitoSub = auth.payload.sub;
@@ -571,7 +571,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
       .limit(1);
 
     if (!users.length) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     const userData = users[0];
@@ -587,7 +587,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
         email: userData.email,
         teamId: userData.teamId,
         currentTeamId: userData.currentTeamId,
-        authProvider: 'cognito',
+        authProvider: "cognito",
         cognitoSub: userData.cognitoSub,
         mfaEnabled: true,
         emailVerified: userData.emailVerified === 1,
@@ -601,29 +601,29 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const authResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target':
-          'AWSCognitoIdentityProviderService.RespondToAuthChallenge',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target":
+          "AWSCognitoIdentityProviderService.RespondToAuthChallenge",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
-        ChallengeName: 'SOFTWARE_TOKEN_MFA',
+        ChallengeName: "SOFTWARE_TOKEN_MFA",
         Session: input.session,
         ChallengeResponses: {
           USERNAME: input.email,
           SOFTWARE_TOKEN_MFA_CODE: input.code,
-          SECRET_HASH: hash || '',
+          SECRET_HASH: hash || "",
         },
       }),
     });
 
     if (!authResult.ok) {
       const errorData = await authResult.json();
-      console.error('Cognito MFA Verification Error:', errorData);
-      throw new Error('MFA verification failed');
+      console.error("Cognito MFA Verification Error:", errorData);
+      throw new Error("MFA verification failed");
     }
 
     const authData = (await authResult.json()) as AuthenticationResultResponse;
@@ -631,13 +631,13 @@ export class CognitoAuthAdapter implements AuthAdapter {
     const accessToken = authData.AuthenticationResult?.AccessToken;
 
     if (!accessToken) {
-      throw new Error('MFA verification failed');
+      throw new Error("MFA verification failed");
     }
 
     const auth = await this.verifier.verify(accessToken);
 
     if (!auth?.payload?.sub) {
-      throw new Error('Invalid token payload');
+      throw new Error("Invalid token payload");
     }
 
     const cognitoSub = auth.payload.sub;
@@ -649,7 +649,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
       .limit(1);
 
     if (!users.length) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     const userData = users[0];
@@ -660,7 +660,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
         email: userData.email,
         teamId: userData.teamId,
         currentTeamId: userData.currentTeamId,
-        authProvider: 'cognito',
+        authProvider: "cognito",
         cognitoSub: userData.cognitoSub,
         mfaEnabled: true,
         emailVerified: userData.emailVerified === 1,
@@ -675,7 +675,7 @@ export class CognitoAuthAdapter implements AuthAdapter {
   }
 
   async completeNewPasswordChallenge(
-    input: NewPasswordInput,
+    input: NewPasswordInput
   ): Promise<{ user: AuthUser }> {
     const hash = await this.computeHash(input.email);
 
@@ -739,23 +739,23 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const signUpResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target':
-          'AWSCognitoIdentityProviderService.ResendConfirmationCode',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target":
+          "AWSCognitoIdentityProviderService.ResendConfirmationCode",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
         Username: email,
-        SecretHash: hash || '',
+        SecretHash: hash || "",
       }),
     });
 
     if (!signUpResult.ok) {
       const errorData = await signUpResult.json();
-      console.error('Cognito Resend Confirmation Code Error:', errorData);
+      console.error("Cognito Resend Confirmation Code Error:", errorData);
       throw new Error(`Failed to resend verification email`);
     }
 
@@ -767,23 +767,23 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const confirmResult = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.ConfirmSignUp',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.ConfirmSignUp",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
         Username: email,
         ConfirmationCode: code,
-        SecretHash: hash || '',
+        SecretHash: hash || "",
       }),
     });
 
     if (!confirmResult.ok) {
       const errorData = await confirmResult.json();
-      console.error('Cognito Confirm SignUp Error:', errorData);
+      console.error("Cognito Confirm SignUp Error:", errorData);
       throw new Error(`Failed to verify email`);
     }
 
@@ -802,23 +802,23 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const result = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.ForgotPassword',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.ForgotPassword",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
         Username: email,
-        SecretHash: hash || '',
+        SecretHash: hash || "",
       }),
     });
 
     if (!result.ok) {
       const errorData = await result.json();
-      console.error('Cognito Forgot Password Error:', errorData);
-      throw new Error('Failed to initiate password reset');
+      console.error("Cognito Forgot Password Error:", errorData);
+      throw new Error("Failed to initiate password reset");
     }
   }
 
@@ -831,26 +831,26 @@ export class CognitoAuthAdapter implements AuthAdapter {
 
     const awsUrl = `https://cognito-idp.${this.client.region}.amazonaws.com/`;
     const result = await this.client.fetch(awsUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target':
-          'AWSCognitoIdentityProviderService.ConfirmForgotPassword',
-        'User-Agent': 'cloudflare-auth-adapter-cognito/1.0.0',
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target":
+          "AWSCognitoIdentityProviderService.ConfirmForgotPassword",
+        "User-Agent": "cloudflare-auth-adapter-cognito/1.0.0",
       },
       body: JSON.stringify({
         ClientId: this.clientId,
         Username: input.email,
         ConfirmationCode: input.code,
         Password: input.newPassword,
-        SecretHash: hash || '',
+        SecretHash: hash || "",
       }),
     });
 
     if (!result.ok) {
       const errorData = await result.json();
-      console.error('Cognito Confirm Forgot Password Error:', errorData);
-      throw new Error('Failed to reset password');
+      console.error("Cognito Confirm Forgot Password Error:", errorData);
+      throw new Error("Failed to reset password");
     }
   }
 }

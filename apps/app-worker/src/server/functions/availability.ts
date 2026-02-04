@@ -80,7 +80,7 @@ export const getMonthlyAvailabilityReportFn = createServerFn({ method: "GET" })
         "downtime_minutes",
         "maintenance_minutes",
         "effective_minutes",
-      ].join(","),
+      ].join(",")
     );
     for (const day of report.days) {
       lines.push(
@@ -90,7 +90,7 @@ export const getMonthlyAvailabilityReportFn = createServerFn({ method: "GET" })
           String(day.downtime_minutes),
           String(day.maintenance_minutes),
           String(day.effective_minutes),
-        ].join(","),
+        ].join(",")
       );
     }
 

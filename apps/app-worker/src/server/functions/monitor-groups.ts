@@ -17,7 +17,7 @@ export const listMonitorGroupsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const groups = await listMonitorGroups(db, teamId);
     return { groups };
-  },
+  }
 );
 
 export const createMonitorGroupFn = createServerFn({ method: "POST" })
@@ -27,7 +27,7 @@ export const createMonitorGroupFn = createServerFn({ method: "POST" })
         name: z.string().min(1),
         description: z.string().nullable().optional(),
       })
-      .parse(data),
+      .parse(data)
   )
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
@@ -46,4 +46,3 @@ export const deleteMonitorGroupFn = createServerFn({ method: "POST" })
     await deleteMonitorGroup(db, teamId, data.id);
     return { ok: true };
   });
-

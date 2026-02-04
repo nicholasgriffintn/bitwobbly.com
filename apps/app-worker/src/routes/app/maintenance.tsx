@@ -51,7 +51,7 @@ export const Route = createFileRoute("/app/maintenance")({
 function Maintenance() {
   const data = Route.useLoaderData();
   const [suppressions, setSuppressions] = useState<Suppression[]>(
-    data.suppressions,
+    data.suppressions
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -62,19 +62,19 @@ function Maintenance() {
 
   const monitorById = useMemo(() => {
     return new Map<string, string>(
-      (data.monitors as Monitor[]).map((m) => [m.id, m.name]),
+      (data.monitors as Monitor[]).map((m) => [m.id, m.name])
     );
   }, [data.monitors]);
 
   const groupById = useMemo(() => {
     return new Map<string, string>(
-      (data.groups as MonitorGroup[]).map((g) => [g.id, g.name]),
+      (data.groups as MonitorGroup[]).map((g) => [g.id, g.name])
     );
   }, [data.groups]);
 
   const componentById = useMemo(() => {
     return new Map<string, string>(
-      (data.components as Component[]).map((c) => [c.id, c.name]),
+      (data.components as Component[]).map((c) => [c.id, c.name])
     );
   }, [data.components]);
 
@@ -88,7 +88,9 @@ function Maintenance() {
   };
 
   const formatSec = (sec: number) => {
-    return new Date(sec * 1000).toISOString().replace("T", " ").slice(0, 16) + " UTC";
+    return (
+      new Date(sec * 1000).toISOString().replace("T", " ").slice(0, 16) + " UTC"
+    );
   };
 
   const resolveScopeLabel = (type: string, id: string) => {
@@ -145,7 +147,7 @@ function Maintenance() {
                     {scope
                       ? `${scope.scopeType}: ${resolveScopeLabel(
                           scope.scopeType,
-                          scope.scopeId,
+                          scope.scopeId
                         )}`
                       : "No scope"}
                     {" · "}

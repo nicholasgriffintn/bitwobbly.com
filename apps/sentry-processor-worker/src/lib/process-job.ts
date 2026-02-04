@@ -37,4 +37,3 @@ export function parseProcessJob(value: unknown): ProcessJob | null {
     item_index,
   };
 }
-

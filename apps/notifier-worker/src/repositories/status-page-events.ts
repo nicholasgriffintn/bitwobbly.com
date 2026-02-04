@@ -19,7 +19,7 @@ export type DeliverableSubscriberEvent = {
 export async function listUnsentSubscriberEventsByIds(
   db: DB,
   subscriberId: string,
-  eventIds: string[],
+  eventIds: string[]
 ): Promise<DeliverableSubscriberEvent[]> {
   if (!eventIds.length) return [];
 
@@ -41,25 +41,25 @@ export async function listUnsentSubscriberEventsByIds(
     .from(schema.statusPageSubscriberEvents)
     .innerJoin(
       schema.incidents,
-      eq(schema.incidents.id, schema.statusPageSubscriberEvents.incidentId),
+      eq(schema.incidents.id, schema.statusPageSubscriberEvents.incidentId)
     )
     .leftJoin(
       schema.incidentUpdates,
       eq(
         schema.incidentUpdates.id,
-        schema.statusPageSubscriberEvents.incidentUpdateId,
-      ),
+        schema.statusPageSubscriberEvents.incidentUpdateId
+      )
     )
     .innerJoin(
       schema.statusPages,
-      eq(schema.statusPages.id, schema.statusPageSubscriberEvents.statusPageId),
+      eq(schema.statusPages.id, schema.statusPageSubscriberEvents.statusPageId)
     )
     .where(
       and(
         eq(schema.statusPageSubscriberEvents.subscriberId, subscriberId),
         inArray(schema.statusPageSubscriberEvents.id, eventIds),
-        isNull(schema.statusPageSubscriberEvents.sentAt),
-      ),
+        isNull(schema.statusPageSubscriberEvents.sentAt)
+      )
     );
 }
 
@@ -67,7 +67,7 @@ export async function markSubscriberEventsSent(
   db: DB,
   subscriberId: string,
   eventIds: string[],
-  sentAtIso: string,
+  sentAtIso: string
 ) {
   if (!eventIds.length) return;
   await db
@@ -76,8 +76,7 @@ export async function markSubscriberEventsSent(
     .where(
       and(
         eq(schema.statusPageSubscriberEvents.subscriberId, subscriberId),
-        inArray(schema.statusPageSubscriberEvents.id, eventIds),
-      ),
+        inArray(schema.statusPageSubscriberEvents.id, eventIds)
+      )
     );
 }
-

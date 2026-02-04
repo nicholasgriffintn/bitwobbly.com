@@ -22,13 +22,16 @@ export async function createStatusPage(
     logo_url?: string;
     brand_color?: string;
     custom_css?: string;
-  },
+  }
 ) {
   const existingInTeam = await db
     .select({ id: schema.statusPages.id })
     .from(schema.statusPages)
     .where(
-      and(eq(schema.statusPages.teamId, teamId), eq(schema.statusPages.slug, input.slug)),
+      and(
+        eq(schema.statusPages.teamId, teamId),
+        eq(schema.statusPages.slug, input.slug)
+      )
     )
     .limit(1);
 
@@ -42,8 +45,8 @@ export async function createStatusPage(
     .where(
       and(
         eq(schema.statusPages.slug, input.slug),
-        inArray(schema.statusPages.accessMode, ["public", "private"]),
-      ),
+        inArray(schema.statusPages.accessMode, ["public", "private"])
+      )
     )
     .limit(1);
 
@@ -73,7 +76,7 @@ export async function getStatusPageById(db: DB, teamId: string, id: string) {
     .select()
     .from(schema.statusPages)
     .where(
-      and(eq(schema.statusPages.teamId, teamId), eq(schema.statusPages.id, id)),
+      and(eq(schema.statusPages.teamId, teamId), eq(schema.statusPages.id, id))
     )
     .limit(1);
   return rows[0] || null;
@@ -82,7 +85,7 @@ export async function getStatusPageById(db: DB, teamId: string, id: string) {
 export async function getStatusPageBySlug(
   db: DB,
   teamId: string,
-  slug: string,
+  slug: string
 ) {
   const rows = await db
     .select()
@@ -90,8 +93,8 @@ export async function getStatusPageBySlug(
     .where(
       and(
         eq(schema.statusPages.teamId, teamId),
-        eq(schema.statusPages.slug, slug),
-      ),
+        eq(schema.statusPages.slug, slug)
+      )
     )
     .limit(1);
   return rows[0] || null;
@@ -104,8 +107,8 @@ export async function getExternalStatusPageBySlug(db: DB, slug: string) {
     .where(
       and(
         eq(schema.statusPages.slug, slug),
-        inArray(schema.statusPages.accessMode, ["public", "private"]),
-      ),
+        inArray(schema.statusPages.accessMode, ["public", "private"])
+      )
     )
     .limit(2);
 
@@ -120,8 +123,8 @@ export async function externalStatusPageExistsBySlug(db: DB, slug: string) {
     .where(
       and(
         eq(schema.statusPages.slug, slug),
-        inArray(schema.statusPages.accessMode, ["public", "private"]),
-      ),
+        inArray(schema.statusPages.accessMode, ["public", "private"])
+      )
     )
     .limit(2);
 
@@ -140,7 +143,7 @@ export async function updateStatusPage(
     logo_url?: string | null;
     brand_color?: string;
     custom_css?: string | null;
-  },
+  }
 ) {
   const current = await getStatusPageById(db, teamId, statusPageId);
   if (!current) {
@@ -156,8 +159,8 @@ export async function updateStatusPage(
       .where(
         and(
           eq(schema.statusPages.teamId, teamId),
-          eq(schema.statusPages.slug, input.slug),
-        ),
+          eq(schema.statusPages.slug, input.slug)
+        )
       )
       .limit(1);
 
@@ -172,8 +175,8 @@ export async function updateStatusPage(
     .where(
       and(
         eq(schema.statusPages.slug, nextSlug),
-        inArray(schema.statusPages.accessMode, ["public", "private"]),
-      ),
+        inArray(schema.statusPages.accessMode, ["public", "private"])
+      )
     )
     .limit(2);
 
@@ -191,7 +194,8 @@ export async function updateStatusPage(
     updates.accessMode = input.access_mode;
     updates.isPublic = input.access_mode === "internal" ? 0 : 1;
   }
-  if (input.password_hash !== undefined) updates.passwordHash = input.password_hash;
+  if (input.password_hash !== undefined)
+    updates.passwordHash = input.password_hash;
   if (input.logo_url !== undefined) updates.logoUrl = input.logo_url;
   if (input.brand_color !== undefined) updates.brandColor = input.brand_color;
   if (input.custom_css !== undefined) updates.customCss = input.custom_css;
@@ -202,15 +206,15 @@ export async function updateStatusPage(
     .where(
       and(
         eq(schema.statusPages.teamId, teamId),
-        eq(schema.statusPages.id, statusPageId),
-      ),
+        eq(schema.statusPages.id, statusPageId)
+      )
     );
 }
 
 export async function deleteStatusPage(
   db: DB,
   teamId: string,
-  statusPageId: string,
+  statusPageId: string
 ) {
   await db
     .delete(schema.statusPageComponents)
@@ -220,14 +224,14 @@ export async function deleteStatusPage(
     .where(
       and(
         eq(schema.statusPages.teamId, teamId),
-        eq(schema.statusPages.id, statusPageId),
-      ),
+        eq(schema.statusPages.id, statusPageId)
+      )
     );
 }
 
 export async function listComponentsForStatusPage(
   db: DB,
-  statusPageId: string,
+  statusPageId: string
 ) {
   const rows = await db
     .select({
@@ -239,7 +243,7 @@ export async function listComponentsForStatusPage(
     .from(schema.statusPageComponents)
     .innerJoin(
       schema.components,
-      eq(schema.components.id, schema.statusPageComponents.componentId),
+      eq(schema.components.id, schema.statusPageComponents.componentId)
     )
     .where(eq(schema.statusPageComponents.statusPageId, statusPageId))
     .orderBy(schema.statusPageComponents.sortOrder);

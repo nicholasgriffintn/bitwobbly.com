@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from "react";
 
-import { useAuth } from '../react/AuthProvider';
+import { useAuth } from "../react/AuthProvider";
 
 export function SignUpForm({
   onSuccess,
@@ -10,25 +10,25 @@ export function SignUpForm({
   className?: string;
 }) {
   const { signUp, loading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!email.trim() || !password || !inviteCode.trim()) {
-      setError('All fields are required.');
+      setError("All fields are required.");
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError("Password must be at least 8 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError("Passwords do not match.");
       return;
     }
     setError(null);
@@ -37,10 +37,10 @@ export function SignUpForm({
       await signUp(email, password, inviteCode);
       onSuccess?.();
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'isRedirect' in err) {
+      if (err && typeof err === "object" && "isRedirect" in err) {
         throw err;
       }
-      setError(err instanceof Error ? err.message : 'Sign up failed');
+      setError(err instanceof Error ? err.message : "Sign up failed");
     } finally {
       setSubmitting(false);
     }
@@ -110,7 +110,7 @@ export function SignUpForm({
       </div>
       {error && <div className="form-error">{error}</div>}
       <button type="submit" disabled={loading || submitting}>
-        {submitting ? 'Signing up...' : 'Sign Up'}
+        {submitting ? "Signing up..." : "Sign Up"}
       </button>
     </form>
   );

@@ -8,19 +8,24 @@ type MonitorWithState = schema.Monitor & {
 async function assertMonitorGroupAccess(
   db: DB,
   teamId: string,
-  groupId: string,
+  groupId: string
 ) {
   const rows = await db
     .select({ id: schema.monitorGroups.id })
     .from(schema.monitorGroups)
-    .where(and(eq(schema.monitorGroups.teamId, teamId), eq(schema.monitorGroups.id, groupId)))
+    .where(
+      and(
+        eq(schema.monitorGroups.teamId, teamId),
+        eq(schema.monitorGroups.id, groupId)
+      )
+    )
     .limit(1);
   if (!rows.length) throw new Error("Monitor group not found or access denied");
 }
 
 export async function listMonitors(
   db: DB,
-  teamId: string,
+  teamId: string
 ): Promise<MonitorWithState[]> {
   const monitors = await db
     .select()
@@ -58,7 +63,7 @@ export async function createMonitor(
     type?: string;
     webhook_token?: string;
     external_config?: string;
-  },
+  }
 ) {
   const id = randomId("mon");
   const created_at = nowIso();
@@ -124,26 +129,20 @@ export async function deleteMonitor(db: DB, teamId: string, monitorId: string) {
   await db
     .delete(schema.monitors)
     .where(
-      and(
-        eq(schema.monitors.teamId, teamId),
-        eq(schema.monitors.id, monitorId),
-      ),
+      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.id, monitorId))
     );
 }
 
 export async function monitorExists(
   db: DB,
   teamId: string,
-  monitorId: string,
+  monitorId: string
 ): Promise<boolean> {
   const monitor = await db
     .select({ id: schema.monitors.id })
     .from(schema.monitors)
     .where(
-      and(
-        eq(schema.monitors.teamId, teamId),
-        eq(schema.monitors.id, monitorId),
-      ),
+      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.id, monitorId))
     )
     .limit(1);
 
@@ -153,16 +152,13 @@ export async function monitorExists(
 export async function getMonitorById(
   db: DB,
   teamId: string,
-  monitorId: string,
+  monitorId: string
 ) {
   const monitors = await db
     .select()
     .from(schema.monitors)
     .where(
-      and(
-        eq(schema.monitors.teamId, teamId),
-        eq(schema.monitors.id, monitorId),
-      ),
+      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.id, monitorId))
     )
     .limit(1);
 
@@ -183,7 +179,7 @@ export async function updateMonitor(
     enabled?: number;
     type?: string;
     external_config?: string;
-  },
+  }
 ) {
   const updates: Record<string, unknown> = {};
   if (input.name !== undefined) updates.name = input.name;
@@ -210,10 +206,7 @@ export async function updateMonitor(
     .update(schema.monitors)
     .set(updates)
     .where(
-      and(
-        eq(schema.monitors.teamId, teamId),
-        eq(schema.monitors.id, monitorId),
-      ),
+      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.id, monitorId))
     );
 }
 
@@ -222,7 +215,7 @@ export async function updateMonitorStatus(
   teamId: string,
   monitorId: string,
   status: "up" | "down" | "degraded",
-  message?: string,
+  message?: string
 ) {
   const monitor = await getMonitorById(db, teamId, monitorId);
   if (!monitor) {
@@ -243,7 +236,7 @@ export async function updateMonitorStatus(
 export async function getMonitorByWebhookToken(
   db: DB,
   monitorId: string,
-  tokenHash: string,
+  tokenHash: string
 ) {
   const monitors = await db
     .select()
@@ -251,8 +244,8 @@ export async function getMonitorByWebhookToken(
     .where(
       and(
         eq(schema.monitors.id, monitorId),
-        eq(schema.monitors.webhookToken, tokenHash),
-      ),
+        eq(schema.monitors.webhookToken, tokenHash)
+      )
     )
     .limit(1);
 
@@ -277,7 +270,7 @@ export async function upsertMonitorStateFromStatusUpdate(
     status: "up" | "down" | "degraded";
     consecutiveFailures: number;
     lastError?: string | null;
-  },
+  }
 ) {
   await db
     .insert(schema.monitorState)
@@ -306,7 +299,7 @@ export async function upsertMonitorStateFromStatusUpdate(
 export async function setMonitorIncidentOpen(
   db: DB,
   monitorId: string,
-  open: boolean,
+  open: boolean
 ) {
   await db
     .update(schema.monitorState)

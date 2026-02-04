@@ -12,7 +12,7 @@ export async function listNotificationChannels(db: DB, teamId: string) {
 export async function createWebhookChannel(
   db: DB,
   teamId: string,
-  input: { url: string; label?: string; enabled?: number },
+  input: { url: string; label?: string; enabled?: number }
 ) {
   const id = randomId("chan");
   const config_json = JSON.stringify({
@@ -40,7 +40,7 @@ export async function createEmailChannel(
     subject?: string;
     label?: string;
     enabled?: number;
-  },
+  }
 ) {
   const id = randomId("chan");
   const config_json = JSON.stringify({
@@ -64,30 +64,30 @@ export async function createEmailChannel(
 export async function deleteNotificationChannel(
   db: DB,
   teamId: string,
-  channelId: string,
+  channelId: string
 ) {
   await db
     .delete(schema.alertRules)
     .where(
       and(
         eq(schema.alertRules.teamId, teamId),
-        eq(schema.alertRules.channelId, channelId),
-      ),
+        eq(schema.alertRules.channelId, channelId)
+      )
     );
   await db
     .delete(schema.notificationChannels)
     .where(
       and(
         eq(schema.notificationChannels.teamId, teamId),
-        eq(schema.notificationChannels.id, channelId),
-      ),
+        eq(schema.notificationChannels.id, channelId)
+      )
     );
 }
 
 export async function notificationChannelExists(
   db: DB,
   teamId: string,
-  channelId: string,
+  channelId: string
 ): Promise<boolean> {
   const channel = await db
     .select({ id: schema.notificationChannels.id })
@@ -95,8 +95,8 @@ export async function notificationChannelExists(
     .where(
       and(
         eq(schema.notificationChannels.teamId, teamId),
-        eq(schema.notificationChannels.id, channelId),
-      ),
+        eq(schema.notificationChannels.id, channelId)
+      )
     )
     .limit(1);
 

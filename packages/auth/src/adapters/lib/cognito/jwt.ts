@@ -21,7 +21,7 @@ function handleVerificationError(e: Error) {
   if (
     e instanceof errors.JOSEError &&
     ["ERR_JWT_CLAIM_INVALID", "ERR_JWT_EXPIRED", "ERR_JWT_MALFORMED"].includes(
-      e.code,
+      e.code
     )
   ) {
     throw new JwtVerificationError(e);
@@ -42,7 +42,7 @@ function validateTokenUseClaim(payload: any, tokenType: "id" | "access") {
   if (!payload.token_use || payload.token_use !== tokenType) {
     const originalError = new JwtCognitoClaimValidationError(
       "token_use",
-      `expected "${tokenType}", got "${payload.token_use}"`,
+      `expected "${tokenType}", got "${payload.token_use}"`
     );
 
     throw new JwtVerificationError(originalError);

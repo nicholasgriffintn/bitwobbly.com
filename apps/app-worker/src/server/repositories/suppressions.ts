@@ -10,7 +10,7 @@ export type SuppressionWithScopes = schema.Suppression & {
 
 export async function listSuppressions(
   db: DB,
-  teamId: string,
+  teamId: string
 ): Promise<SuppressionWithScopes[]> {
   const suppressions = await db
     .select()
@@ -53,7 +53,7 @@ export async function createSuppression(
     startsAt: number;
     endsAt?: number | null;
     scopes: Array<{ scopeType: SuppressionScopeType; scopeId: string }>;
-  },
+  }
 ) {
   const id = randomId("sup");
   await db.insert(schema.suppressions).values({
@@ -73,7 +73,7 @@ export async function createSuppression(
         suppressionId: id,
         scopeType: s.scopeType,
         scopeId: s.scopeId,
-      })),
+      }))
     );
   }
 
@@ -83,7 +83,12 @@ export async function createSuppression(
 export async function deleteSuppression(db: DB, teamId: string, id: string) {
   await db
     .delete(schema.suppressions)
-    .where(and(eq(schema.suppressions.teamId, teamId), eq(schema.suppressions.id, id)));
+    .where(
+      and(
+        eq(schema.suppressions.teamId, teamId),
+        eq(schema.suppressions.id, id)
+      )
+    );
 }
 
 export async function listActiveSuppressionMatches(
@@ -95,7 +100,7 @@ export async function listActiveSuppressionMatches(
     monitors?: string[];
     monitorGroups?: string[];
     components?: string[];
-  },
+  }
 ): Promise<
   Array<{
     id: string;
@@ -106,7 +111,9 @@ export async function listActiveSuppressionMatches(
     scopeId: string;
   }>
 > {
-  const wantedKinds = input.kinds?.length ? input.kinds : ["maintenance", "silence"];
+  const wantedKinds = input.kinds?.length
+    ? input.kinds
+    : ["maintenance", "silence"];
   const anyIds =
     (input.monitors?.length || 0) +
     (input.monitorGroups?.length || 0) +
@@ -118,24 +125,24 @@ export async function listActiveSuppressionMatches(
     scopePredicates.push(
       and(
         eq(schema.suppressionScopes.scopeType, "monitor"),
-        inArray(schema.suppressionScopes.scopeId, input.monitors),
-      ),
+        inArray(schema.suppressionScopes.scopeId, input.monitors)
+      )
     );
   }
   if (input.monitorGroups?.length) {
     scopePredicates.push(
       and(
         eq(schema.suppressionScopes.scopeType, "monitor_group"),
-        inArray(schema.suppressionScopes.scopeId, input.monitorGroups),
-      ),
+        inArray(schema.suppressionScopes.scopeId, input.monitorGroups)
+      )
     );
   }
   if (input.components?.length) {
     scopePredicates.push(
       and(
         eq(schema.suppressionScopes.scopeType, "component"),
-        inArray(schema.suppressionScopes.scopeId, input.components),
-      ),
+        inArray(schema.suppressionScopes.scopeId, input.components)
+      )
     );
   }
 
@@ -151,16 +158,18 @@ export async function listActiveSuppressionMatches(
     .from(schema.suppressions)
     .innerJoin(
       schema.suppressionScopes,
-      eq(schema.suppressionScopes.suppressionId, schema.suppressions.id),
+      eq(schema.suppressionScopes.suppressionId, schema.suppressions.id)
     )
     .where(
       and(
         eq(schema.suppressions.teamId, teamId),
         inArray(schema.suppressions.kind, wantedKinds),
         lte(schema.suppressions.startsAt, nowSec),
-        or(isNull(schema.suppressions.endsAt), gt(schema.suppressions.endsAt, nowSec)),
-        or(...scopePredicates),
-      ),
+        or(
+          isNull(schema.suppressions.endsAt),
+          gt(schema.suppressions.endsAt, nowSec)
+        ),
+        or(...scopePredicates)
+      )
     );
 }
-

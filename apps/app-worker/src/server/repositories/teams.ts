@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 export async function createTeam(
   db: DB,
   userId: string,
-  teamName: string,
+  teamName: string
 ): Promise<{ teamId: string }> {
   const teamId = randomId("team");
   const now = nowIso();
@@ -34,7 +34,7 @@ export async function addUserToTeam(
   db: DB,
   userId: string,
   teamId: string,
-  role: string = "member",
+  role: string = "member"
 ): Promise<void> {
   const now = nowIso();
 
@@ -67,7 +67,7 @@ export async function addUserToTeam(
 
 export async function getUserTeams(
   db: DB,
-  userId: string,
+  userId: string
 ): Promise<
   Array<{ id: string; name: string; role: string; joinedAt: string }>
 > {
@@ -88,7 +88,7 @@ export async function getUserTeams(
 export async function switchTeam(
   db: DB,
   userId: string,
-  teamId: string,
+  teamId: string
 ): Promise<void> {
   const membership = await db
     .select()
@@ -96,8 +96,8 @@ export async function switchTeam(
     .where(
       and(
         eq(schema.userTeams.userId, userId),
-        eq(schema.userTeams.teamId, teamId),
-      ),
+        eq(schema.userTeams.teamId, teamId)
+      )
     )
     .limit(1);
 
@@ -113,7 +113,7 @@ export async function switchTeam(
 
 export async function getTeamById(
   db: DB,
-  teamId: string,
+  teamId: string
 ): Promise<{ id: string; name: string } | null> {
   const teams = await db
     .select()
@@ -130,7 +130,7 @@ export async function createTeamInvite(
   createdBy: string,
   email?: string,
   role: string = "member",
-  expiresInDays: number = 7,
+  expiresInDays: number = 7
 ): Promise<{ inviteCode: string }> {
   const inviteId = randomId("inv");
   const inviteCode = randomId("code");
@@ -155,7 +155,7 @@ export async function createTeamInvite(
 
 export async function validateTeamInvite(
   db: DB,
-  inviteCode: string,
+  inviteCode: string
 ): Promise<{ teamId: string; role: string } | null> {
   const invites = await db
     .select()
@@ -186,7 +186,7 @@ export async function useTeamInvite(db: DB, inviteCode: string): Promise<void> {
 
 export async function listTeamMembers(
   db: DB,
-  teamId: string,
+  teamId: string
 ): Promise<
   Array<{ userId: string; email: string; role: string; joinedAt: string }>
 > {
@@ -207,7 +207,7 @@ export async function listTeamMembers(
 export async function removeTeamMember(
   db: DB,
   teamId: string,
-  userId: string,
+  userId: string
 ): Promise<void> {
   const owners = await db
     .select()
@@ -215,8 +215,8 @@ export async function removeTeamMember(
     .where(
       and(
         eq(schema.userTeams.teamId, teamId),
-        eq(schema.userTeams.role, "owner"),
-      ),
+        eq(schema.userTeams.role, "owner")
+      )
     );
 
   if (owners.length === 1 && owners[0].userId === userId) {
@@ -228,8 +228,8 @@ export async function removeTeamMember(
     .where(
       and(
         eq(schema.userTeams.teamId, teamId),
-        eq(schema.userTeams.userId, userId),
-      ),
+        eq(schema.userTeams.userId, userId)
+      )
     );
 }
 
@@ -237,7 +237,7 @@ export async function updateMemberRole(
   db: DB,
   teamId: string,
   userId: string,
-  role: string,
+  role: string
 ): Promise<void> {
   await db
     .update(schema.userTeams)
@@ -245,14 +245,14 @@ export async function updateMemberRole(
     .where(
       and(
         eq(schema.userTeams.teamId, teamId),
-        eq(schema.userTeams.userId, userId),
-      ),
+        eq(schema.userTeams.userId, userId)
+      )
     );
 }
 
 export async function listTeamInvites(
   db: DB,
-  teamId: string,
+  teamId: string
 ): Promise<
   Array<{
     inviteCode: string;
@@ -280,7 +280,7 @@ export async function listTeamInvites(
 
 export async function revokeTeamInvite(
   db: DB,
-  inviteCode: string,
+  inviteCode: string
 ): Promise<void> {
   await db
     .delete(schema.teamInvites)
@@ -290,7 +290,7 @@ export async function revokeTeamInvite(
 export async function updateTeamName(
   db: DB,
   teamId: string,
-  name: string,
+  name: string
 ): Promise<void> {
   await db
     .update(schema.teams)
@@ -319,7 +319,7 @@ export async function deleteTeam(db: DB, teamId: string): Promise<void> {
 
   if (hasMonitors.length || hasStatusPages.length || hasProjects.length) {
     throw new Error(
-      "Cannot delete team with existing resources. Please delete all monitors, status pages, and projects first.",
+      "Cannot delete team with existing resources. Please delete all monitors, status pages, and projects first."
     );
   }
 
@@ -335,7 +335,7 @@ export async function deleteTeam(db: DB, teamId: string): Promise<void> {
 export async function getUserRole(
   db: DB,
   teamId: string,
-  userId: string,
+  userId: string
 ): Promise<string | null> {
   const membership = await db
     .select()
@@ -343,8 +343,8 @@ export async function getUserRole(
     .where(
       and(
         eq(schema.userTeams.teamId, teamId),
-        eq(schema.userTeams.userId, userId),
-      ),
+        eq(schema.userTeams.userId, userId)
+      )
     )
     .limit(1);
 

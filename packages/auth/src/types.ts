@@ -90,7 +90,7 @@ export interface AuthAdapter {
 
   // Challenge responses (optional)
   completeNewPasswordChallenge?(
-    input: NewPasswordInput,
+    input: NewPasswordInput
   ): Promise<{ user: AuthUser }>;
 
   // Email verification (optional)

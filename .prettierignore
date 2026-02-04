@@ -5,3 +5,5 @@ dist
 drizzle
 pnpm-lock.yaml
 *.d.ts
+cdk.out
+package-lock.json

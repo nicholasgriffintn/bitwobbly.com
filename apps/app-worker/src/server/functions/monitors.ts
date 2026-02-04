@@ -13,7 +13,11 @@ import {
 import { getMonitorMetrics } from "../repositories/metrics";
 import { clampInt } from "../lib/utils";
 import { requireTeam } from "../lib/auth-middleware";
-import { generateWebhookToken, hashWebhookToken, randomId } from '@bitwobbly/shared';
+import {
+  generateWebhookToken,
+  hashWebhookToken,
+  randomId,
+} from "@bitwobbly/shared";
 
 const MonitorTypeSchema = z.enum([
   "http",
@@ -48,10 +52,7 @@ const CreateMonitorSchema = z
       type === "http_keyword" ||
       type === "external";
 
-    const requiresTarget =
-      type === "tls" ||
-      type === "dns" ||
-      type === "tcp";
+    const requiresTarget = type === "tls" || type === "dns" || type === "tcp";
 
     if (requiresUrl) {
       if (!data.url || !z.string().url().safeParse(data.url).success) {
@@ -91,7 +92,7 @@ export const listMonitorsFn = createServerFn({ method: "GET" }).handler(
     const db = getDb(vars.DB);
     const monitors = await listMonitors(db, teamId);
     return { monitors };
-  },
+  }
 );
 
 export const createMonitorFn = createServerFn({ method: "POST" })
@@ -162,7 +163,7 @@ export const getMonitorMetricsFn = createServerFn({ method: "GET" })
         vars.CLOUDFLARE_ACCOUNT_ID,
         vars.CLOUDFLARE_API_TOKEN,
         data.monitorId,
-        hours,
+        hours
       );
       return result;
     } catch (error) {
@@ -205,12 +206,12 @@ export const updateMonitorFn = createServerFn({ method: "POST" })
         nextType === "external";
 
       const requiresTarget =
-        nextType === "tls" ||
-        nextType === "dns" ||
-        nextType === "tcp";
+        nextType === "tls" || nextType === "dns" || nextType === "tcp";
 
       if (requiresUrl && !z.string().url().safeParse(nextUrl).success) {
-        throw new Error("URL is required and must be valid for this monitor type");
+        throw new Error(
+          "URL is required and must be valid for this monitor type"
+        );
       }
 
       if (requiresTarget && !nextUrl.trim()) {
@@ -249,20 +250,20 @@ export const triggerSchedulerFn = createServerFn({ method: "POST" }).handler(
   async () => {
     await requireTeam();
     try {
-      const schedulerUrl = 'http://localhost:8788/cdn-cgi/handler/scheduled';
-      const response = await fetch(schedulerUrl, { method: 'POST' });
+      const schedulerUrl = "http://localhost:8788/cdn-cgi/handler/scheduled";
+      const response = await fetch(schedulerUrl, { method: "POST" });
 
       if (!response.ok) {
         throw new Error(`Scheduler returned ${response.status}`);
       }
-      return { ok: true, message: 'Scheduler triggered successfully' };
+      return { ok: true, message: "Scheduler triggered successfully" };
     } catch (error) {
-      console.error('[APP] Failed to trigger scheduler:', error);
+      console.error("[APP] Failed to trigger scheduler:", error);
       throw new Error(
-        'Failed to trigger scheduler. Make sure dev server is running.',
+        "Failed to trigger scheduler. Make sure dev server is running."
       );
     }
-  },
+  }
 );
 
 const SetManualStatusSchema = z.object({

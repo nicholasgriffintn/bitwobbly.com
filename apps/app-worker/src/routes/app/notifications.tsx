@@ -20,7 +20,7 @@ import {
   listAlertRulesFn,
   deleteAlertRuleFn,
   toggleAlertRuleFn,
-} from '@/server/functions/alert-rules';
+} from "@/server/functions/alert-rules";
 
 type Monitor = {
   id: string;
@@ -61,17 +61,17 @@ type AlertRule = {
   monitorName: string | null;
 };
 
-type Tab = 'channels' | 'rules';
+type Tab = "channels" | "rules";
 
 const TRIGGER_TYPES = [
-  { value: 'new_issue', label: 'New Issue' },
-  { value: 'issue_regression', label: 'Issue Regression' },
-  { value: 'event_threshold', label: 'Event Threshold' },
-  { value: 'user_threshold', label: 'User Threshold' },
-  { value: 'status_change', label: 'Status Change' },
-  { value: 'high_priority', label: 'High Priority' },
-  { value: 'monitor_down', label: 'Monitor Down' },
-  { value: 'monitor_recovery', label: 'Monitor Recovery' },
+  { value: "new_issue", label: "New Issue" },
+  { value: "issue_regression", label: "Issue Regression" },
+  { value: "event_threshold", label: "Event Threshold" },
+  { value: "user_threshold", label: "User Threshold" },
+  { value: "status_change", label: "Status Change" },
+  { value: "high_priority", label: "High Priority" },
+  { value: "monitor_down", label: "Monitor Down" },
+  { value: "monitor_recovery", label: "Monitor Recovery" },
 ];
 
 export const Route = createFileRoute("/app/notifications")({
@@ -83,7 +83,7 @@ export const Route = createFileRoute("/app/notifications")({
         listMonitorsFn(),
         listSentryProjectsFn(),
         listAlertRulesFn(),
-      ],
+      ]
     );
     return {
       channels: channelsRes.channels,
@@ -102,7 +102,7 @@ export default function Notifications() {
     rules: initialRules,
   } = Route.useLoaderData();
 
-  const [activeTab, setActiveTab] = useState<Tab>('channels');
+  const [activeTab, setActiveTab] = useState<Tab>("channels");
   const [channels, setChannels] = useState<Channel[]>(initialChannels);
   const [monitors] = useState<Monitor[]>(initialMonitors);
   const [projects] = useState<Project[]>(initialProjects);
@@ -163,7 +163,7 @@ export default function Notifications() {
     try {
       await toggleRule({ data: { id, enabled } });
       setRules((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, enabled: enabled ? 1 : 0 } : r)),
+        prev.map((r) => (r.id === id ? { ...r, enabled: enabled ? 1 : 0 } : r))
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -172,10 +172,10 @@ export default function Notifications() {
 
   const getChannelDisplay = (channel: Channel) => {
     const config = JSON.parse(channel.configJson);
-    if (channel.type === 'email') {
-      return { title: config.label || 'Email channel', subtitle: config.to };
+    if (channel.type === "email") {
+      return { title: config.label || "Email channel", subtitle: config.to };
     }
-    return { title: config.label || 'Webhook channel', subtitle: config.url };
+    return { title: config.label || "Webhook channel", subtitle: config.url };
   };
 
   const getTriggerLabel = (type: string) => {
@@ -183,12 +183,12 @@ export default function Notifications() {
   };
 
   const getProjectName = (projectId: string | null) => {
-    if (!projectId) return 'All projects';
+    if (!projectId) return "All projects";
     return projects.find((p) => p.id === projectId)?.name || projectId;
   };
 
   const formatLastTriggered = (ts: number | null) => {
-    if (!ts) return 'Never';
+    if (!ts) return "Never";
     const date = new Date(ts * 1000);
     return date.toLocaleString();
   };
@@ -229,7 +229,7 @@ export default function Notifications() {
         onTabChange={(tabId) => setActiveTab(tabId as Tab)}
       />
 
-      {activeTab === 'channels' && (
+      {activeTab === "channels" && (
         <Card>
           <CardTitle>Notification Channels</CardTitle>
           <ListContainer
@@ -244,7 +244,9 @@ export default function Notifications() {
                   titleClassName="flex flex-wrap items-center gap-2"
                   title={
                     <>
-                      <span className="pill small">{toTitleCase(channel.type)}</span>
+                      <span className="pill small">
+                        {toTitleCase(channel.type)}
+                      </span>
                       <span>{display.title}</span>
                     </>
                   }
@@ -266,14 +268,17 @@ export default function Notifications() {
         </Card>
       )}
 
-      {activeTab === 'rules' && (
+      {activeTab === "rules" && (
         <Card>
           <CardTitle>Issue Alert Rules</CardTitle>
           <p className="muted mb-4">
             Alert rules trigger notifications based on issue events, thresholds,
             and conditions.
           </p>
-          <ListContainer isEmpty={!rules.length} emptyMessage="No alert rules yet.">
+          <ListContainer
+            isEmpty={!rules.length}
+            emptyMessage="No alert rules yet."
+          >
             {rules.map((rule) => {
               const config = JSON.parse(rule.channelConfig);
               const channelLabel =
@@ -306,7 +311,8 @@ export default function Notifications() {
                         · [{toTitleCase(rule.channelType)}] {channelLabel}
                       </div>
                       <div className="text-[0.8rem]">
-                        Last triggered: {formatLastTriggered(rule.lastTriggeredAt)}
+                        Last triggered:{" "}
+                        {formatLastTriggered(rule.lastTriggeredAt)}
                       </div>
                     </>
                   }

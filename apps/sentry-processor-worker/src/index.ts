@@ -7,7 +7,7 @@ import {
   generateTitle,
   extractCulprit,
 } from "./lib/fingerprint";
-import { evaluateAlertRules } from './lib/alert-rules';
+import { evaluateAlertRules } from "./lib/alert-rules";
 import { parseProcessJob } from "./lib/process-job";
 import {
   parseClientReportPayload,
@@ -21,7 +21,7 @@ import {
   insertClientReport,
   eventExists,
 } from "./repositories/events";
-import { getProjectTeamId } from './repositories/alert-rules';
+import { getProjectTeamId } from "./repositories/alert-rules";
 import type { Env, ProcessJob } from "./types/env";
 import {
   deriveAggregateStatus,
@@ -39,33 +39,30 @@ const handler = {
         if (!job) {
           console.error(
             "[SENTRY-PROCESSOR] Invalid job payload, skipping",
-            msg.body,
+            msg.body
           );
           msg.ack();
           continue;
         }
 
-        if (
-          job.item_type === 'event' ||
-          job.item_type === 'transaction'
-        ) {
+        if (job.item_type === "event" || job.item_type === "transaction") {
           await processEvent(job, env, db);
         } else if (
-          job.item_type === 'session' ||
-          job.item_type === 'sessions'
+          job.item_type === "session" ||
+          job.item_type === "sessions"
         ) {
           await processSession(job, env, db);
-        } else if (job.item_type === 'client_report') {
+        } else if (job.item_type === "client_report") {
           await processClientReport(job, env, db);
         } else {
           console.error(
-            `[SENTRY-PROCESSOR] Skipping unsupported type: ${job.item_type}`,
+            `[SENTRY-PROCESSOR] Skipping unsupported type: ${job.item_type}`
           );
         }
 
         msg.ack();
       } catch (error) {
-        console.error('[SENTRY-PROCESSOR] Processing failed', error);
+        console.error("[SENTRY-PROCESSOR] Processing failed", error);
       }
     }
   },
@@ -73,20 +70,20 @@ const handler = {
 
 export default withSentry<Env, unknown>(
   () => ({
-    dsn: 'https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6',
-    environment: 'production',
+    dsn: "https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6",
+    environment: "production",
     tracesSampleRate: 0.2,
     beforeSend(event) {
       return null;
     },
   }),
-  handler,
+  handler
 );
 
 async function processEvent(
   job: ProcessJob,
   env: Env,
-  db: ReturnType<typeof getDb>,
+  db: ReturnType<typeof getDb>
 ) {
   const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
   if (!obj) {
@@ -97,7 +94,7 @@ async function processEvent(
   const envelopeBytes = await obj.arrayBuffer();
   const raw = extractJsonFromEnvelope(
     new Uint8Array(envelopeBytes),
-    job.item_index,
+    job.item_index
   );
 
   const event = parseSentryEvent(raw);
@@ -132,7 +129,7 @@ async function processEvent(
       title,
       level,
       culprit,
-    },
+    }
   );
 
   const eventId = stableEventId || crypto.randomUUID();
@@ -179,7 +176,7 @@ async function processEvent(
 async function processSession(
   job: ProcessJob,
   env: Env,
-  db: ReturnType<typeof getDb>,
+  db: ReturnType<typeof getDb>
 ) {
   const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
   if (!obj) {
@@ -190,12 +187,12 @@ async function processSession(
   const envelopeBytes = await obj.arrayBuffer();
   const raw = extractJsonFromEnvelope(
     new Uint8Array(envelopeBytes),
-    job.item_index,
+    job.item_index
   );
 
   const sessionData = parseSessionPayload(raw);
   if (!sessionData) {
-    console.error('[SENTRY-PROCESSOR] Could not extract session from envelope');
+    console.error("[SENTRY-PROCESSOR] Could not extract session from envelope");
     return;
   }
 
@@ -207,7 +204,8 @@ async function processSession(
     for (let index = 0; index < sessionData.aggregates.length; index += 1) {
       const aggregate = sessionData.aggregates[index];
       const started = toUnixSeconds(aggregate.started, job.received_at);
-      const errorsRaw = aggregate.errors ?? aggregate.errored ?? aggregate.crashed;
+      const errorsRaw =
+        aggregate.errors ?? aggregate.errored ?? aggregate.crashed;
       const errors =
         typeof errorsRaw === "number" && Number.isFinite(errorsRaw)
           ? Math.max(0, Math.floor(errorsRaw))
@@ -216,8 +214,7 @@ async function processSession(
       await insertSession(db, {
         projectId: job.project_id,
         sessionId: `${job.manifest_id}:${job.item_index}:${index}`,
-        distinctId:
-          typeof aggregate.did === "string" ? aggregate.did : null,
+        distinctId: typeof aggregate.did === "string" ? aggregate.did : null,
         status: deriveAggregateStatus(aggregate),
         errors,
         started,
@@ -238,7 +235,8 @@ async function processSession(
     distinctId: sessionData.did || null,
     status: normaliseSessionStatus(sessionData.status),
     errors:
-      typeof sessionData.errors === "number" && Number.isFinite(sessionData.errors)
+      typeof sessionData.errors === "number" &&
+      Number.isFinite(sessionData.errors)
         ? Math.max(0, Math.floor(sessionData.errors))
         : 0,
     started: toUnixSeconds(sessionData.started, job.received_at),
@@ -254,7 +252,7 @@ async function processSession(
 async function processClientReport(
   job: ProcessJob,
   env: Env,
-  db: ReturnType<typeof getDb>,
+  db: ReturnType<typeof getDb>
 ) {
   const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
   if (!obj) {
@@ -265,13 +263,13 @@ async function processClientReport(
   const envelopeBytes = await obj.arrayBuffer();
   const raw = extractJsonFromEnvelope(
     new Uint8Array(envelopeBytes),
-    job.item_index,
+    job.item_index
   );
 
   const reportData = parseClientReportPayload(raw);
   if (!reportData) {
     console.error(
-      '[SENTRY-PROCESSOR] Could not extract client report from envelope',
+      "[SENTRY-PROCESSOR] Could not extract client report from envelope"
     );
     return;
   }
@@ -284,7 +282,7 @@ async function processClientReport(
             typeof entry.reason === "string" &&
             typeof entry.category === "string" &&
             typeof entry.quantity === "number" &&
-            Number.isFinite(entry.quantity),
+            Number.isFinite(entry.quantity)
         )
         .map((entry) => ({
           reason: entry.reason!,

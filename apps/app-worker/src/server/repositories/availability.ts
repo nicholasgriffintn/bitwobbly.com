@@ -23,7 +23,7 @@ function uniq(values: string[]): string[] {
 async function resolveComponentClosure(
   db: DB,
   teamId: string,
-  rootComponentIds: string[],
+  rootComponentIds: string[]
 ): Promise<string[]> {
   const seen = new Set<string>();
   const queue = [...rootComponentIds];
@@ -56,8 +56,8 @@ async function resolveComponentClosure(
       .where(
         and(
           eq(schema.components.teamId, teamId),
-          inArray(schema.components.id, depIds),
-        ),
+          inArray(schema.components.id, depIds)
+        )
       );
 
     for (const row of allowed) {
@@ -71,7 +71,11 @@ async function resolveComponentClosure(
 export async function resolveAvailabilityScope(
   db: DB,
   teamId: string,
-  input: { type: AvailabilityScopeType; id: string; includeDependencies?: boolean },
+  input: {
+    type: AvailabilityScopeType;
+    id: string;
+    includeDependencies?: boolean;
+  }
 ): Promise<AvailabilityScopeResolution> {
   const includeDependencies = input.includeDependencies ?? true;
 
@@ -109,11 +113,16 @@ export async function resolveAvailabilityScope(
       ? await db
           .select({ id: schema.monitors.id, groupId: schema.monitors.groupId })
           .from(schema.monitors)
-          .where(and(eq(schema.monitors.teamId, teamId), inArray(schema.monitors.id, monitorIds)))
+          .where(
+            and(
+              eq(schema.monitors.teamId, teamId),
+              inArray(schema.monitors.id, monitorIds)
+            )
+          )
       : [];
 
     const monitorGroupIds = uniq(
-      monitors.map((m) => m.groupId).filter((id): id is string => !!id),
+      monitors.map((m) => m.groupId).filter((id): id is string => !!id)
     );
 
     return {
@@ -148,11 +157,16 @@ export async function resolveAvailabilityScope(
     ? await db
         .select({ id: schema.monitors.id, groupId: schema.monitors.groupId })
         .from(schema.monitors)
-        .where(and(eq(schema.monitors.teamId, teamId), inArray(schema.monitors.id, monitorIds)))
+        .where(
+          and(
+            eq(schema.monitors.teamId, teamId),
+            inArray(schema.monitors.id, monitorIds)
+          )
+        )
     : [];
 
   const monitorGroupIds = uniq(
-    monitors.map((m) => m.groupId).filter((id): id is string => !!id),
+    monitors.map((m) => m.groupId).filter((id): id is string => !!id)
   );
 
   return {
@@ -168,7 +182,7 @@ export async function listIncidentIntervalsForMonitors(
   teamId: string,
   monitorIds: string[],
   fromSec: number,
-  toSec: number,
+  toSec: number
 ): Promise<AvailabilityInterval[]> {
   if (!monitorIds.length) return [];
 
@@ -183,8 +197,11 @@ export async function listIncidentIntervalsForMonitors(
         eq(schema.incidents.teamId, teamId),
         inArray(schema.incidents.monitorId, monitorIds),
         lt(schema.incidents.startedAt, toSec),
-        or(isNull(schema.incidents.resolvedAt), gt(schema.incidents.resolvedAt, fromSec)),
-      ),
+        or(
+          isNull(schema.incidents.resolvedAt),
+          gt(schema.incidents.resolvedAt, fromSec)
+        )
+      )
     );
 
   return rows.map((r) => ({
@@ -202,31 +219,31 @@ export async function listMaintenanceIntervalsForScope(
     monitorGroupIds: string[];
     fromSec: number;
     toSec: number;
-  },
+  }
 ): Promise<AvailabilityInterval[]> {
   const clauses = [];
   if (input.componentIds.length) {
     clauses.push(
       and(
         eq(schema.suppressionScopes.scopeType, "component"),
-        inArray(schema.suppressionScopes.scopeId, input.componentIds),
-      ),
+        inArray(schema.suppressionScopes.scopeId, input.componentIds)
+      )
     );
   }
   if (input.monitorIds.length) {
     clauses.push(
       and(
         eq(schema.suppressionScopes.scopeType, "monitor"),
-        inArray(schema.suppressionScopes.scopeId, input.monitorIds),
-      ),
+        inArray(schema.suppressionScopes.scopeId, input.monitorIds)
+      )
     );
   }
   if (input.monitorGroupIds.length) {
     clauses.push(
       and(
         eq(schema.suppressionScopes.scopeType, "monitor_group"),
-        inArray(schema.suppressionScopes.scopeId, input.monitorGroupIds),
-      ),
+        inArray(schema.suppressionScopes.scopeId, input.monitorGroupIds)
+      )
     );
   }
 
@@ -240,16 +257,19 @@ export async function listMaintenanceIntervalsForScope(
     .from(schema.suppressions)
     .innerJoin(
       schema.suppressionScopes,
-      eq(schema.suppressionScopes.suppressionId, schema.suppressions.id),
+      eq(schema.suppressionScopes.suppressionId, schema.suppressions.id)
     )
     .where(
       and(
         eq(schema.suppressions.teamId, teamId),
         eq(schema.suppressions.kind, "maintenance"),
         lt(schema.suppressions.startsAt, input.toSec),
-        or(isNull(schema.suppressions.endsAt), gt(schema.suppressions.endsAt, input.fromSec)),
-        or(...clauses),
-      ),
+        or(
+          isNull(schema.suppressions.endsAt),
+          gt(schema.suppressions.endsAt, input.fromSec)
+        ),
+        or(...clauses)
+      )
     );
 
   return rows.map((r) => ({

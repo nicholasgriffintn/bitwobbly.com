@@ -39,7 +39,7 @@ function StatusPage() {
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
   const [isApiHelpOpen, setIsApiHelpOpen] = useState(false);
   const [subscribeChannel, setSubscribeChannel] = useState<"email" | "webhook">(
-    "email",
+    "email"
   );
   const [subscribeCadence, setSubscribeCadence] = useState<
     "immediate" | "daily" | "weekly"
@@ -61,7 +61,9 @@ function StatusPage() {
   const { page, components, incidents } = snapshot;
   const brandColor = page.brand_color || "#007bff";
   const origin =
-    typeof window === "undefined" ? "https://<your-domain>" : window.location.origin;
+    typeof window === "undefined"
+      ? "https://<your-domain>"
+      : window.location.origin;
   const encodedSlug = encodeURIComponent(slug);
   const availabilityApiBase = `${origin}/api/status/${encodedSlug}`;
   const exampleComponentId = components[0]?.id;
@@ -128,7 +130,7 @@ function StatusPage() {
 
       if (res.kind === "webhook_verification_queued") {
         const unsubscribeUrl = `/status/${slug}/unsubscribe?sid=${encodeURIComponent(
-          res.unsubscribe.sid,
+          res.unsubscribe.sid
         )}&sig=${encodeURIComponent(res.unsubscribe.sig)}`;
         setSubscribeResult({
           kind: "success",
@@ -141,7 +143,8 @@ function StatusPage() {
 
       setSubscribeResult({
         kind: "success",
-        message: "Check your inbox for a confirmation link to activate updates.",
+        message:
+          "Check your inbox for a confirmation link to activate updates.",
       });
     } catch (err) {
       setSubscribeResult({
@@ -668,8 +671,9 @@ function StatusPage() {
           title="Availability API"
         >
           <p className="api-help-note">
-            These endpoints return availability based on incidents and maintenance
-            windows. Times are UTC, and the examples use this page domain.
+            These endpoints return availability based on incidents and
+            maintenance windows. Times are UTC, and the examples use this page
+            domain.
           </p>
 
           <ul className="api-help-list">
@@ -695,7 +699,8 @@ function StatusPage() {
               <li>
                 <strong>Single component availability (JSON)</strong>
                 <span className="api-help-note">
-                  Filters results to one status page component using `component_id`.
+                  Filters results to one status page component using
+                  `component_id`.
                 </span>
                 <div className="api-help-code">
                   <code>{`curl "${availabilityApiBase}/availability?component_id=${encodeURIComponent(exampleComponentId)}&days=30&bucket=day"`}</code>
@@ -705,7 +710,8 @@ function StatusPage() {
             <li>
               <strong>Monthly report (CSV download)</strong>
               <span className="api-help-note">
-                Returns daily rows for the month with uptime and downtime minutes.
+                Returns daily rows for the month with uptime and downtime
+                minutes.
               </span>
               <div className="api-help-code">
                 <code>{`curl -L "${availabilityApiBase}/reports/availability/monthly?month=2026-01&format=csv" -o availability.csv`}</code>
@@ -766,7 +772,7 @@ function StatusPage() {
             </div>
 
             {components.some(
-              (c) => c.historical_data && c.historical_data.length > 0,
+              (c) => c.historical_data && c.historical_data.length > 0
             ) && (
               <div className="status-section">
                 <div className="uptime-header-section">
@@ -816,7 +822,9 @@ function StatusPage() {
                   {incident.title}
                   <StatusBadge
                     status={
-                      isStatusType(incident.status) ? incident.status : "unknown"
+                      isStatusType(incident.status)
+                        ? incident.status
+                        : "unknown"
                     }
                   />
                 </h3>
@@ -855,7 +863,9 @@ function StatusPage() {
                   {incident.title}
                   <StatusBadge
                     status={
-                      isStatusType(incident.status) ? incident.status : "unknown"
+                      isStatusType(incident.status)
+                        ? incident.status
+                        : "unknown"
                     }
                   />
                 </h3>
@@ -915,7 +925,7 @@ function StatusPage() {
                 value={subscribeChannel}
                 onChange={(e) =>
                   setSubscribeChannel(
-                    e.target.value === "webhook" ? "webhook" : "email",
+                    e.target.value === "webhook" ? "webhook" : "email"
                   )
                 }
               >
@@ -938,7 +948,7 @@ function StatusPage() {
                       ? "daily"
                       : e.target.value === "weekly"
                         ? "weekly"
-                        : "immediate",
+                        : "immediate"
                   )
                 }
               >
@@ -973,7 +983,9 @@ function StatusPage() {
                 className="subscribe-button"
                 disabled={subscribeResult?.kind === "working"}
               >
-                {subscribeResult?.kind === "working" ? "Submitting…" : "Subscribe"}
+                {subscribeResult?.kind === "working"
+                  ? "Submitting…"
+                  : "Subscribe"}
               </button>
             </div>
           </form>
@@ -990,7 +1002,9 @@ function StatusPage() {
           )}
 
           {subscribeResult?.kind === "error" && (
-            <div className="subscribe-result error">{subscribeResult.message}</div>
+            <div className="subscribe-result error">
+              {subscribeResult.message}
+            </div>
           )}
         </Modal>
 

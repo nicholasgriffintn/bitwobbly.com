@@ -18,9 +18,7 @@ function UnsubscribeStatusPage() {
   const unsubscribe = useServerFn(unsubscribeFromStatusPageFn);
 
   const [state, setState] = useState<
-    | { kind: "working" }
-    | { kind: "ok" }
-    | { kind: "error"; message: string }
+    { kind: "working" } | { kind: "ok" } | { kind: "error"; message: string }
   >({ kind: "working" });
 
   useEffect(() => {
@@ -75,4 +73,3 @@ function UnsubscribeStatusPage() {
     </div>
   );
 }
-

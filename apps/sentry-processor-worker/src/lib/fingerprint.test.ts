@@ -22,7 +22,8 @@ test("normalises dynamic values in exception message", () => {
       values: [
         {
           type: "TypeError",
-          value: "Order 12345 failed for user 550e8400-e29b-41d4-a716-446655440000",
+          value:
+            "Order 12345 failed for user 550e8400-e29b-41d4-a716-446655440000",
         },
       ],
     },
@@ -33,7 +34,8 @@ test("normalises dynamic values in exception message", () => {
       values: [
         {
           type: "TypeError",
-          value: "Order 99999 failed for user 550e8400-e29b-41d4-a716-446655440001",
+          value:
+            "Order 99999 failed for user 550e8400-e29b-41d4-a716-446655440001",
         },
       ],
     },

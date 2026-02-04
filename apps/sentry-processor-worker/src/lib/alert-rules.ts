@@ -42,12 +42,12 @@ interface EventContext {
 export async function evaluateAlertRules(
   env: Env,
   db: DB,
-  context: EventContext,
+  context: EventContext
 ): Promise<void> {
   const rules = await getActiveRulesForProject(
     db,
     context.projectId,
-    context.teamId,
+    context.teamId
   );
   if (!rules.length) return;
 
@@ -89,14 +89,14 @@ export async function evaluateAlertRules(
       context,
       severity,
       triggerValue,
-      threshold?.critical,
+      threshold?.critical
     );
   }
 }
 
 function triggerMatches(
   rule: typeof schema.alertRules.$inferSelect,
-  context: EventContext,
+  context: EventContext
 ): boolean {
   switch (rule.triggerType) {
     case "new_issue":
@@ -117,7 +117,7 @@ function triggerMatches(
 
 function conditionsMatch(
   conditions: AlertConditions,
-  context: EventContext,
+  context: EventContext
 ): boolean {
   if (conditions.level?.length) {
     const lvl = normaliseLevel(context.level);
@@ -158,7 +158,7 @@ function conditionsMatch(
 async function evaluateThreshold(
   db: DB,
   issueId: string,
-  threshold: AlertThreshold,
+  threshold: AlertThreshold
 ): Promise<{ value: number; severity: "critical" | "warning" | "resolved" }> {
   const windowStart = Math.floor(Date.now() / 1000) - threshold.windowSeconds;
 
@@ -177,7 +177,7 @@ async function evaluateThreshold(
     const previousValue = await getComparisonValue(
       db,
       issueId,
-      threshold.comparisonWindow || "1d",
+      threshold.comparisonWindow || "1d"
     );
     value =
       previousValue > 0 ? ((value - previousValue) / previousValue) * 100 : 0;
@@ -198,7 +198,7 @@ async function evaluateThreshold(
 async function countUniqueUsersInWindow(
   db: DB,
   issueId: string,
-  windowStart: number,
+  windowStart: number
 ): Promise<number> {
   const events = await getEventsInWindow(db, issueId, windowStart);
 
@@ -215,7 +215,7 @@ async function countUniqueUsersInWindow(
 async function getComparisonValue(
   db: DB,
   issueId: string,
-  comparisonWindow: "1h" | "1d" | "1w" | "30d",
+  comparisonWindow: "1h" | "1d" | "1w" | "30d"
 ): Promise<number> {
   const windowSeconds = {
     "1h": 3600,
@@ -234,7 +234,7 @@ async function getComparisonValue(
 async function shouldRateLimit(
   db: DB,
   rule: typeof schema.alertRules.$inferSelect,
-  issueId: string,
+  issueId: string
 ): Promise<boolean> {
   const state = await getAlertRuleState(db, rule.id, issueId);
 
@@ -253,7 +253,7 @@ async function fireAlert(
   context: EventContext,
   severity: "critical" | "warning" | "resolved",
   triggerValue?: number,
-  threshold?: number,
+  threshold?: number
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
 
@@ -267,7 +267,7 @@ async function fireAlert(
     triggerReason: buildTriggerReason(
       rule.triggerType,
       triggerValue,
-      threshold,
+      threshold
     ),
     firedAt: now,
   });
@@ -295,7 +295,7 @@ async function fireAlert(
 function buildTriggerReason(
   triggerType: string,
   value?: number,
-  threshold?: number,
+  threshold?: number
 ): string {
   switch (triggerType) {
     case "new_issue":

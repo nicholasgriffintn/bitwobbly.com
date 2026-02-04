@@ -47,10 +47,10 @@ function IssueTracking() {
   const [isDsnModalOpen, setIsDsnModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<SentryProject | null>(
-    null,
+    null
   );
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
-    null,
+    null
   );
   const [dsn, setDsn] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
@@ -109,23 +109,17 @@ function IssueTracking() {
 
   const renderProjectGroup = (
     groupName: string,
-    projectList: SentryProject[],
+    projectList: SentryProject[]
   ) => {
     const component = components.find((c) => c.id === groupName);
     return (
       <div key={groupName} className="mb-6">
-        <div
-          className="mb-3 flex flex-wrap items-center gap-2 border-b border-[color:var(--border)] pb-2"
-        >
-          <span
-            className="text-sm font-semibold uppercase tracking-wider text-[color:var(--text-secondary)]"
-          >
-            {component?.name || 'Unknown Component'}
+        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[color:var(--border)] pb-2">
+          <span className="text-sm font-semibold uppercase tracking-wider text-[color:var(--text-secondary)]">
+            {component?.name || "Unknown Component"}
           </span>
-          <span
-            className="pill small bg-[color:var(--surface-1)] text-[color:var(--text-secondary)]"
-          >
-            {projectList.length} project{projectList.length !== 1 ? 's' : ''}
+          <span className="pill small bg-[color:var(--surface-1)] text-[color:var(--text-secondary)]">
+            {projectList.length} project{projectList.length !== 1 ? "s" : ""}
           </span>
         </div>
         <div className="list">
@@ -138,7 +132,7 @@ function IssueTracking() {
                     Project ID: {project.sentryProjectId}
                     {project.platform && (
                       <>
-                        {' · '}
+                        {" · "}
                         <span className="pill small">
                           {toTitleCase(project.platform)}
                         </span>
@@ -217,33 +211,27 @@ function IssueTracking() {
           (() => {
             const groupedProjects = groupProjectsByComponent();
             const projectsWithComponents = Array.from(
-              groupedProjects.entries(),
+              groupedProjects.entries()
             );
             const projectsWithoutComponents = projects.filter(
-              (p) => !p.componentId,
+              (p) => !p.componentId
             );
 
             return (
               <div>
                 {projectsWithComponents.map(([componentId, projectList]) =>
-                  renderProjectGroup(componentId, projectList),
+                  renderProjectGroup(componentId, projectList)
                 )}
 
                 {projectsWithoutComponents.length > 0 && (
                   <div className="mb-6">
-                    <div
-                      className="mb-3 flex flex-wrap items-center gap-2 border-b border-[color:var(--border)] pb-2"
-                    >
-                      <span
-                        className="text-sm font-semibold uppercase tracking-wider text-[color:var(--text-secondary)]"
-                      >
+                    <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[color:var(--border)] pb-2">
+                      <span className="text-sm font-semibold uppercase tracking-wider text-[color:var(--text-secondary)]">
                         No Component
                       </span>
-                      <span
-                        className="pill small bg-[color:var(--surface-1)] text-[color:var(--text-secondary)]"
-                      >
+                      <span className="pill small bg-[color:var(--surface-1)] text-[color:var(--text-secondary)]">
                         {projectsWithoutComponents.length} project
-                        {projectsWithoutComponents.length !== 1 ? 's' : ''}
+                        {projectsWithoutComponents.length !== 1 ? "s" : ""}
                       </span>
                     </div>
                     <div className="list">
@@ -256,7 +244,7 @@ function IssueTracking() {
                                 Project ID: {project.sentryProjectId}
                                 {project.platform && (
                                   <>
-                                    {' · '}
+                                    {" · "}
                                     <span className="pill small">
                                       {toTitleCase(project.platform)}
                                     </span>

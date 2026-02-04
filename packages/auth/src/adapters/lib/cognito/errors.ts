@@ -33,7 +33,7 @@ export class JwtVerificationError extends Error {
 
 export class JwtInvalidError extends Error {
   constructor() {
-    super('JWT is invalid.');
+    super("JWT is invalid.");
     this.name = this.constructor.name;
     this.stack = new Error().stack;
   }

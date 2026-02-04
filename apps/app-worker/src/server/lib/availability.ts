@@ -66,27 +66,35 @@ function intervalCountOverlaps(intervals: Interval[], range: Interval): number {
   return count;
 }
 
-export function computeAvailability(
-  input: {
-    fromSec: number;
-    toSec: number;
-    downtimeIntervals: Interval[];
-    maintenanceIntervals?: Interval[];
-    targetPpm?: number | null;
-  },
-): { summary: AvailabilitySummary; downtimeOutsideMaintenance: Interval[]; maintenance: Interval[] } {
+export function computeAvailability(input: {
+  fromSec: number;
+  toSec: number;
+  downtimeIntervals: Interval[];
+  maintenanceIntervals?: Interval[];
+  targetPpm?: number | null;
+}): {
+  summary: AvailabilitySummary;
+  downtimeOutsideMaintenance: Interval[];
+  maintenance: Interval[];
+} {
   const fromSec = Math.floor(input.fromSec);
   const toSec = Math.floor(input.toSec);
-  if (!Number.isFinite(fromSec) || !Number.isFinite(toSec) || toSec <= fromSec) {
+  if (
+    !Number.isFinite(fromSec) ||
+    !Number.isFinite(toSec) ||
+    toSec <= fromSec
+  ) {
     throw new Error("Invalid range");
   }
 
   const range: Interval = { start: fromSec, end: toSec };
 
   const maintenance = mergeIntervals(
-    clampIntervals(input.maintenanceIntervals ?? [], range),
+    clampIntervals(input.maintenanceIntervals ?? [], range)
   );
-  const downtime = mergeIntervals(clampIntervals(input.downtimeIntervals, range));
+  const downtime = mergeIntervals(
+    clampIntervals(input.downtimeIntervals, range)
+  );
   const downtimeOutsideMaintenance = subtractIntervals(downtime, maintenance);
 
   const totalSeconds = toSec - fromSec;
@@ -101,10 +109,11 @@ export function computeAvailability(
           Math.min(
             1_000_000,
             Math.round(
-              ((effectiveTotalSeconds - downtimeSeconds) / effectiveTotalSeconds) *
-                1_000_000,
-            ),
-          ),
+              ((effectiveTotalSeconds - downtimeSeconds) /
+                effectiveTotalSeconds) *
+                1_000_000
+            )
+          )
         )
       : 1_000_000;
 
@@ -121,13 +130,17 @@ export function computeAvailability(
 
   const targetPpm = input.targetPpm ?? null;
   if (targetPpm !== null && Number.isFinite(targetPpm)) {
-    const clampedTarget = Math.max(0, Math.min(1_000_000, Math.floor(targetPpm)));
+    const clampedTarget = Math.max(
+      0,
+      Math.min(1_000_000, Math.floor(targetPpm))
+    );
     const allowedDowntimeSeconds = Math.max(
       0,
-      Math.floor(effectiveTotalSeconds * (1 - clampedTarget / 1_000_000)),
+      Math.floor(effectiveTotalSeconds * (1 - clampedTarget / 1_000_000))
     );
     const burnedDowntimeSeconds = downtimeSeconds;
-    const remainingDowntimeSeconds = allowedDowntimeSeconds - burnedDowntimeSeconds;
+    const remainingDowntimeSeconds =
+      allowedDowntimeSeconds - burnedDowntimeSeconds;
     summary.errorBudget = {
       targetPpm: clampedTarget,
       targetPercent: ppmToPercent(clampedTarget),
@@ -140,16 +153,14 @@ export function computeAvailability(
   return { summary, downtimeOutsideMaintenance, maintenance };
 }
 
-export function computeAvailabilityBuckets(
-  input: {
-    fromSec: number;
-    toSec: number;
-    downtimeOutsideMaintenance: Interval[];
-    maintenance: Interval[];
-    bucket: "hour" | "day";
-    maxBuckets?: number;
-  },
-): { buckets: AvailabilityBucket[]; incidentBuckets: number[] } {
+export function computeAvailabilityBuckets(input: {
+  fromSec: number;
+  toSec: number;
+  downtimeOutsideMaintenance: Interval[];
+  maintenance: Interval[];
+  bucket: "hour" | "day";
+  maxBuckets?: number;
+}): { buckets: AvailabilityBucket[]; incidentBuckets: number[] } {
   const fromSec = Math.floor(input.fromSec);
   const toSec = Math.floor(input.toSec);
   const maxBuckets = input.maxBuckets ?? 1000;
@@ -169,10 +180,13 @@ export function computeAvailabilityBuckets(
     const totalSeconds = end - cursor;
 
     const maintenanceSeconds = sumOverlapSeconds(input.maintenance, range);
-    const effectiveTotalSeconds = Math.max(0, totalSeconds - maintenanceSeconds);
+    const effectiveTotalSeconds = Math.max(
+      0,
+      totalSeconds - maintenanceSeconds
+    );
     const downtimeSeconds = sumOverlapSeconds(
       input.downtimeOutsideMaintenance,
-      range,
+      range
     );
 
     const uptimePpm =
@@ -182,10 +196,11 @@ export function computeAvailabilityBuckets(
             Math.min(
               1_000_000,
               Math.round(
-                ((effectiveTotalSeconds - downtimeSeconds) / effectiveTotalSeconds) *
-                  1_000_000,
-              ),
-            ),
+                ((effectiveTotalSeconds - downtimeSeconds) /
+                  effectiveTotalSeconds) *
+                  1_000_000
+              )
+            )
           )
         : 1_000_000;
 
@@ -200,7 +215,7 @@ export function computeAvailabilityBuckets(
     });
 
     incidentBuckets.push(
-      intervalCountOverlaps(input.downtimeOutsideMaintenance, range),
+      intervalCountOverlaps(input.downtimeOutsideMaintenance, range)
     );
 
     cursor = end;
@@ -209,7 +224,10 @@ export function computeAvailabilityBuckets(
   return { buckets, incidentBuckets };
 }
 
-export function utcMonthRange(month: string): { fromSec: number; toSec: number } {
+export function utcMonthRange(month: string): {
+  fromSec: number;
+  toSec: number;
+} {
   const m = month.trim();
   const match = /^(\d{4})-(\d{2})$/.exec(m);
   if (!match) throw new Error("Invalid month format (expected YYYY-MM)");

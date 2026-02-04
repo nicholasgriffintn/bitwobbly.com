@@ -32,4 +32,3 @@ export async function readResponseTextUpTo(res: Response, maxBytes: number) {
     }
   }
 }
-

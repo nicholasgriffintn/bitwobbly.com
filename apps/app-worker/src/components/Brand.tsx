@@ -1,9 +1,9 @@
 interface BrandProps {
   subtitle?: string;
-  variant?: 'light' | 'dark';
+  variant?: "light" | "dark";
 }
 
-export default function Brand({ subtitle, variant = 'light' }: BrandProps) {
+export default function Brand({ subtitle, variant = "light" }: BrandProps) {
   return (
     <div className={`brand brand--${variant}`}>
       <div className="brand-mark">

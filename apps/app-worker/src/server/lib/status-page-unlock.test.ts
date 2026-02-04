@@ -20,9 +20,9 @@ test("isStatusPageUnlocked honours TTL", () => {
     isStatusPageUnlocked(
       { acme: now - (STATUS_PAGE_UNLOCK_TTL_SECONDS + 1) },
       "acme",
-      now,
+      now
     ),
-    false,
+    false
   );
 });
 

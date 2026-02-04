@@ -5,4 +5,3 @@ export function getPublicStatusSnapshotCacheKey(slug: string) {
 export function getTeamStatusSnapshotCacheKey(teamId: string, slug: string) {
   return `status:team:${teamId}:${slug}`;
 }
-

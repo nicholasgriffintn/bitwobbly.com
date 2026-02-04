@@ -14,7 +14,7 @@ export async function getSloTarget(
   db: DB,
   teamId: string,
   scopeType: SloScopeType,
-  scopeId: string,
+  scopeId: string
 ): Promise<SloTarget | null> {
   let rows: Array<{ targetPpm: number | null }> = [];
   try {
@@ -25,13 +25,16 @@ export async function getSloTarget(
         and(
           eq(schema.sloTargets.teamId, teamId),
           eq(schema.sloTargets.scopeType, scopeType),
-          eq(schema.sloTargets.scopeId, scopeId),
-        ),
+          eq(schema.sloTargets.scopeId, scopeId)
+        )
       )
       .limit(1);
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
-    if (message.toLowerCase().includes("no such table") && message.includes("slo_targets")) {
+    if (
+      message.toLowerCase().includes("no such table") &&
+      message.includes("slo_targets")
+    ) {
       return null;
     }
     throw e;
@@ -46,7 +49,7 @@ export async function getEffectiveSloTarget(
   db: DB,
   teamId: string,
   scopeType: Exclude<SloScopeType, "team">,
-  scopeId: string,
+  scopeId: string
 ): Promise<EffectiveSloTarget> {
   const scoped = await getSloTarget(db, teamId, scopeType, scopeId);
   if (scoped) return { source: "scope", slo: scoped };
@@ -62,7 +65,7 @@ export async function upsertSloTarget(
   teamId: string,
   scopeType: SloScopeType,
   scopeId: string,
-  targetPpm: number,
+  targetPpm: number
 ): Promise<void> {
   const now = nowIso();
   await db

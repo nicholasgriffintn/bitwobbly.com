@@ -9,7 +9,7 @@ export default function TopBar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentTeam = teams?.find(
-    (t) => t.id === (user?.currentTeamId || user?.teamId),
+    (t) => t.id === (user?.currentTeamId || user?.teamId)
   );
 
   useEffect(() => {

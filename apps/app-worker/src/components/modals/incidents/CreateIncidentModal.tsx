@@ -68,7 +68,7 @@ export function CreateIncidentModal({
               ([componentId, impactLevel]) => ({
                 componentId,
                 impactLevel,
-              }),
+              })
             )
           : undefined;
 

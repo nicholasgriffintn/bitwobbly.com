@@ -1,11 +1,7 @@
 import { schema, type DB } from "@bitwobbly/shared";
 import { eq, and, lte, or } from "drizzle-orm";
 
-export async function getDueMonitors(
-  db: DB,
-  nowSec: number,
-  limit: number,
-) {
+export async function getDueMonitors(db: DB, nowSec: number, limit: number) {
   return await db
     .select({
       id: schema.monitors.id,
@@ -26,9 +22,9 @@ export async function getDueMonitors(
         lte(schema.monitors.lockedUntil, nowSec),
         or(
           eq(schema.monitors.type, "http"),
-          eq(schema.monitors.type, "external"),
-        ),
-      ),
+          eq(schema.monitors.type, "external")
+        )
+      )
     )
     .limit(limit);
 }
@@ -37,7 +33,7 @@ export async function claimMonitor(
   db: DB,
   monitorId: string,
   nowSec: number,
-  lockUntil: number,
+  lockUntil: number
 ) {
   return await db
     .update(schema.monitors)
@@ -47,8 +43,8 @@ export async function claimMonitor(
         eq(schema.monitors.id, monitorId),
         eq(schema.monitors.enabled, 1),
         lte(schema.monitors.nextRunAt, nowSec),
-        lte(schema.monitors.lockedUntil, nowSec),
-      ),
+        lte(schema.monitors.lockedUntil, nowSec)
+      )
     )
     .run();
 }
@@ -57,7 +53,7 @@ export async function updateMonitorNextRun(
   db: DB,
   monitorId: string,
   nextRunAt: number,
-  lockUntil: number,
+  lockUntil: number
 ) {
   return await db
     .update(schema.monitors)
@@ -68,8 +64,8 @@ export async function updateMonitorNextRun(
     .where(
       and(
         eq(schema.monitors.id, monitorId),
-        eq(schema.monitors.lockedUntil, lockUntil),
-      ),
+        eq(schema.monitors.lockedUntil, lockUntil)
+      )
     )
     .run();
 }
@@ -77,7 +73,7 @@ export async function updateMonitorNextRun(
 export async function unlockMonitor(
   db: DB,
   monitorId: string,
-  lockUntil: number,
+  lockUntil: number
 ) {
   return await db
     .update(schema.monitors)
@@ -85,8 +81,8 @@ export async function unlockMonitor(
     .where(
       and(
         eq(schema.monitors.id, monitorId),
-        eq(schema.monitors.lockedUntil, lockUntil),
-      ),
+        eq(schema.monitors.lockedUntil, lockUntil)
+      )
     )
     .run();
 }

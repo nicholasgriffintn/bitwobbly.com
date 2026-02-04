@@ -56,11 +56,11 @@ export async function listAlertRules(db: DB, teamId: string) {
     .from(schema.alertRules)
     .innerJoin(
       schema.notificationChannels,
-      eq(schema.notificationChannels.id, schema.alertRules.channelId),
+      eq(schema.notificationChannels.id, schema.alertRules.channelId)
     )
     .leftJoin(
       schema.monitors,
-      eq(schema.monitors.id, schema.alertRules.monitorId),
+      eq(schema.monitors.id, schema.alertRules.monitorId)
     )
     .where(eq(schema.alertRules.teamId, teamId))
     .orderBy(desc(schema.alertRules.createdAt));
@@ -73,8 +73,8 @@ export async function getAlertRuleById(db: DB, teamId: string, ruleId: string) {
     .where(
       and(
         eq(schema.alertRules.teamId, teamId),
-        eq(schema.alertRules.id, ruleId),
-      ),
+        eq(schema.alertRules.id, ruleId)
+      )
     )
     .limit(1);
   return results[0] || null;
@@ -83,7 +83,7 @@ export async function getAlertRuleById(db: DB, teamId: string, ruleId: string) {
 export async function createAlertRule(
   db: DB,
   teamId: string,
-  input: CreateAlertRuleInput,
+  input: CreateAlertRuleInput
 ) {
   const id = randomId("rul");
   await db.insert(schema.alertRules).values({
@@ -110,7 +110,7 @@ export async function updateAlertRule(
   db: DB,
   teamId: string,
   ruleId: string,
-  input: UpdateAlertRuleInput,
+  input: UpdateAlertRuleInput
 ) {
   const updates: Record<string, unknown> = {};
 
@@ -137,8 +137,8 @@ export async function updateAlertRule(
     .where(
       and(
         eq(schema.alertRules.teamId, teamId),
-        eq(schema.alertRules.id, ruleId),
-      ),
+        eq(schema.alertRules.id, ruleId)
+      )
     );
 }
 
@@ -156,8 +156,8 @@ export async function deleteAlertRule(db: DB, teamId: string, ruleId: string) {
     .where(
       and(
         eq(schema.alertRules.teamId, teamId),
-        eq(schema.alertRules.id, ruleId),
-      ),
+        eq(schema.alertRules.id, ruleId)
+      )
     );
 }
 
@@ -165,7 +165,7 @@ export async function listAlertRuleFires(
   db: DB,
   teamId: string,
   ruleId?: string,
-  limit = 50,
+  limit = 50
 ) {
   const query = db
     .select({
@@ -181,15 +181,15 @@ export async function listAlertRuleFires(
     .from(schema.alertRuleFires)
     .innerJoin(
       schema.alertRules,
-      eq(schema.alertRules.id, schema.alertRuleFires.ruleId),
+      eq(schema.alertRules.id, schema.alertRuleFires.ruleId)
     )
     .where(
       ruleId
         ? and(
             eq(schema.alertRules.teamId, teamId),
-            eq(schema.alertRuleFires.ruleId, ruleId),
+            eq(schema.alertRuleFires.ruleId, ruleId)
           )
-        : eq(schema.alertRules.teamId, teamId),
+        : eq(schema.alertRules.teamId, teamId)
     )
     .orderBy(desc(schema.alertRuleFires.firedAt))
     .limit(limit);
@@ -201,7 +201,7 @@ export async function toggleAlertRule(
   db: DB,
   teamId: string,
   ruleId: string,
-  enabled: boolean,
+  enabled: boolean
 ) {
   await db
     .update(schema.alertRules)
@@ -209,7 +209,7 @@ export async function toggleAlertRule(
     .where(
       and(
         eq(schema.alertRules.teamId, teamId),
-        eq(schema.alertRules.id, ruleId),
-      ),
+        eq(schema.alertRules.id, ruleId)
+      )
     );
 }

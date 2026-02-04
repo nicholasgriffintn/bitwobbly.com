@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { useAuth } from '@bitwobbly/auth/react';
+import { useAuth } from "@bitwobbly/auth/react";
 
-import Brand from './Brand';
+import Brand from "./Brand";
 
 export default function Sidebar() {
   const { signOut } = useAuth();

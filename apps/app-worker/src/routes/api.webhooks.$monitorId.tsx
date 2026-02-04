@@ -3,9 +3,7 @@ import { z } from "zod";
 import { env } from "cloudflare:workers";
 
 import { getDb } from "@/server/lib/db";
-import {
-  getMonitorByWebhookToken,
-} from "@/server/repositories/monitors";
+import { getMonitorByWebhookToken } from "@/server/repositories/monitors";
 import { hashWebhookToken, randomId } from "@bitwobbly/shared";
 
 const WebhookPayloadSchema = z.object({
@@ -31,7 +29,7 @@ export const Route = createFileRoute("/api/webhooks/$monitorId")({
               {
                 status: 429,
                 headers: { "Retry-After": "60" },
-              },
+              }
             );
           }
 
@@ -43,20 +41,20 @@ export const Route = createFileRoute("/api/webhooks/$monitorId")({
           const monitor = await getMonitorByWebhookToken(
             db,
             params.monitorId,
-            tokenHash,
+            tokenHash
           );
 
           if (!monitor) {
             return Response.json(
               { ok: false, error: "Invalid monitor ID or token" },
-              { status: 401 },
+              { status: 401 }
             );
           }
 
           if (monitor.type !== "webhook") {
             return Response.json(
               { ok: false, error: "Monitor is not a webhook type" },
-              { status: 400 },
+              { status: 400 }
             );
           }
 
@@ -77,13 +75,13 @@ export const Route = createFileRoute("/api/webhooks/$monitorId")({
           if (error instanceof z.ZodError) {
             return Response.json(
               { ok: false, error: "Invalid request body" },
-              { status: 400 },
+              { status: 400 }
             );
           }
 
           return Response.json(
             { ok: false, error: "Internal server error" },
-            { status: 500 },
+            { status: 500 }
           );
         }
       },

@@ -89,7 +89,7 @@ const handler = {
         project.id,
         sentryProjectId,
         r2Key,
-        now,
+        now
       );
 
       await env.SENTRY_PIPELINE.send(manifests);
@@ -137,7 +137,7 @@ export default withSentry<Env>(
       return null;
     },
   }),
-  handler,
+  handler
 );
 
 function extractPublicKey(request: Request): string | null {

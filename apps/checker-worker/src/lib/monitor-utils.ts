@@ -1,6 +1,6 @@
 export function parseTargetHostPort(
   target: string,
-  defaultPort: number,
+  defaultPort: number
 ): { hostname: string; port: number } | null {
   const trimmed = target.trim();
   if (!trimmed) return null;

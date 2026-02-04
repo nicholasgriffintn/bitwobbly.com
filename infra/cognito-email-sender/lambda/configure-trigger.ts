@@ -35,7 +35,7 @@ async function sendResponse(
   event: CloudFormationEvent,
   status: "SUCCESS" | "FAILED",
   reason?: string,
-  data?: Record<string, string>,
+  data?: Record<string, string>
 ): Promise<void> {
   const physicalResourceId =
     event.PhysicalResourceId ??
@@ -71,7 +71,7 @@ export async function handler(event: CloudFormationEvent): Promise<void> {
   try {
     if (event.RequestType === "Delete") {
       const describeResponse = await cognitoClient.send(
-        new DescribeUserPoolCommand({ UserPoolId }),
+        new DescribeUserPoolCommand({ UserPoolId })
       );
 
       const userPool = describeResponse.UserPool;
@@ -90,7 +90,7 @@ export async function handler(event: CloudFormationEvent): Promise<void> {
             CustomEmailSender: undefined,
             KMSKeyID: undefined,
           },
-        }),
+        })
       );
 
       await sendResponse(event, "SUCCESS");
@@ -98,7 +98,7 @@ export async function handler(event: CloudFormationEvent): Promise<void> {
     }
 
     const describeResponse = await cognitoClient.send(
-      new DescribeUserPoolCommand({ UserPoolId }),
+      new DescribeUserPoolCommand({ UserPoolId })
     );
 
     const userPool = describeResponse.UserPool;
@@ -120,7 +120,7 @@ export async function handler(event: CloudFormationEvent): Promise<void> {
           },
           KMSKeyID: KmsKeyArn,
         },
-      }),
+      })
     );
 
     await sendResponse(event, "SUCCESS", undefined, {
@@ -131,7 +131,7 @@ export async function handler(event: CloudFormationEvent): Promise<void> {
     await sendResponse(
       event,
       "FAILED",
-      error instanceof Error ? error.message : "Unknown error",
+      error instanceof Error ? error.message : "Unknown error"
     );
   }
 }

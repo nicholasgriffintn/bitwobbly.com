@@ -10,7 +10,7 @@ export async function listSentryEvents(
     type?: string;
     issueId?: string;
     limit?: number;
-  },
+  }
 ) {
   const conditions = [eq(schema.sentryEvents.projectId, projectId)];
 
@@ -38,7 +38,7 @@ export async function listSentryEvents(
 export async function getSentryEvent(
   db: DB,
   projectId: string,
-  eventId: string,
+  eventId: string
 ) {
   const events = await db
     .select()
@@ -46,8 +46,8 @@ export async function getSentryEvent(
     .where(
       and(
         eq(schema.sentryEvents.id, eventId),
-        eq(schema.sentryEvents.projectId, projectId),
-      ),
+        eq(schema.sentryEvents.projectId, projectId)
+      )
     )
     .limit(1);
 
@@ -57,7 +57,7 @@ export async function getSentryEvent(
 export async function listSentryIssues(
   db: DB,
   projectId: string,
-  options: { status?: string; limit?: number },
+  options: { status?: string; limit?: number }
 ) {
   const conditions = [eq(schema.sentryIssues.projectId, projectId)];
 
@@ -76,7 +76,7 @@ export async function listSentryIssues(
 export async function getSentryIssue(
   db: DB,
   projectId: string,
-  issueId: string,
+  issueId: string
 ) {
   const issues = await db
     .select()
@@ -84,8 +84,8 @@ export async function getSentryIssue(
     .where(
       and(
         eq(schema.sentryIssues.id, issueId),
-        eq(schema.sentryIssues.projectId, projectId),
-      ),
+        eq(schema.sentryIssues.projectId, projectId)
+      )
     )
     .limit(1);
 
@@ -96,7 +96,7 @@ export async function updateSentryIssue(
   db: DB,
   projectId: string,
   issueId: string,
-  updates: { status?: string },
+  updates: { status?: string }
 ) {
   const issue = await getSentryIssue(db, projectId, issueId);
   if (!issue) return null;
@@ -107,8 +107,8 @@ export async function updateSentryIssue(
     .where(
       and(
         eq(schema.sentryIssues.id, issueId),
-        eq(schema.sentryIssues.projectId, projectId),
-      ),
+        eq(schema.sentryIssues.projectId, projectId)
+      )
     );
 
   return getSentryIssue(db, projectId, issueId);

@@ -1,4 +1,11 @@
-import { getArray, getNumber, getString, isRecord, parseStringArray, parseStringRecord } from "./guards";
+import {
+  getArray,
+  getNumber,
+  getString,
+  isRecord,
+  parseStringArray,
+  parseStringRecord,
+} from "./guards";
 
 export interface SentryEvent {
   platform?: string;
@@ -86,10 +93,13 @@ export function parseSentryEvent(value: unknown): SentryEvent | null {
   if (isRecord(value.contexts)) {
     const contexts: NonNullable<SentryEvent["contexts"]> = {};
 
-    if (isRecord(value.contexts.device)) contexts.device = value.contexts.device;
+    if (isRecord(value.contexts.device))
+      contexts.device = value.contexts.device;
     if (isRecord(value.contexts.os)) contexts.os = value.contexts.os;
-    if (isRecord(value.contexts.runtime)) contexts.runtime = value.contexts.runtime;
-    if (isRecord(value.contexts.browser)) contexts.browser = value.contexts.browser;
+    if (isRecord(value.contexts.runtime))
+      contexts.runtime = value.contexts.runtime;
+    if (isRecord(value.contexts.browser))
+      contexts.browser = value.contexts.browser;
     if (isRecord(value.contexts.app)) contexts.app = value.contexts.app;
 
     if (Object.keys(contexts).length) out.contexts = contexts;
@@ -112,10 +122,14 @@ export function parseSentryEvent(value: unknown): SentryEvent | null {
   if (isRecord(value.exception)) {
     const values = getArray(value.exception, "values");
     if (values?.length) {
-      const parsedValues: NonNullable<NonNullable<SentryEvent["exception"]>["values"]> = [];
+      const parsedValues: NonNullable<
+        NonNullable<SentryEvent["exception"]>["values"]
+      > = [];
       for (const v of values) {
         if (!isRecord(v)) continue;
-        const item: NonNullable<NonNullable<SentryEvent["exception"]>["values"]>[number] = {};
+        const item: NonNullable<
+          NonNullable<SentryEvent["exception"]>["values"]
+        >[number] = {};
 
         const type = getString(v, "type");
         const val = getString(v, "value");
@@ -125,7 +139,9 @@ export function parseSentryEvent(value: unknown): SentryEvent | null {
         if (isRecord(v.mechanism)) item.mechanism = v.mechanism;
 
         if (isRecord(v.stacktrace)) {
-          const stacktrace: NonNullable<NonNullable<SentryEvent["exception"]>["values"]>[number]["stacktrace"] = {};
+          const stacktrace: NonNullable<
+            NonNullable<SentryEvent["exception"]>["values"]
+          >[number]["stacktrace"] = {};
           if (Array.isArray(v.stacktrace.frames)) {
             const frames: Array<Record<string, {}>> = [];
             for (const frame of v.stacktrace.frames) {
@@ -249,7 +265,7 @@ export type ClientReportPayload = {
 };
 
 export function parseClientReportPayload(
-  value: unknown,
+  value: unknown
 ): ClientReportPayload | null {
   if (!isRecord(value)) return null;
 

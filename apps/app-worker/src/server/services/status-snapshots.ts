@@ -13,7 +13,10 @@ import {
   listOpenIncidents,
   listRecentResolvedIncidents,
 } from "../repositories/incidents";
-import { getComponentHistoricalData, type DayStatus } from "../lib/status-history";
+import {
+  getComponentHistoricalData,
+  type DayStatus,
+} from "../lib/status-history";
 import {
   getPublicStatusSnapshotCacheKey,
   getTeamStatusSnapshotCacheKey,
@@ -59,7 +62,9 @@ export type StatusSnapshot = {
   incidents: Incident[];
 };
 
-function computeOverallUptime(days: DayStatus[] | undefined): number | undefined {
+function computeOverallUptime(
+  days: DayStatus[] | undefined
+): number | undefined {
   if (!days) return undefined;
 
   const knownDays = days.filter((d) => d.status !== "unknown");
@@ -75,7 +80,7 @@ export async function rebuildStatusSnapshot(
   slug: string,
   accountId?: string,
   apiToken?: string,
-  options?: { teamId?: string; includePrivate?: boolean },
+  options?: { teamId?: string; includePrivate?: boolean }
 ): Promise<StatusSnapshot | null> {
   const page = options?.teamId
     ? await getStatusPageBySlug(db, options.teamId, slug)
@@ -98,7 +103,7 @@ export async function rebuildStatusSnapshot(
     : [];
 
   const monitorIds = Array.from(
-    new Set(componentMonitorLinks.map((l) => l.monitorId)),
+    new Set(componentMonitorLinks.map((l) => l.monitorId))
   );
   const monitors = monitorIds.length
     ? await db
@@ -111,7 +116,7 @@ export async function rebuildStatusSnapshot(
     : [];
 
   const monitorGroupIds = Array.from(
-    new Set(monitors.map((m) => m.groupId).filter((id): id is string => !!id)),
+    new Set(monitors.map((m) => m.groupId).filter((id): id is string => !!id))
   );
   const maintenanceMatches = await listActiveSuppressionMatches(
     db,
@@ -122,23 +127,23 @@ export async function rebuildStatusSnapshot(
       monitors: monitorIds,
       monitorGroups: monitorGroupIds,
       components: componentIds,
-    },
+    }
   );
 
   const maintenanceMonitorIds = new Set(
     maintenanceMatches
       .filter((m) => m.scopeType === "monitor")
-      .map((m) => m.scopeId),
+      .map((m) => m.scopeId)
   );
   const maintenanceGroupIds = new Set(
     maintenanceMatches
       .filter((m) => m.scopeType === "monitor_group")
-      .map((m) => m.scopeId),
+      .map((m) => m.scopeId)
   );
   const maintenanceComponentIds = new Set(
     maintenanceMatches
       .filter((m) => m.scopeType === "component")
-      .map((m) => m.scopeId),
+      .map((m) => m.scopeId)
   );
 
   const monitorIdToGroupId = new Map(monitors.map((m) => [m.id, m.groupId]));
@@ -159,14 +164,15 @@ export async function rebuildStatusSnapshot(
         .where(inArray(schema.monitorState.monitorId, monitorIds))
     : [];
   const monitorIdToStatus = new Map(
-    monitorStates.map((s) => [s.monitorId, s.lastStatus]),
+    monitorStates.map((s) => [s.monitorId, s.lastStatus])
   );
 
   const dependencyRows = componentIds.length
     ? await db
         .select({
           componentId: schema.componentDependencies.componentId,
-          dependsOnComponentId: schema.componentDependencies.dependsOnComponentId,
+          dependsOnComponentId:
+            schema.componentDependencies.dependsOnComponentId,
         })
         .from(schema.componentDependencies)
         .where(inArray(schema.componentDependencies.componentId, componentIds))
@@ -185,7 +191,8 @@ export async function rebuildStatusSnapshot(
     let status: "up" | "down" | "unknown" | "maintenance" = "unknown";
 
     if (component.currentStatus && component.currentStatus !== "operational") {
-      status = component.currentStatus === "maintenance" ? "maintenance" : "down";
+      status =
+        component.currentStatus === "maintenance" ? "maintenance" : "down";
     } else {
       const linkedMonitorIds = componentIdToMonitorIds.get(component.id) || [];
 
@@ -217,7 +224,7 @@ export async function rebuildStatusSnapshot(
         accountId,
         apiToken,
         ids,
-        90,
+        90
       );
     }
 
@@ -270,7 +277,7 @@ export async function rebuildStatusSnapshot(
     db,
     page.teamId,
     page.id,
-    30,
+    30
   );
   const allIncidents = [...openIncidents, ...pastIncidents];
 
@@ -300,10 +307,9 @@ export async function rebuildStatusSnapshot(
     })),
   };
 
-  const cacheKey =
-    options?.teamId
-      ? getTeamStatusSnapshotCacheKey(options.teamId, slug)
-      : getPublicStatusSnapshotCacheKey(slug);
+  const cacheKey = options?.teamId
+    ? getTeamStatusSnapshotCacheKey(options.teamId, slug)
+    : getPublicStatusSnapshotCacheKey(slug);
 
   await kv.put(cacheKey, JSON.stringify(snapshot), { expirationTtl: 60 });
   return snapshot;
@@ -313,7 +319,7 @@ export async function clearStatusPageCache(
   db: DB,
   kv: KVNamespace,
   teamId: string,
-  statusPageId: string,
+  statusPageId: string
 ) {
   const page = await getStatusPageById(db, teamId, statusPageId);
   if (!page) return;
@@ -327,7 +333,7 @@ export async function clearStatusPageCache(
 export async function clearAllStatusPageCaches(
   db: DB,
   kv: KVNamespace,
-  teamId: string,
+  teamId: string
 ) {
   const pages = await listStatusPages(db, teamId);
   for (const page of pages) {

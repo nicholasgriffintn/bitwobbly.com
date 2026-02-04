@@ -119,7 +119,9 @@ export function CreateMonitorModal({
 
             <div className="mb-3">
               <label className="text-sm font-semibold">
-                {createdTokenType === "heartbeat" ? "Heartbeat URL" : "Webhook URL"}
+                {createdTokenType === "heartbeat"
+                  ? "Heartbeat URL"
+                  : "Webhook URL"}
               </label>
               <input
                 readOnly
@@ -221,14 +223,18 @@ export function CreateMonitorModal({
             </>
           )}
 
-          {(monitorType === "tls" || monitorType === "dns" || monitorType === "tcp") && (
+          {(monitorType === "tls" ||
+            monitorType === "dns" ||
+            monitorType === "tcp") && (
             <>
               <label htmlFor="monitor-url">Target</label>
               <input
                 id="monitor-url"
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
-                placeholder={monitorType === "dns" ? "example.com" : "example.com:443"}
+                placeholder={
+                  monitorType === "dns" ? "example.com" : "example.com:443"
+                }
                 required
               />
             </>
@@ -236,15 +242,15 @@ export function CreateMonitorModal({
 
           {monitorType === "webhook" && (
             <p className="muted">
-              A webhook token will be generated. External services will push status
-              updates to your webhook endpoint.
+              A webhook token will be generated. External services will push
+              status updates to your webhook endpoint.
             </p>
           )}
 
           {monitorType === "heartbeat" && (
             <p className="muted">
-              A token will be generated. Your cron will POST check-ins to your heartbeat
-              endpoint. Missing check-ins will mark the monitor down.
+              A token will be generated. Your cron will POST check-ins to your
+              heartbeat endpoint. Missing check-ins will mark the monitor down.
             </p>
           )}
 
@@ -287,7 +293,9 @@ export function CreateMonitorModal({
             monitorType !== "heartbeat" && (
               <>
                 <label htmlFor="monitor-config">Config (JSON)</label>
-                <p className="muted -mt-1">Optional. Leave blank to use defaults.</p>
+                <p className="muted -mt-1">
+                  Optional. Leave blank to use defaults.
+                </p>
                 <textarea
                   id="monitor-config"
                   value={checkConfig}
@@ -298,7 +306,9 @@ export function CreateMonitorModal({
                   }}
                   rows={4}
                 />
-                {checkConfigError ? <p className="text-red-600">{checkConfigError}</p> : null}
+                {checkConfigError ? (
+                  <p className="text-red-600">{checkConfigError}</p>
+                ) : null}
                 {(() => {
                   const help = configHelp(monitorType);
                   if (!help) return null;
@@ -310,11 +320,15 @@ export function CreateMonitorModal({
                       <p className="muted mt-2">{help.description}</p>
                       <div className="mt-2">
                         <div className="muted mb-1">Example</div>
-                        <pre className="m-0 whitespace-pre-wrap">{help.example}</pre>
+                        <pre className="m-0 whitespace-pre-wrap">
+                          {help.example}
+                        </pre>
                       </div>
                       <div className="mt-2">
                         <div className="muted mb-1">Schema</div>
-                        <pre className="m-0 whitespace-pre-wrap">{help.schema}</pre>
+                        <pre className="m-0 whitespace-pre-wrap">
+                          {help.schema}
+                        </pre>
                       </div>
                     </details>
                   );
@@ -325,7 +339,9 @@ export function CreateMonitorModal({
           {monitorType === "heartbeat" && (
             <>
               <label htmlFor="monitor-config">Config (JSON)</label>
-              <p className="muted -mt-1">Optional. Leave blank to use defaults.</p>
+              <p className="muted -mt-1">
+                Optional. Leave blank to use defaults.
+              </p>
               <textarea
                 id="monitor-config"
                 value={checkConfig}
@@ -336,7 +352,9 @@ export function CreateMonitorModal({
                 }}
                 rows={3}
               />
-              {checkConfigError ? <p className="text-red-600">{checkConfigError}</p> : null}
+              {checkConfigError ? (
+                <p className="text-red-600">{checkConfigError}</p>
+              ) : null}
               {(() => {
                 const help = configHelp("heartbeat");
                 if (!help) return null;
@@ -348,11 +366,15 @@ export function CreateMonitorModal({
                     <p className="muted mt-2">{help.description}</p>
                     <div className="mt-2">
                       <div className="muted mb-1">Example</div>
-                      <pre className="m-0 whitespace-pre-wrap">{help.example}</pre>
+                      <pre className="m-0 whitespace-pre-wrap">
+                        {help.example}
+                      </pre>
                     </div>
                     <div className="mt-2">
                       <div className="muted mb-1">Schema</div>
-                      <pre className="m-0 whitespace-pre-wrap">{help.schema}</pre>
+                      <pre className="m-0 whitespace-pre-wrap">
+                        {help.schema}
+                      </pre>
                     </div>
                   </details>
                 );
@@ -362,7 +384,8 @@ export function CreateMonitorModal({
 
           {monitorType === "manual" && (
             <p className="muted">
-              Manual monitors require you to set the status manually from the monitor list.
+              Manual monitors require you to set the status manually from the
+              monitor list.
             </p>
           )}
 

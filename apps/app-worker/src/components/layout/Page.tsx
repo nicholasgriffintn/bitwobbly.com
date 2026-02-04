@@ -8,4 +8,3 @@ interface PageProps {
 export function Page({ children, className = "" }: PageProps) {
   return <div className={`page ${className}`.trim()}>{children}</div>;
 }
-

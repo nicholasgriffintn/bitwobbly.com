@@ -55,7 +55,7 @@ class IncidentCoordinatorBase implements DurableObject {
         { DB: this.env.DB },
         input.team_id,
         input.monitor_id,
-        input.reason,
+        input.reason
       );
       await this.state.storage.put<DOState>("s", {
         open_incident_id: incidentId,
@@ -66,7 +66,11 @@ class IncidentCoordinatorBase implements DurableObject {
         KV: this.env.KV,
       });
 
-      return jsonResponse({ ok: true, incident_id: incidentId, action: "opened" });
+      return jsonResponse({
+        ok: true,
+        incident_id: incidentId,
+        action: "opened",
+      });
     }
 
     if (!current.open_incident_id)
@@ -81,7 +85,11 @@ class IncidentCoordinatorBase implements DurableObject {
       KV: this.env.KV,
     });
 
-    return jsonResponse({ ok: true, incident_id: incidentId, action: "resolved" });
+    return jsonResponse({
+      ok: true,
+      incident_id: incidentId,
+      action: "resolved",
+    });
   }
 }
 
@@ -89,7 +97,7 @@ const handler = {
   async queue(
     batch: MessageBatch<CheckJob>,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: ExecutionContext
   ): Promise<void> {
     const db = getDb(env.DB);
 
@@ -99,7 +107,7 @@ const handler = {
         msg.ack();
       } catch (e: unknown) {
         const error = e instanceof Error ? e : null;
-        console.error('[CHECKER] check failed', error?.message || e);
+        console.error("[CHECKER] check failed", error?.message || e);
       }
     }
   },
@@ -111,7 +119,7 @@ export default withSentry<Env, CheckJob>(
     environment: "production",
     tracesSampleRate: 1.0,
   }),
-  handler,
+  handler
 );
 
 export const IncidentCoordinator = instrumentDurableObjectWithSentry<
@@ -120,9 +128,9 @@ export const IncidentCoordinator = instrumentDurableObjectWithSentry<
   typeof IncidentCoordinatorBase
 >(
   () => ({
-    dsn: 'https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2',
-    environment: 'production',
+    dsn: "https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2",
+    environment: "production",
     tracesSampleRate: 0.2,
   }),
-  IncidentCoordinatorBase,
+  IncidentCoordinatorBase
 );

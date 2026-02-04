@@ -11,7 +11,7 @@ import {
   updateMonitorNextRun,
   unlockMonitor,
 } from "./repositories/monitors";
-import { cleanupExpiredSessions } from './repositories/sessions';
+import { cleanupExpiredSessions } from "./repositories/sessions";
 
 const monitorTypeSet: ReadonlySet<string> = new Set(MonitorTypeValues);
 function isMonitorType(value: string): value is MonitorType {
@@ -22,10 +22,10 @@ const handler = {
   async scheduled(
     event: ScheduledController,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: ExecutionContext
   ): Promise<void> {
     await Sentry.withMonitor(
-      'monitor-scheduler',
+      "monitor-scheduler",
       async () => {
         const db = getDb(env.DB);
         const nowSec = Math.floor(Date.now() / 1000);
@@ -36,11 +36,11 @@ const handler = {
           const cleanedSessions = await cleanupExpiredSessions(db, nowSec);
           if (cleanedSessions > 0) {
             console.log(
-              `[SCHEDULER] cleaned ${cleanedSessions} expired session(s)`,
+              `[SCHEDULER] cleaned ${cleanedSessions} expired session(s)`
             );
           }
         } catch (error) {
-          console.error('[SCHEDULER] session cleanup failed', error);
+          console.error("[SCHEDULER] session cleanup failed", error);
         }
 
         try {
@@ -68,9 +68,10 @@ const handler = {
                 continue;
               }
 
-              const monitorType = m.type && isMonitorType(m.type) ? m.type : "http";
+              const monitorType =
+                m.type && isMonitorType(m.type) ? m.type : "http";
               const msg: CheckJob = {
-                job_id: randomId('job'),
+                job_id: randomId("job"),
                 team_id: m.teamId,
                 monitor_id: m.id,
                 monitor_type: monitorType,
@@ -87,27 +88,27 @@ const handler = {
                 Math.max(30, Math.min(3600, Number(m.intervalSeconds) || 60));
               ctx.waitUntil(updateMonitorNextRun(db, m.id, next, lockUntil));
             } catch (err) {
-              console.error('scheduler enqueue failed', err);
+              console.error("scheduler enqueue failed", err);
               ctx.waitUntil(unlockMonitor(db, m.id, lockUntil));
             }
           }
         }
       },
       {
-        schedule: { type: 'crontab', value: event.cron },
+        schedule: { type: "crontab", value: event.cron },
         checkinMargin: 2,
         maxRuntime: 5,
-        timezone: 'UTC',
-      },
+        timezone: "UTC",
+      }
     );
   },
 };
 
 export default Sentry.withSentry<Env>(
   () => ({
-    dsn: 'https://a2ada73c0a154eb5b035f850d8e0d505@ingest.bitwobbly.com/4',
-    environment: 'production',
+    dsn: "https://a2ada73c0a154eb5b035f850d8e0d505@ingest.bitwobbly.com/4",
+    environment: "production",
     tracesSampleRate: 0.2,
   }),
-  handler,
+  handler
 );

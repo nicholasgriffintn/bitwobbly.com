@@ -2,15 +2,15 @@ import type { AlertJob, CheckJob } from "@bitwobbly/shared";
 import { randomId } from "@bitwobbly/shared";
 import { connect } from "cloudflare:sockets";
 
-import { getMonitorState, upsertMonitorState } from "../repositories/monitor-state";
+import {
+  getMonitorState,
+  upsertMonitorState,
+} from "../repositories/monitor-state";
 import { getMonitorSuppressionState } from "../repositories/suppressions";
 import type { Env } from "../types/env";
 import { isRecord } from "./guards";
 import type { DB } from "./db";
-import {
-  computeHeartbeatStatus,
-  parseTargetHostPort,
-} from "./monitor-utils";
+import { computeHeartbeatStatus, parseTargetHostPort } from "./monitor-utils";
 import { readResponseTextUpTo } from "./http-utils";
 import { checkTlsExpiry } from "./checks/tls";
 
@@ -18,7 +18,7 @@ export async function handleCheck(
   job: CheckJob,
   env: Env,
   ctx: ExecutionContext,
-  db: DB,
+  db: DB
 ) {
   if (
     job.monitor_type === "webhook" ||
@@ -44,7 +44,11 @@ export async function handleCheck(
       status = "down";
       reason = "Invalid config JSON";
       latency_ms = Date.now() - started;
-      await handleStatusResult(job, env, ctx, db, { status, reason, latency_ms });
+      await handleStatusResult(job, env, ctx, db, {
+        status,
+        reason,
+        latency_ms,
+      });
       return;
     }
   }
@@ -82,7 +86,7 @@ export async function handleCheck(
       ctx,
       db,
       { status, reason, latency_ms },
-      { checkedAtSec: lastSeenSec },
+      { checkedAtSec: lastSeenSec }
     );
     return;
   } else if (
@@ -91,11 +95,7 @@ export async function handleCheck(
     job.monitor_type === "tls"
   ) {
     const defaultPort =
-      job.monitor_type === "tls"
-        ? 443
-        : job.monitor_type === "ping"
-          ? 443
-          : 80;
+      job.monitor_type === "tls" ? 443 : job.monitor_type === "ping" ? 443 : 80;
 
     const target = parseTargetHostPort(job.url, defaultPort);
     if (!target) {
@@ -128,7 +128,7 @@ export async function handleCheck(
         const secureTransport = job.monitor_type === "ping" ? "on" : "off";
         const socket = connect(
           { hostname: target.hostname, port: target.port },
-          { secureTransport, allowHalfOpen },
+          { secureTransport, allowHalfOpen }
         );
 
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -155,16 +155,15 @@ export async function handleCheck(
       }
     }
   } else if (job.monitor_type === "dns") {
-    const name =
-      job.url.includes("://")
-        ? (() => {
-            try {
-              return new URL(job.url).hostname;
-            } catch {
-              return job.url.trim();
-            }
-          })()
-        : job.url.trim();
+    const name = job.url.includes("://")
+      ? (() => {
+          try {
+            return new URL(job.url).hostname;
+          } catch {
+            return job.url.trim();
+          }
+        })()
+      : job.url.trim();
 
     if (!name) {
       status = "down";
@@ -187,13 +186,13 @@ export async function handleCheck(
       try {
         const res = await fetch(
           `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(
-            name,
+            name
           )}&type=${encodeURIComponent(recordType)}`,
           {
             method: "GET",
             signal: controller.signal,
             headers: { accept: "application/dns-json" },
-          },
+          }
         );
 
         latency_ms = Date.now() - started;
@@ -202,7 +201,8 @@ export async function handleCheck(
           reason = `DNS HTTP ${res.status}`;
         } else {
           const data: unknown = await res.json();
-          const answers = isRecord(data) && Array.isArray(data.Answer) ? data.Answer : [];
+          const answers =
+            isRecord(data) && Array.isArray(data.Answer) ? data.Answer : [];
           const values = answers
             .map((a) => (isRecord(a) ? a.data : null))
             .filter((v): v is string => typeof v === "string");
@@ -238,7 +238,8 @@ export async function handleCheck(
       if (job.monitor_type === "browser") {
         headers["user-agent"] =
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
-        headers["accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+        headers["accept"] =
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
       }
 
       const res = await fetch(job.url, {
@@ -253,9 +254,12 @@ export async function handleCheck(
       if (!res.ok) reason = `HTTP ${res.status}`;
 
       if (status === "up" && job.monitor_type === "http_assert") {
-        const expectedStatus = isRecord(config) && Array.isArray(config.expectedStatus)
-          ? config.expectedStatus.filter((n: unknown) => typeof n === "number")
-          : null;
+        const expectedStatus =
+          isRecord(config) && Array.isArray(config.expectedStatus)
+            ? config.expectedStatus.filter(
+                (n: unknown) => typeof n === "number"
+              )
+            : null;
 
         if (expectedStatus?.length && !expectedStatus.includes(res.status)) {
           status = "down";
@@ -308,7 +312,7 @@ export async function handleCheck(
           ? "Timeout"
           : error?.message || "Fetch error";
       console.error(
-        `[CHECKER] Check failed: ${status} (${latency_ms}ms) - ${reason}`,
+        `[CHECKER] Check failed: ${status} (${latency_ms}ms) - ${reason}`
       );
     } finally {
       clearTimeout(t);
@@ -328,7 +332,7 @@ async function handleStatusResult(
   ctx: ExecutionContext,
   db: DB,
   result: { status: "up" | "down"; reason?: string; latency_ms: number | null },
-  options?: { checkedAtSec?: number },
+  options?: { checkedAtSec?: number }
 ) {
   ctx.waitUntil(writeCheckEvent(env, job, result.status, result.latency_ms));
 
@@ -338,16 +342,18 @@ async function handleStatusResult(
     db,
     job.team_id,
     job.monitor_id,
-    nowSec,
+    nowSec
   );
   const prev = await getMonitorState(db, job.monitor_id);
 
   const prevFailures = prev?.consecutiveFailures ?? 0;
   const prevIncidentOpen = prev?.incidentOpen ?? 0;
   const nextFailures =
-    result.status === "down" && suppression.isMaintenance ? 0 : result.status === "down"
-      ? prevFailures + 1
-      : 0;
+    result.status === "down" && suppression.isMaintenance
+      ? 0
+      : result.status === "down"
+        ? prevFailures + 1
+        : 0;
 
   await upsertMonitorState(db, job.monitor_id, {
     lastCheckedAt: checkedAtSec,
@@ -420,7 +426,7 @@ async function handleStatusResult(
 }
 
 function mapReportedStatus(
-  status?: "up" | "down" | "degraded",
+  status?: "up" | "down" | "degraded"
 ): "up" | "down" | null {
   if (!status) return null;
   if (status === "up") return "up";
@@ -432,13 +438,13 @@ async function handleReportedStatus(
   job: CheckJob,
   env: Env,
   ctx: ExecutionContext,
-  db: DB,
+  db: DB
 ) {
   const mapped = mapReportedStatus(job.reported_status);
   if (!mapped) {
     console.warn(
       "[CHECKER] webhook/manual job missing reported_status",
-      job.monitor_id,
+      job.monitor_id
     );
     return;
   }
@@ -463,7 +469,7 @@ async function writeCheckEvent(
   env: Env,
   job: CheckJob,
   status: "up" | "down",
-  latency_ms: number | null,
+  latency_ms: number | null
 ) {
   if (!env.AE) return;
   env.AE.writeDataPoint({
@@ -481,7 +487,7 @@ async function transitionViaDO(
   env: Env,
   job: CheckJob,
   status: "up" | "down",
-  reason?: string,
+  reason?: string
 ): Promise<string | null> {
   try {
     const id = env.INCIDENT_DO.idFromName(`${job.team_id}:${job.monitor_id}`);
@@ -507,7 +513,7 @@ async function transitionViaDO(
 
 async function checkExternalService(
   job: CheckJob,
-  timeout: number,
+  timeout: number
 ): Promise<{ status: "up" | "down"; reason?: string; latency_ms: number }> {
   const started = Date.now();
   const controller = new AbortController();

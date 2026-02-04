@@ -91,4 +91,3 @@ test("utcMonthRange returns correct UTC boundaries", () => {
   assert.equal(fromIso, "2026-02-01T00:00:00.000Z");
   assert.equal(toIso, "2026-03-01T00:00:00.000Z");
 });
-

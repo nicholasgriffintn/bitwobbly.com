@@ -21,7 +21,7 @@ export function CreateInviteModal({
   const [role, setRole] = useState("member");
   const [expiry, setExpiry] = useState("7");
   const [createdInviteCode, setCreatedInviteCode] = useState<string | null>(
-    null,
+    null
   );
   const [error, setError] = useState<string | null>(null);
 

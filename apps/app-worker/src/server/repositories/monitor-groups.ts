@@ -12,7 +12,7 @@ export async function listMonitorGroups(db: DB, teamId: string) {
 export async function createMonitorGroup(
   db: DB,
   teamId: string,
-  input: { name: string; description?: string | null },
+  input: { name: string; description?: string | null }
 ) {
   const id = randomId("mg");
   await db.insert(schema.monitorGroups).values({
@@ -29,10 +29,16 @@ export async function deleteMonitorGroup(db: DB, teamId: string, id: string) {
   await db
     .update(schema.monitors)
     .set({ groupId: null })
-    .where(and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.groupId, id)));
+    .where(
+      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.groupId, id))
+    );
 
   await db
     .delete(schema.monitorGroups)
-    .where(and(eq(schema.monitorGroups.teamId, teamId), eq(schema.monitorGroups.id, id)));
+    .where(
+      and(
+        eq(schema.monitorGroups.teamId, teamId),
+        eq(schema.monitorGroups.id, id)
+      )
+    );
 }
-

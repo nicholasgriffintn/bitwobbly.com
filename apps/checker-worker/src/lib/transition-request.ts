@@ -7,7 +7,9 @@ export type TransitionRequest = {
   reason?: string;
 };
 
-export function parseTransitionRequest(value: unknown): TransitionRequest | null {
+export function parseTransitionRequest(
+  value: unknown
+): TransitionRequest | null {
   if (!isRecord(value)) return null;
   const team_id = typeof value.team_id === "string" ? value.team_id : null;
   const monitor_id =
@@ -19,4 +21,3 @@ export function parseTransitionRequest(value: unknown): TransitionRequest | null
   if (!team_id || !monitor_id || !status) return null;
   return { team_id, monitor_id, status, reason };
 }
-
