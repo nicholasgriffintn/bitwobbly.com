@@ -6,20 +6,25 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ## Plan of Completion
 
-#### Phase 1
+### MVP
 
-- [ ] Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
-- [ ] Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
+- [ ] Complete actions workflows for proper CI/CD and testing.
+- [ ] Expand testing across the full system: unit, integration, e2e, and load tests.
+- [ ] Refactor the codebase and cleanup.
+- [ ] make sure the full system can be used locally.
+
+#### Monitoring
+
+- [ ] Add the ability to create new teams.
 - [ ] Add status page access modes: public, private (password), and internal (team-only).
-- [ ] Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
-- [ ] Add SLO/Uptime reporting with exportable monthly reports and historical availability APIs.
-
-#### Phase 1.5
-
 - [ ] Potentially add Ping (ICMP) checks if not too complex to implement in Workers.
 - [ ] Implement browser checks with https://developers.cloudflare.com/browser-rendering/, potentially even https://developers.cloudflare.com/browser-rendering/stagehand/.
+- [ ] Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
+- [ ] Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
+- [ ] Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
+- [ ] Add SLO/Uptime reporting with exportable monthly reports and historical availability APIs.
 
-#### Phase 2
+#### Issues
 
 - Persist and query sessions/client reports; expose crash-free session and release health views.
 - Improve grouping with stacktrace-based fingerprinting rules, frame normalisation, and configurable overrides.
@@ -28,21 +33,19 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 - Add search and faceting over tags, release, environment, user, transaction, and time windows.
 - Add performance primitives: transaction summaries, Apdex-style score, and slow span hotspots.
 
-#### Phase 3
+### Potential expansions
 
+- Integrate with Cloudflare tail workers or just using OTEL, decide on the best option. Ingest into issues.
 - Add channels: Slack, PagerDuty, Opsgenie, Teams, SMS, voice, and generic webhook signatures.
 - Add advanced alert conditions: anomaly bands, error budget burn, crash-free drop, composite multi-signal rules.
 - Add rule simulation and preview against historical data before enabling.
 - Add on-call routing, escalation policies, and acknowledgement workflows.
 - Add automation hooks for incident creation, enrichment, and post-incident follow-up tasks.
-
-#### Phase 4
-
 - Add retention policies and tiered storage lifecycle (hot D1, warm R2, archival exports).
 - Add indexing and query optimisation for large issue/event volumes; benchmark queue and storage throughput.
 - Add backups and disaster recovery drills for D1, KV, and R2.
 - Add compliance controls (PII scrubbing, data residency options, audit event stream).
-- Add billing and quota controls (event volume limits, monitor limits, alert overage handling).
+- Add billing and quota controls (event volume limits, monitor limits, alert overage handling) which will make it available for SaaS applications.
 
 ## Architecture
 
