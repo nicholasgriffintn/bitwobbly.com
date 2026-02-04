@@ -1,19 +1,21 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { Modal } from "@/components/Modal";
-import { PlatformSelect } from '@/components/PlatformSelect';
-import { CopyButton } from '@/components/CopyButton';
-import { toTitleCase } from '@/utils/format';
+import { PageHeader } from "@/components/layout";
+import { ErrorCard } from "@/components/feedback";
+import {
+  CreateProjectModal,
+  DeleteProjectModal,
+  EditProjectModal,
+  ProjectDsnModal,
+} from "@/components/modals/issues";
+import { toTitleCase } from "@/utils/format";
 import {
   listSentryProjectsFn,
-  createSentryProjectFn,
   getSentryProjectDsnFn,
-  updateSentryProjectFn,
-  deleteSentryProjectFn,
-} from '@/server/functions/sentry';
-import { listComponentsFn } from '@/server/functions/components';
+} from "@/server/functions/sentry";
+import { listComponentsFn } from "@/server/functions/components";
 
 type SentryProject = {
   id: string;
@@ -44,26 +46,21 @@ function IssueTracking() {
 
   const [projects, setProjects] = useState<SentryProject[]>(initialProjects);
   const [components] = useState<Component[]>(initialComponents);
-  const [selectedComponentId, setSelectedComponentId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDsnModalOpen, setIsDsnModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [platform, setPlatform] = useState("");
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<SentryProject | null>(
+    null,
+  );
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
     null,
   );
   const [dsn, setDsn] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [secretKey, setSecretKey] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const createProject = useServerFn(createSentryProjectFn);
-  const updateProject = useServerFn(updateSentryProjectFn);
-  const deleteProject = useServerFn(deleteSentryProjectFn);
   const listProjects = useServerFn(listSentryProjectsFn);
   const getProjectDsn = useServerFn(getSentryProjectDsnFn);
 
@@ -76,85 +73,14 @@ function IssueTracking() {
     }
   };
 
-  const onCreate = async (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    setIsLoading(true);
-    try {
-      const result = await createProject({
-        data: {
-          name,
-          platform: platform || undefined,
-          componentId: selectedComponentId || undefined,
-        },
-      });
-
-      setPublicKey(result.publicKey);
-      setSecretKey(result.secretKey);
-      setDsn(
-        `https://${result.publicKey}@ingest.bitwobbly.com/${result.sentryProjectId}`,
-      );
-      setIsDsnModalOpen(true);
-      await refreshProjects();
-      setIsCreateModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const showEditModal = (project: SentryProject) => {
-    setEditingProjectId(project.id);
-    setName(project.name);
-    setPlatform(project.platform || "");
-    setSelectedComponentId(project.componentId || "");
+    setEditingProject(project);
     setIsEditModalOpen(true);
-  };
-
-  const onEdit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingProjectId) return;
-    setError(null);
-    setIsLoading(true);
-    try {
-      await updateProject({
-        data: {
-          projectId: editingProjectId,
-          name,
-          platform: platform || null,
-          componentId: selectedComponentId || null,
-        },
-      });
-      await refreshProjects();
-      setIsEditModalOpen(false);
-      setEditingProjectId(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const showDeleteModal = (project: SentryProject) => {
     setDeletingProjectId(project.id);
     setIsDeleteModalOpen(true);
-  };
-
-  const onDelete = async () => {
-    if (!deletingProjectId) return;
-    setError(null);
-    setIsLoading(true);
-    try {
-      await deleteProject({ data: { projectId: deletingProjectId } });
-      await refreshProjects();
-      setIsDeleteModalOpen(false);
-      setDeletingProjectId(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const showDsn = async (projectId: string) => {
@@ -186,38 +112,23 @@ function IssueTracking() {
     return grouped;
   };
 
-  const renderProjectGroup = (groupName: string, projectList: SentryProject[]) => {
-    const component = components.find(c => c.id === groupName);
+  const renderProjectGroup = (
+    groupName: string,
+    projectList: SentryProject[],
+  ) => {
+    const component = components.find((c) => c.id === groupName);
     return (
-      <div key={groupName} style={{ marginBottom: '1.5rem' }}>
+      <div key={groupName} className="mb-6">
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            flexWrap: 'wrap',
-            marginBottom: '0.75rem',
-            paddingBottom: '0.5rem',
-            borderBottom: '1px solid var(--border)',
-          }}
+          className="mb-3 flex flex-wrap items-center gap-2 border-b border-[color:var(--border)] pb-2"
         >
           <span
-            style={{
-              fontWeight: '600',
-              color: 'var(--text-secondary)',
-              fontSize: '0.875rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
+            className="text-sm font-semibold uppercase tracking-wider text-[color:var(--text-secondary)]"
           >
             {component?.name || 'Unknown Component'}
           </span>
           <span
-            className="pill small"
-            style={{
-              backgroundColor: 'var(--surface-1)',
-              color: 'var(--text-secondary)',
-            }}
+            className="pill small bg-[color:var(--surface-1)] text-[color:var(--text-secondary)]"
           >
             {projectList.length} project{projectList.length !== 1 ? 's' : ''}
           </span>
@@ -226,7 +137,7 @@ function IssueTracking() {
           {projectList.map((project) => (
             <div key={project.id} className="list-item-expanded">
               <div className="list-row">
-                <div style={{ flex: 1 }}>
+                <div className="flex-1">
                   <div className="list-title">{project.name}</div>
                   <div className="muted">
                     Project ID: {project.sentryProjectId}
@@ -279,21 +190,6 @@ function IssueTracking() {
     );
   };
 
-  const closeCreateModal = () => {
-    setIsCreateModalOpen(false);
-    setName("");
-    setPlatform("");
-    setSelectedComponentId("");
-  };
-
-  const closeEditModal = () => {
-    setIsEditModalOpen(false);
-    setEditingProjectId(null);
-    setName("");
-    setPlatform("");
-    setSelectedComponentId("");
-  };
-
   const closeDsnModal = () => {
     setIsDsnModalOpen(false);
     setDsn(null);
@@ -308,17 +204,17 @@ function IssueTracking() {
 
   return (
     <div className="page">
-      <div className="page-header mb-6">
-        <div>
-          <h2>Issue Tracking</h2>
-          <p>Error and performance tracking with SDK integration.</p>
-        </div>
+      <PageHeader
+        title="Issue Tracking"
+        description="Error and performance tracking with SDK integration."
+        className="mb-6"
+      >
         <button type="button" onClick={() => setIsCreateModalOpen(true)}>
           Create Project
         </button>
-      </div>
+      </PageHeader>
 
-      {error ? <div className="card error">{error}</div> : null}
+      {error ? <ErrorCard message={error} /> : null}
 
       <div className="card">
         <div className="card-title">Projects</div>
@@ -339,35 +235,17 @@ function IssueTracking() {
                 )}
 
                 {projectsWithoutComponents.length > 0 && (
-                  <div style={{ marginBottom: '1.5rem' }}>
+                  <div className="mb-6">
                     <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        flexWrap: 'wrap',
-                        marginBottom: '0.75rem',
-                        paddingBottom: '0.5rem',
-                        borderBottom: '1px solid var(--border)',
-                      }}
+                      className="mb-3 flex flex-wrap items-center gap-2 border-b border-[color:var(--border)] pb-2"
                     >
                       <span
-                        style={{
-                          fontWeight: '600',
-                          color: 'var(--text-secondary)',
-                          fontSize: '0.875rem',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                        }}
+                        className="text-sm font-semibold uppercase tracking-wider text-[color:var(--text-secondary)]"
                       >
                         No Component
                       </span>
                       <span
-                        className="pill small"
-                        style={{
-                          backgroundColor: 'var(--surface-1)',
-                          color: 'var(--text-secondary)',
-                        }}
+                        className="pill small bg-[color:var(--surface-1)] text-[color:var(--text-secondary)]"
                       >
                         {projectsWithoutComponents.length} project
                         {projectsWithoutComponents.length !== 1 ? 's' : ''}
@@ -377,7 +255,7 @@ function IssueTracking() {
                       {projectsWithoutComponents.map((project) => (
                         <div key={project.id} className="list-item-expanded">
                           <div className="list-row">
-                            <div style={{ flex: 1 }}>
+                            <div className="flex-1">
                               <div className="list-title">{project.name}</div>
                               <div className="muted">
                                 Project ID: {project.sentryProjectId}
@@ -436,241 +314,44 @@ function IssueTracking() {
         )}
       </div>
 
-      <Modal
+      <CreateProjectModal
         isOpen={isCreateModalOpen}
-        onClose={closeCreateModal}
-        title="Create Project"
-      >
-        <form className="form" onSubmit={onCreate}>
-          <label htmlFor="project-name">Project Name</label>
-          <input
-            id="project-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="My Application"
-            required
-            disabled={isLoading}
-          />
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={refreshProjects}
+        onCreated={({ dsn, publicKey, secretKey }) => {
+          setDsn(dsn);
+          setPublicKey(publicKey);
+          setSecretKey(secretKey);
+          setIsDsnModalOpen(true);
+        }}
+        components={components}
+      />
 
-          <label htmlFor="project-platform">Platform</label>
-          <PlatformSelect
-            id="project-platform"
-            value={platform}
-            onChange={setPlatform}
-          />
-
-          {components.length > 0 && (
-            <>
-              <label htmlFor="project-component" style={{ marginTop: '1rem' }}>
-                Linked component (optional)
-              </label>
-              <select
-                id="project-component"
-                value={selectedComponentId}
-                onChange={(e) => setSelectedComponentId(e.target.value)}
-                disabled={isLoading}
-                style={{ marginTop: '0.5rem' }}
-              >
-                <option value="">No component</option>
-                {components.map((component) => (
-                  <option key={component.id} value={component.id}>
-                    {component.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Project'}
-            </button>
-            <button
-              type="button"
-              className="outline"
-              onClick={closeCreateModal}
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      <Modal
+      <EditProjectModal
         isOpen={isEditModalOpen}
-        onClose={closeEditModal}
-        title="Edit Project"
-      >
-        <form className="form" onSubmit={onEdit}>
-          <label htmlFor="edit-project-name">Project Name</label>
-          <input
-            id="edit-project-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="My Application"
-            required
-            disabled={isLoading}
-          />
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingProject(null);
+        }}
+        onSuccess={refreshProjects}
+        project={editingProject}
+        components={components}
+      />
 
-          <label htmlFor="edit-project-platform">Platform</label>
-          <PlatformSelect
-            id="edit-project-platform"
-            value={platform}
-            onChange={setPlatform}
-          />
-
-          {components.length > 0 && (
-            <>
-              <label
-                htmlFor="edit-project-component"
-                style={{ marginTop: '1rem' }}
-              >
-                Linked component (optional)
-              </label>
-              <select
-                id="edit-project-component"
-                value={selectedComponentId}
-                onChange={(e) => setSelectedComponentId(e.target.value)}
-                disabled={isLoading}
-                style={{ marginTop: '0.5rem' }}
-              >
-                <option value="">No component</option>
-                {components.map((component) => (
-                  <option key={component.id} value={component.id}>
-                    {component.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button
-              type="button"
-              className="outline"
-              onClick={closeEditModal}
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      <Modal
+      <ProjectDsnModal
         isOpen={isDsnModalOpen}
         onClose={closeDsnModal}
-        title="Project DSN"
-      >
-        <div className="form">
-          <div className="dsn-config">
-            <div className="dsn-config-header">
-              <span>✓</span>
-              SDK Configuration
-            </div>
+        dsn={dsn}
+        publicKey={publicKey}
+        secretKey={secretKey}
+      />
 
-            <div className="dsn-field">
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <label>DSN</label>
-                <CopyButton text={dsn || ''} />
-              </div>
-              <input
-                readOnly
-                value={dsn || ''}
-                onClick={(e) => e.currentTarget.select()}
-                className="dsn-input"
-              />
-            </div>
-
-            <div className="dsn-field">
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <label>Public Key</label>
-                <CopyButton text={publicKey || ''} />
-              </div>
-              <input
-                readOnly
-                value={publicKey || ''}
-                onClick={(e) => e.currentTarget.select()}
-                className="dsn-input"
-              />
-            </div>
-
-            {secretKey && (
-              <div className="dsn-field">
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <label>Secret Key</label>
-                  <CopyButton text={secretKey} />
-                </div>
-                <input
-                  readOnly
-                  value={secretKey}
-                  onClick={(e) => e.currentTarget.select()}
-                  className="dsn-input"
-                />
-              </div>
-            )}
-          </div>
-          <div className="button-row">
-            <button type="button" onClick={closeDsnModal}>
-              Done
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
+      <DeleteProjectModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        title="Delete Project"
-      >
-        <div className="form">
-          <p>
-            Are you sure you want to delete this project? This will permanently
-            delete all associated issues, events, and keys. This action cannot
-            be undone.
-          </p>
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={isLoading}
-              className="button-danger"
-            >
-              {isLoading ? 'Deleting...' : 'Delete Project'}
-            </button>
-            <button
-              type="button"
-              className="outline"
-              onClick={closeDeleteModal}
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </Modal>
+        onSuccess={refreshProjects}
+        projectId={deletingProjectId}
+      />
     </div>
   );
 }

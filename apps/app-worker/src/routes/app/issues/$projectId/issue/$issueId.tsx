@@ -2,7 +2,8 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { CopyButton } from '@/components/CopyButton';
+import { PageHeader } from "@/components/layout";
+import { CopyButton } from "@/components/CopyButton";
 import { formatRelativeTime } from "@/utils/time";
 import {
   listSentryEventsFn,
@@ -188,45 +189,41 @@ function IssueDetail() {
 
   return (
     <div className="page">
-      <div className="page-header mb-6">
-        <div>
-          <h2>{issue.title}</h2>
-          <p className="muted">
-            <Link to="/app/issues/$projectId" params={{ projectId }}>
-              ← Back to project
-            </Link>
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={issue.title}
+        description={
+          <Link to="/app/issues/$projectId" params={{ projectId }}>
+            ← Back to project
+          </Link>
+        }
+        className="mb-6"
+      />
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="card mb-4">
         <div className="card-title">Issue Details</div>
-        <div style={{ padding: '1rem' }}>
+        <div className="p-4">
           {issueSupportsResolution && (
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div className="mb-2">
               <strong>Status:</strong>{' '}
               <span className="pill small">{toTitleCase(issue.status)}</span>
             </div>
           )}
-          <div style={{ marginBottom: '0.5rem' }}>
+          <div className="mb-2">
             <strong>Level:</strong>{' '}
             <span className={`status ${issue.level}`}>
               {toTitleCase(issue.level)}
             </span>
           </div>
-          <div style={{ marginBottom: '0.5rem' }}>
+          <div className="mb-2">
             <strong>Event Count:</strong> {issue.eventCount}
           </div>
-          <div style={{ marginBottom: '0.5rem' }}>
+          <div className="mb-2">
             <strong>First Seen:</strong> {formatRelativeTime(issue.firstSeenAt)}
           </div>
           <div>
             <strong>Last Seen:</strong> {formatRelativeTime(issue.lastSeenAt)}
           </div>
-          <div
-            className="button-row"
-            style={{ marginTop: '0.75rem', justifyContent: 'flex-start' }}
-          >
+          <div className="button-row mt-3">
             <CopyButton
               text={buildIssueSummary(issue)}
               label="Copy issue JSON"
@@ -237,7 +234,7 @@ function IssueDetail() {
             />
             <CopyButton text={fixPrompt} label="Copy AI fix prompt" />
           </div>
-          <div className="muted" style={{ marginTop: '0.5rem' }}>
+          <div className="muted mt-2">
             Load an event payload for richer AI fix prompts.
           </div>
         </div>
@@ -251,11 +248,11 @@ function IssueDetail() {
               <div key={event.id}>
                 <div className="list-item-expanded">
                   <div className="list-row">
-                    <div style={{ flex: 1 }}>
+                    <div className="flex-1">
                       <div className="list-title">
                         {event.message || `${event.type} event`}
                       </div>
-                      <div className="muted" style={{ marginTop: '0.25rem' }}>
+                      <div className="muted mt-1">
                         {event.level && (
                           <>
                             <span className={`status ${event.level}`}>
@@ -279,14 +276,7 @@ function IssueDetail() {
                         )}
                       </div>
                       {event.tags && Object.keys(event.tags).length > 0 && (
-                        <div
-                          style={{
-                            marginTop: '0.5rem',
-                            display: 'flex',
-                            gap: '0.25rem',
-                            flexWrap: 'wrap',
-                          }}
-                        >
+                        <div className="mt-2 flex flex-wrap gap-1">
                           {Object.entries(event.tags).map(([key, value]) => (
                             <span key={key} className="pill small">
                               {key}: {value}
@@ -295,10 +285,7 @@ function IssueDetail() {
                         </div>
                       )}
                       {event.contexts && (
-                        <div
-                          className="muted"
-                          style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}
-                        >
+                        <div className="muted mt-2 text-sm">
                           {event.contexts.browser && (
                             <div>
                               Browser: {JSON.stringify(event.contexts.browser)}
@@ -315,19 +302,13 @@ function IssueDetail() {
                         </div>
                       )}
                       {event.breadcrumbs && event.breadcrumbs.length > 0 && (
-                        <div style={{ marginTop: '0.75rem' }}>
-                          <strong style={{ fontSize: '0.875rem' }}>
-                            Breadcrumbs:
-                          </strong>
-                          <div style={{ marginTop: '0.25rem' }}>
+                        <div className="mt-3">
+                          <strong className="text-sm">Breadcrumbs:</strong>
+                          <div className="mt-1">
                             {event.breadcrumbs.slice(-5).map((crumb, idx) => (
                               <div
                                 key={idx}
-                                className="muted"
-                                style={{
-                                  fontSize: '0.875rem',
-                                  marginTop: '0.125rem',
-                                }}
+                                className="muted mt-0.5 text-sm"
                               >
                                 [{crumb.category}] {crumb.message}
                               </div>
@@ -338,31 +319,17 @@ function IssueDetail() {
                     </div>
                     <button
                       type="button"
-                      className="outline"
                       onClick={() => handleViewPayload(event.id)}
-                      style={{ fontSize: '0.875rem' }}
+                      className="outline text-sm"
                     >
                       View Payload
                     </button>
                   </div>
                 </div>
                 {selectedEventId === event.id && (
-                  <div
-                    style={{
-                      padding: '1rem',
-                      backgroundColor: 'var(--surface-1)',
-                      borderTop: '1px solid var(--stroke)',
-                    }}
-                  >
+                  <div className="border-t border-[color:var(--stroke)] bg-[color:var(--surface-1)] p-4">
                     <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '0.5rem',
-                        gap: '0.5rem',
-                        flexWrap: 'wrap',
-                      }}
+                      className="mb-2 flex flex-wrap items-center justify-between gap-2"
                     >
                       <strong>Event Payload</strong>
                       <div className="button-row">
@@ -383,12 +350,8 @@ function IssueDetail() {
                         />
                         <button
                           type="button"
-                          className="outline"
                           onClick={closePayload}
-                          style={{
-                            fontSize: '0.75rem',
-                            padding: '0.25rem 0.5rem',
-                          }}
+                          className="outline button-mini"
                         >
                           Close
                         </button>
@@ -398,16 +361,7 @@ function IssueDetail() {
                       <div>Loading payload...</div>
                     ) : (
                       <pre
-                        style={{
-                          backgroundColor: '#fff',
-                          padding: '1rem',
-                          borderRadius: '4px',
-                          overflow: 'auto',
-                          maxHeight: '400px',
-                          fontSize: '0.875rem',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
+                        className="max-h-[400px] overflow-auto whitespace-pre-wrap break-words rounded bg-white p-4 text-sm"
                       >
                         {eventPayload}
                       </pre>

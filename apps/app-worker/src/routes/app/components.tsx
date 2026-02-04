@@ -1,15 +1,20 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { Modal } from "@/components/Modal";
+import { PageHeader } from "@/components/layout";
+import { ErrorCard } from "@/components/feedback";
+import { StatusBadge } from "@/components/ui";
+import { CheckboxList } from "@/components/form";
 import { ComponentMetrics } from "@/components/ComponentMetrics";
-import { toTitleCase } from '@/utils/format';
+import {
+  CreateComponentModal,
+  EditComponentModal,
+} from "@/components/modals/components";
+import { toTitleCase } from "@/utils/format";
 import { listMonitorsFn } from "@/server/functions/monitors";
 import {
   listComponentsFn,
-  createComponentFn,
-  updateComponentFn,
   deleteComponentFn,
   linkMonitorFn,
   unlinkMonitorFn,
@@ -49,23 +54,17 @@ export default function Components() {
   const [components, setComponents] = useState<Component[]>(initialComponents);
   const [monitors] = useState<Monitor[]>(initialMonitors);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMetricsId, setExpandedMetricsId] = useState<string | null>(
+    null,
+  );
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingComponentId, setEditingComponentId] = useState<string | null>(
+  const [editingComponent, setEditingComponent] = useState<Component | null>(
     null,
   );
-  const [expandedComponentId, setExpandedComponentId] = useState<string | null>(
-    null,
-  );
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
 
-  const createComponent = useServerFn(createComponentFn);
-  const updateComponent = useServerFn(updateComponentFn);
   const deleteComponent = useServerFn(deleteComponentFn);
   const listComponents = useServerFn(listComponentsFn);
   const linkMonitor = useServerFn(linkMonitorFn);
@@ -80,47 +79,9 @@ export default function Components() {
     }
   };
 
-  const onCreate = async (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    try {
-      await createComponent({
-        data: { name, description: description || undefined },
-      });
-      await refreshComponents();
-      setName("");
-      setDescription("");
-      setIsCreateModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
-
   const startEditing = (component: Component) => {
-    setEditingComponentId(component.id);
-    setEditName(component.name);
-    setEditDescription(component.description || "");
+    setEditingComponent(component);
     setIsEditModalOpen(true);
-  };
-
-  const onUpdate = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingComponentId) return;
-    setError(null);
-    try {
-      await updateComponent({
-        data: {
-          id: editingComponentId,
-          name: editName,
-          description: editDescription || null,
-        },
-      });
-      await refreshComponents();
-      setEditingComponentId(null);
-      setIsEditModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
   };
 
   const onDelete = async (id: string) => {
@@ -136,14 +97,18 @@ export default function Components() {
   const onToggleMonitor = async (
     componentId: string,
     monitorId: string,
-    linked: boolean,
+    checked: boolean,
   ) => {
     setError(null);
     try {
-      if (linked) {
-        await unlinkMonitor({ data: { componentId, monitorId } });
-      } else {
+      const component = components.find((c) => c.id === componentId);
+      if (!component) return;
+
+      const wasLinked = component.monitorIds.includes(monitorId);
+      if (checked && !wasLinked) {
         await linkMonitor({ data: { componentId, monitorId } });
+      } else if (!checked && wasLinked) {
+        await unlinkMonitor({ data: { componentId, monitorId } });
       }
       await refreshComponents();
     } catch (err) {
@@ -153,19 +118,16 @@ export default function Components() {
 
   return (
     <div className="page page-stack">
-      <div className="page-header">
-        <div>
-          <h2>Components</h2>
-          <p>
-            Group monitors into logical service components for status pages.
-          </p>
-        </div>
+      <PageHeader
+        title="Components"
+        description="Group monitors into logical service components for status pages."
+      >
         <button onClick={() => setIsCreateModalOpen(true)}>
           Create Component
         </button>
-      </div>
+      </PageHeader>
 
-      {error ? <div className="card error">{error}</div> : null}
+      {error && <ErrorCard message={error} />}
 
       <div className="card">
         <div className="card-title">Components</div>
@@ -175,23 +137,30 @@ export default function Components() {
               <div key={component.id} className="list-item-expanded">
                 <div className="list-row">
                   <div>
-                    <div className="list-title">
+                    <div className="list-title flex flex-wrap items-center gap-2">
                       {component.name}
                       {component.currentStatus &&
-                        component.currentStatus !== 'operational' && (
-                          <span
-                            className={`status-pill ${component.currentStatus}`}
-                            style={{ marginLeft: '0.5rem' }}
+                        component.currentStatus !== "operational" && (
+                          <StatusBadge
+                            status={
+                              component.currentStatus as
+                                | "down"
+                                | "degraded"
+                                | "maintenance"
+                                | "investigating"
+                                | "identified"
+                                | "monitoring"
+                            }
                           >
                             {toTitleCase(component.currentStatus)}
-                          </span>
+                          </StatusBadge>
                         )}
                     </div>
                     <div className="muted">
-                      {component.description || 'No description'}
-                      {' · '}
+                      {component.description || "No description"}
+                      {" · "}
                       {component.monitorIds.length} monitor
-                      {component.monitorIds.length !== 1 ? 's' : ''} linked
+                      {component.monitorIds.length !== 1 ? "s" : ""} linked
                     </div>
                   </div>
                   <div className="button-row">
@@ -199,16 +168,14 @@ export default function Components() {
                       type="button"
                       className="outline"
                       onClick={() =>
-                        setExpandedComponentId(
-                          expandedComponentId === component.id
+                        setExpandedMetricsId(
+                          expandedMetricsId === component.id
                             ? null
                             : component.id,
                         )
                       }
                     >
-                      {expandedComponentId === component.id
-                        ? 'Hide'
-                        : 'Metrics'}
+                      {expandedMetricsId === component.id ? "Hide" : "Metrics"}
                     </button>
                     <button
                       type="button"
@@ -219,7 +186,7 @@ export default function Components() {
                         )
                       }
                     >
-                      {expandedId === component.id ? 'Hide' : 'Link'} monitors
+                      {expandedId === component.id ? "Hide" : "Link"} monitors
                     </button>
                     <button
                       type="button"
@@ -238,8 +205,8 @@ export default function Components() {
                   </div>
                 </div>
 
-                {expandedComponentId === component.id && (
-                  <div style={{ marginTop: '1rem' }}>
+                {expandedMetricsId === component.id && (
+                  <div className="mt-4">
                     <ComponentMetrics
                       componentId={component.id}
                       componentName={component.name}
@@ -248,35 +215,17 @@ export default function Components() {
                 )}
 
                 {expandedId === component.id && (
-                  <div className="nested-list">
-                    {monitors.length ? (
-                      monitors.map((monitor) => {
-                        const linked = component.monitorIds.includes(
-                          monitor.id,
-                        );
-                        return (
-                          <label key={monitor.id} className="checkbox-row">
-                            <input
-                              type="checkbox"
-                              checked={linked}
-                              onChange={() =>
-                                onToggleMonitor(
-                                  component.id,
-                                  monitor.id,
-                                  linked,
-                                )
-                              }
-                            />
-                            <span>{monitor.name}</span>
-                          </label>
-                        );
-                      })
-                    ) : (
-                      <div className="muted">
-                        No monitors available. Create monitors first.
-                      </div>
-                    )}
-                  </div>
+                  <CheckboxList
+                    items={monitors.map((monitor) => ({
+                      id: monitor.id,
+                      label: monitor.name,
+                      checked: component.monitorIds.includes(monitor.id),
+                    }))}
+                    onChange={(monitorId, checked) =>
+                      onToggleMonitor(component.id, monitorId, checked)
+                    }
+                    emptyMessage="No monitors available. Create monitors first."
+                  />
                 )}
               </div>
             ))
@@ -286,73 +235,21 @@ export default function Components() {
         </div>
       </div>
 
-      <Modal
+      <CreateComponentModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create Component"
-      >
-        <form className="form" onSubmit={onCreate}>
-          <label htmlFor="component-name">Name</label>
-          <input
-            id="component-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="API Gateway"
-            required
-          />
-          <label htmlFor="component-description">Description (optional)</label>
-          <input
-            id="component-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Core API services"
-          />
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="submit">Create Component</button>
-            <button
-              type="button"
-              className="outline"
-              onClick={() => setIsCreateModalOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onSuccess={refreshComponents}
+      />
 
-      <Modal
+      <EditComponentModal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title="Edit Component"
-      >
-        <form className="form" onSubmit={onUpdate}>
-          <label htmlFor="edit-component-name">Name</label>
-          <input
-            id="edit-component-name"
-            value={editName}
-            onChange={(event) => setEditName(event.target.value)}
-            required
-          />
-          <label htmlFor="edit-component-description">
-            Description (optional)
-          </label>
-          <input
-            id="edit-component-description"
-            value={editDescription}
-            onChange={(event) => setEditDescription(event.target.value)}
-          />
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="submit">Save Changes</button>
-            <button
-              type="button"
-              className="outline"
-              onClick={() => setIsEditModalOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingComponent(null);
+        }}
+        onSuccess={refreshComponents}
+        component={editingComponent}
+      />
     </div>
   );
 }

@@ -1,19 +1,28 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { Modal } from "@/components/Modal";
+import { PageHeader } from "@/components/layout";
+import { ErrorCard } from "@/components/feedback";
+import { StatusBadge } from "@/components/ui";
+import {
+  CreateIncidentModal,
+  UpdateIncidentModal,
+} from "@/components/modals/incidents";
 import { toTitleCase } from "@/utils/format";
 import { listStatusPagesFn } from "@/server/functions/status-pages";
 import {
   listIncidentsFn,
-  createIncidentFn,
-  updateIncidentFn,
   deleteIncidentFn,
 } from "@/server/functions/incidents";
 import { listComponentsFn } from "@/server/functions/components";
 
 type StatusPage = {
+  id: string;
+  name: string;
+};
+
+type Component = {
   id: string;
   name: string;
 };
@@ -34,13 +43,6 @@ type Incident = {
   resolvedAt: number | null;
   updates: IncidentUpdate[];
 };
-
-const STATUS_OPTIONS = [
-  { value: "investigating", label: "Investigating" },
-  { value: "identified", label: "Identified" },
-  { value: "monitoring", label: "Monitoring" },
-  { value: "resolved", label: "Resolved" },
-] as const;
 
 export const Route = createFileRoute("/app/incidents")({
   component: Incidents,
@@ -67,24 +69,12 @@ export default function Incidents() {
   const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
   const [error, setError] = useState<string | null>(null);
 
-  const [title, setTitle] = useState("");
-  const [status, setStatus] = useState("investigating");
-  const [statusPageId, setStatusPageId] = useState("");
-  const [message, setMessage] = useState("");
-  const [selectedComponents, setSelectedComponents] = useState<
-    Map<string, string>
-  >(new Map());
-
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [updatingIncidentId, setUpdatingIncidentId] = useState<string | null>(
+  const [updatingIncident, setUpdatingIncident] = useState<Incident | null>(
     null,
   );
-  const [updateMessage, setUpdateMessage] = useState("");
-  const [updateStatus, setUpdateStatus] = useState("investigating");
 
-  const createIncident = useServerFn(createIncidentFn);
-  const updateIncident = useServerFn(updateIncidentFn);
   const deleteIncident = useServerFn(deleteIncidentFn);
   const listIncidents = useServerFn(listIncidentsFn);
 
@@ -97,67 +87,9 @@ export default function Incidents() {
     }
   };
 
-  const onCreate = async (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    try {
-      const affectedComponents =
-        selectedComponents.size > 0
-          ? Array.from(selectedComponents.entries()).map(
-              ([componentId, impactLevel]) => ({
-                componentId,
-                impactLevel,
-              }),
-            )
-          : undefined;
-
-      await createIncident({
-        data: {
-          title,
-          status,
-          statusPageId: statusPageId || undefined,
-          message: message || undefined,
-          affectedComponents,
-        },
-      });
-      await refreshIncidents();
-      setTitle("");
-      setStatus("investigating");
-      setStatusPageId("");
-      setMessage("");
-      setSelectedComponents(new Map());
-      setIsCreateModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
-
   const openUpdateModal = (incident: Incident) => {
-    setUpdatingIncidentId(incident.id);
-    setUpdateStatus(incident.status);
-    setUpdateMessage("");
+    setUpdatingIncident(incident);
     setIsUpdateModalOpen(true);
-  };
-
-  const onUpdate = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!updatingIncidentId) return;
-    setError(null);
-    try {
-      await updateIncident({
-        data: {
-          incidentId: updatingIncidentId,
-          message: updateMessage,
-          status: updateStatus,
-        },
-      });
-      await refreshIncidents();
-      setUpdateMessage("");
-      setUpdatingIncidentId(null);
-      setIsUpdateModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
   };
 
   const onDelete = async (id: string) => {
@@ -176,23 +108,22 @@ export default function Incidents() {
 
   const getStatusPageName = (id: string | null) => {
     if (!id) return "None";
-    const page = statusPages.find((p) => p.id === id);
+    const page = statusPages.find((p: StatusPage) => p.id === id);
     return page?.name || "Unknown";
   };
 
   return (
     <div className="page page-stack">
-      <div className="page-header">
-        <div>
-          <h2>Incidents</h2>
-          <p>Track and communicate service disruptions.</p>
-        </div>
+      <PageHeader
+        title="Incidents"
+        description="Track and communicate service disruptions."
+      >
         <button onClick={() => setIsCreateModalOpen(true)}>
           Report Incident
         </button>
-      </div>
+      </PageHeader>
 
-      {error ? <div className="card error">{error}</div> : null}
+      {error && <ErrorCard message={error} />}
 
       <div className="card">
         <div className="card-title">Incidents</div>
@@ -202,14 +133,19 @@ export default function Incidents() {
               <div key={incident.id} className="list-item-expanded">
                 <div className="list-row">
                   <div>
-                    <div className="list-title">
+                    <div className="list-title flex flex-wrap items-center gap-2">
                       {incident.title}
-                      <span
-                        className={`status-pill ${incident.status}`}
-                        style={{ marginLeft: "0.5rem" }}
+                      <StatusBadge
+                        status={
+                          incident.status as
+                            | "investigating"
+                            | "identified"
+                            | "monitoring"
+                            | "resolved"
+                        }
                       >
                         {toTitleCase(incident.status)}
-                      </span>
+                      </StatusBadge>
                     </div>
                     <div className="muted">
                       Started {formatDate(incident.startedAt)}
@@ -267,183 +203,23 @@ export default function Incidents() {
         </div>
       </div>
 
-      <Modal
+      <CreateIncidentModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Report Incident"
-      >
-        <form className="form" onSubmit={onCreate}>
-          <label htmlFor="incident-title">Title</label>
-          <input
-            id="incident-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="API degraded performance"
-            required
-          />
-          <div className="grid two">
-            <div>
-              <label htmlFor="incident-status">Status</label>
-              <select
-                id="incident-status"
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="incident-page">Status page (optional)</label>
-              <select
-                id="incident-page"
-                value={statusPageId}
-                onChange={(event) => setStatusPageId(event.target.value)}
-              >
-                <option value="">None</option>
-                {statusPages.map((page: StatusPage) => (
-                  <option key={page.id} value={page.id}>
-                    {page.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <label htmlFor="incident-message">Initial message (optional)</label>
-          <textarea
-            id="incident-message"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder="We are investigating reports of..."
-            rows={3}
-          />
-          {components.length > 0 && (
-            <>
-              <label style={{ marginTop: "1rem" }}>
-                Affected components (optional)
-              </label>
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  maxHeight: "200px",
-                  overflow: "auto",
-                  border: "1px solid var(--border)",
-                  borderRadius: "4px",
-                  padding: "0.5rem",
-                }}
-              >
-                {components.map((component) => {
-                  const isSelected = selectedComponents.has(component.id);
-                  const impactLevel =
-                    selectedComponents.get(component.id) || "degraded";
-                  return (
-                    <div
-                      key={component.id}
-                      style={{
-                        marginBottom: "0.5rem",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        id={`component-${component.id}`}
-                        checked={isSelected}
-                        onChange={(e) => {
-                          const newMap = new Map(selectedComponents);
-                          if (e.target.checked) {
-                            newMap.set(component.id, "degraded");
-                          } else {
-                            newMap.delete(component.id);
-                          }
-                          setSelectedComponents(newMap);
-                        }}
-                      />
-                      <label
-                        htmlFor={`component-${component.id}`}
-                        style={{ flex: 1, margin: 0 }}
-                      >
-                        {component.name}
-                      </label>
-                      {isSelected && (
-                        <select
-                          value={impactLevel}
-                          onChange={(e) => {
-                            const newMap = new Map(selectedComponents);
-                            newMap.set(component.id, e.target.value);
-                            setSelectedComponents(newMap);
-                          }}
-                          style={{ width: "auto", padding: "0.25rem" }}
-                        >
-                          <option value="degraded">Degraded</option>
-                          <option value="down">Down</option>
-                          <option value="maintenance">Maintenance</option>
-                        </select>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-          <div className="button-row" style={{ marginTop: "1rem" }}>
-            <button type="submit">Create Incident</button>
-            <button
-              type="button"
-              className="outline"
-              onClick={() => setIsCreateModalOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onSuccess={refreshIncidents}
+        statusPages={statusPages as StatusPage[]}
+        components={components as Component[]}
+      />
 
-      <Modal
+      <UpdateIncidentModal
         isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
-        title="Update Incident"
-      >
-        <form className="form" onSubmit={onUpdate}>
-          <label htmlFor="update-status">New status</label>
-          <select
-            id="update-status"
-            value={updateStatus}
-            onChange={(event) => setUpdateStatus(event.target.value)}
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <label htmlFor="update-message">Update message</label>
-          <textarea
-            id="update-message"
-            value={updateMessage}
-            onChange={(event) => setUpdateMessage(event.target.value)}
-            placeholder="The issue has been identified..."
-            rows={3}
-            required
-          />
-          <div className="button-row" style={{ marginTop: "1rem" }}>
-            <button type="submit" disabled={!updateMessage.trim()}>
-              Post Update
-            </button>
-            <button
-              type="button"
-              className="outline"
-              onClick={() => setIsUpdateModalOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => {
+          setIsUpdateModalOpen(false);
+          setUpdatingIncident(null);
+        }}
+        onSuccess={refreshIncidents}
+        incident={updatingIncident}
+      />
     </div>
   );
 }

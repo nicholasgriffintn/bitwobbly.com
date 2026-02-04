@@ -1,12 +1,16 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { Modal } from "@/components/Modal";
+import { PageHeader } from "@/components/layout";
+import { ErrorCard } from "@/components/feedback";
+import { CheckboxList } from "@/components/form";
+import {
+  CreateStatusPageModal,
+  EditStatusPageModal,
+} from "@/components/modals/status-pages";
 import {
   listStatusPagesFn,
-  createStatusPageFn,
-  updateStatusPageFn,
   deleteStatusPageFn,
 } from "@/server/functions/status-pages";
 import {
@@ -56,26 +60,14 @@ export default function StatusPages() {
   const [pages, setPages] = useState<StatusPage[]>(initialPages);
   const [components] = useState<Component[]>(initialComponents);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
-  const [brandColor, setBrandColor] = useState("#007bff");
-  const [customCss, setCustomCss] = useState("");
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingPageId, setEditingPageId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editSlug, setEditSlug] = useState("");
-  const [editLogoUrl, setEditLogoUrl] = useState("");
-  const [editBrandColor, setEditBrandColor] = useState("#007bff");
-  const [editCustomCss, setEditCustomCss] = useState("");
+  const [editingPage, setEditingPage] = useState<StatusPage | null>(null);
 
   const [expandedPageId, setExpandedPageId] = useState<string | null>(null);
   const [pageComponents, setPageComponents] = useState<PageComponent[]>([]);
 
-  const createStatusPage = useServerFn(createStatusPageFn);
-  const updateStatusPage = useServerFn(updateStatusPageFn);
   const deleteStatusPage = useServerFn(deleteStatusPageFn);
   const listStatusPages = useServerFn(listStatusPagesFn);
   const linkToPage = useServerFn(linkToPageFn);
@@ -106,62 +98,9 @@ export default function StatusPages() {
     }
   }, [expandedPageId]);
 
-  const onCreate = async (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    try {
-      await createStatusPage({
-        data: {
-          name,
-          slug,
-          logo_url: logoUrl.trim() || undefined,
-          brand_color: brandColor.trim() || "#007bff",
-          custom_css: customCss.trim() || undefined,
-        },
-      });
-      await refreshPages();
-      setName("");
-      setSlug("");
-      setLogoUrl("");
-      setBrandColor("#007bff");
-      setCustomCss("");
-      setIsCreateModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
-
   const startEditing = (page: StatusPage) => {
-    setEditingPageId(page.id);
-    setEditName(page.name);
-    setEditSlug(page.slug);
-    setEditLogoUrl(page.logo_url || "");
-    setEditBrandColor(page.brand_color || "#007bff");
-    setEditCustomCss(page.custom_css || "");
+    setEditingPage(page);
     setIsEditModalOpen(true);
-  };
-
-  const onUpdate = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingPageId) return;
-    setError(null);
-    try {
-      await updateStatusPage({
-        data: {
-          id: editingPageId,
-          name: editName,
-          slug: editSlug,
-          logo_url: editLogoUrl.trim() || null,
-          brand_color: editBrandColor.trim() || "#007bff",
-          custom_css: editCustomCss.trim() || null,
-        },
-      });
-      await refreshPages();
-      setEditingPageId(null);
-      setIsEditModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
   };
 
   const onDelete = async (id: string) => {
@@ -177,16 +116,19 @@ export default function StatusPages() {
   const onToggleComponent = async (
     pageId: string,
     componentId: string,
-    linked: boolean,
+    checked: boolean,
   ) => {
     setError(null);
     try {
-      if (linked) {
-        await unlinkFromPage({ data: { statusPageId: pageId, componentId } });
-      } else {
+      const linked = pageComponents.some(
+        (pc) => pc.componentId === componentId,
+      );
+      if (checked && !linked) {
         await linkToPage({
           data: { statusPageId: pageId, componentId, sortOrder: 0 },
         });
+      } else if (!checked && linked) {
+        await unlinkFromPage({ data: { statusPageId: pageId, componentId } });
       }
       await loadPageComponents(pageId);
     } catch (err) {
@@ -198,19 +140,20 @@ export default function StatusPages() {
     window.open(`/status/${slug}`, "_blank");
   };
 
+  const linkedComponentIds = pageComponents.map((pc) => pc.componentId);
+
   return (
     <div className="page page-stack">
-      <div className="page-header">
-        <div>
-          <h2>Status pages</h2>
-          <p>Publish uptime updates for your customers.</p>
-        </div>
+      <PageHeader
+        title="Status pages"
+        description="Publish uptime updates for your customers."
+      >
         <button onClick={() => setIsCreateModalOpen(true)}>
           Create Status Page
         </button>
-      </div>
+      </PageHeader>
 
-      {error ? <div className="card error">{error}</div> : null}
+      {error && <ErrorCard message={error} />}
 
       <div className="card">
         <div className="card-title">Status pages</div>
@@ -218,9 +161,6 @@ export default function StatusPages() {
           {pages.length ? (
             pages.map((page) => {
               const isExpanded = expandedPageId === page.id;
-              const linkedComponentIds = pageComponents.map(
-                (pc) => pc.componentId,
-              );
 
               return (
                 <div key={page.id} className="list-item-expanded">
@@ -244,7 +184,7 @@ export default function StatusPages() {
                           setExpandedPageId(isExpanded ? null : page.id)
                         }
                       >
-                        {isExpanded ? 'Hide' : 'Components'}
+                        {isExpanded ? "Hide" : "Components"}
                       </button>
                       <button
                         type="button"
@@ -265,36 +205,21 @@ export default function StatusPages() {
 
                   {isExpanded && (
                     <div className="nested-list">
-                      <div className="muted" style={{ marginBottom: '0.5rem' }}>
+                      <div className="muted mb-2">
                         Link components to display on this status page:
                       </div>
-                      {components.length ? (
-                        components.map((component) => {
-                          const linked = linkedComponentIds.includes(
-                            component.id,
-                          );
-                          return (
-                            <label key={component.id} className="checkbox-row">
-                              <input
-                                type="checkbox"
-                                checked={linked}
-                                onChange={() =>
-                                  onToggleComponent(
-                                    page.id,
-                                    component.id,
-                                    linked,
-                                  )
-                                }
-                              />
-                              <span>{component.name}</span>
-                            </label>
-                          );
-                        })
-                      ) : (
-                        <div className="muted">
-                          No components available. Create components first.
-                        </div>
-                      )}
+                      <CheckboxList
+                        items={components.map((component) => ({
+                          id: component.id,
+                          label: component.name,
+                          checked: linkedComponentIds.includes(component.id),
+                        }))}
+                        onChange={(componentId, checked) =>
+                          onToggleComponent(page.id, componentId, checked)
+                        }
+                        emptyMessage="No components available. Create components first."
+                        className="!border-none !bg-transparent !p-0"
+                      />
                     </div>
                   )}
                 </div>
@@ -306,181 +231,21 @@ export default function StatusPages() {
         </div>
       </div>
 
-      <Modal
+      <CreateStatusPageModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create Status Page"
-      >
-        <form className="form" onSubmit={onCreate}>
-          <label htmlFor="status-name">Name</label>
-          <input
-            id="status-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Customer status"
-            required
-          />
-          <label htmlFor="status-slug">Slug</label>
-          <input
-            id="status-slug"
-            value={slug}
-            onChange={(event) => setSlug(event.target.value)}
-            placeholder="status"
-            required
-          />
+        onSuccess={refreshPages}
+      />
 
-          <div
-            style={{
-              marginTop: '1rem',
-              marginBottom: '0.5rem',
-              fontWeight: 600,
-            }}
-          >
-            Customization (optional)
-          </div>
-
-          <label htmlFor="logo-url">Logo URL</label>
-          <input
-            id="logo-url"
-            type="url"
-            value={logoUrl}
-            onChange={(event) => setLogoUrl(event.target.value)}
-            placeholder="https://example.com/logo.png"
-          />
-
-          <label htmlFor="brand-color">Brand Color</label>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input
-              id="brand-color"
-              type="color"
-              value={brandColor}
-              onChange={(event) => setBrandColor(event.target.value)}
-              style={{
-                height: '2rem',
-                width: '4rem',
-                padding: '0',
-                border: 'none',
-                borderRadius: '4px',
-              }}
-            />
-            <input
-              type="text"
-              value={brandColor}
-              onChange={(event) => setBrandColor(event.target.value)}
-              placeholder="#007bff"
-              style={{ flex: 1 }}
-            />
-          </div>
-
-          <label htmlFor="custom-css">Custom CSS</label>
-          <textarea
-            id="custom-css"
-            value={customCss}
-            onChange={(event) => setCustomCss(event.target.value)}
-            placeholder=".status-page { background: #f8f9fa; }"
-            rows={4}
-            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
-          />
-
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="submit">Create Status Page</button>
-            <button
-              type="button"
-              className="outline"
-              onClick={() => setIsCreateModalOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      <Modal
+      <EditStatusPageModal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title="Edit Status Page"
-      >
-        <form className="form" onSubmit={onUpdate}>
-          <label htmlFor="edit-status-name">Name</label>
-          <input
-            id="edit-status-name"
-            value={editName}
-            onChange={(event) => setEditName(event.target.value)}
-            required
-          />
-          <label htmlFor="edit-status-slug">Slug</label>
-          <input
-            id="edit-status-slug"
-            value={editSlug}
-            onChange={(event) => setEditSlug(event.target.value)}
-            required
-          />
-
-          <div
-            style={{
-              marginTop: '1rem',
-              marginBottom: '0.5rem',
-              fontWeight: 600,
-            }}
-          >
-            Customization (optional)
-          </div>
-
-          <label htmlFor="edit-logo-url">Logo URL</label>
-          <input
-            id="edit-logo-url"
-            type="url"
-            value={editLogoUrl}
-            onChange={(event) => setEditLogoUrl(event.target.value)}
-            placeholder="https://example.com/logo.png"
-          />
-
-          <label htmlFor="edit-brand-color">Brand Color</label>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input
-              id="edit-brand-color"
-              type="color"
-              value={editBrandColor}
-              onChange={(event) => setEditBrandColor(event.target.value)}
-              style={{
-                height: '2rem',
-                width: '4rem',
-                padding: '0',
-                border: 'none',
-                borderRadius: '4px',
-              }}
-            />
-            <input
-              type="text"
-              value={editBrandColor}
-              onChange={(event) => setEditBrandColor(event.target.value)}
-              placeholder="#007bff"
-              style={{ flex: 1 }}
-            />
-          </div>
-
-          <label htmlFor="edit-custom-css">Custom CSS</label>
-          <textarea
-            id="edit-custom-css"
-            value={editCustomCss}
-            onChange={(event) => setEditCustomCss(event.target.value)}
-            placeholder=".status-page { background: #f8f9fa; }"
-            rows={4}
-            style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
-          />
-
-          <div className="button-row" style={{ marginTop: '1rem' }}>
-            <button type="submit">Save Changes</button>
-            <button
-              type="button"
-              className="outline"
-              onClick={() => setIsEditModalOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingPage(null);
+        }}
+        onSuccess={refreshPages}
+        page={editingPage}
+      />
     </div>
   );
 }

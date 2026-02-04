@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
+import { PageHeader } from "@/components/layout";
+import { TabNav } from "@/components/navigation";
 import { formatRelativeTime } from "@/utils/time";
 import {
   listSentryIssuesFn,
@@ -18,10 +20,10 @@ import {
 import { EventMetrics } from "@/components/EventMetrics";
 import { EventVolumeChart } from "@/components/EventVolumeChart";
 import { SDKDistributionChart } from "@/components/SDKDistributionChart";
-import { toTitleCase } from '@/utils/format';
+import { toTitleCase } from "@/utils/format";
 
 const supportsResolution = (level: string) =>
-  level === 'error' || level === 'warning';
+  level === "error" || level === "warning";
 
 type Issue = {
   id: string;
@@ -221,53 +223,34 @@ function ProjectIssues() {
 
   return (
     <div className="page">
-      <div className="page-header mb-6">
-        <div>
-          <h2>Project Issues</h2>
-          <p className="muted">
-            <Link to="/app/issues">← Back to projects</Link>
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Project Issues"
+        description={<Link to="/app/issues">← Back to projects</Link>}
+        className="mb-6"
+      />
 
       <div className="card">
         <div className="card-title">
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-            <button
-              type="button"
-              className={activeTab === 'issues' ? '' : 'outline'}
-              onClick={() => setActiveTab('issues')}
-              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-            >
-              Issues ({filteredAndSortedIssues.length})
-            </button>
-            <button
-              type="button"
-              className={activeTab === 'events' ? '' : 'outline'}
-              onClick={() => setActiveTab('events')}
-              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-            >
-              Events ({events.length})
-            </button>
-            <button
-              type="button"
-              className={activeTab === 'analytics' ? '' : 'outline'}
-              onClick={() => setActiveTab('analytics')}
-              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-            >
-              Analytics
-            </button>
-          </div>
+          <TabNav
+            tabs={[
+              {
+                id: "issues",
+                label: "Issues",
+                count: filteredAndSortedIssues.length,
+              },
+              { id: "events", label: "Events", count: events.length },
+              { id: "analytics", label: "Analytics" },
+            ]}
+            activeTab={activeTab}
+            onTabChange={(tabId) =>
+              setActiveTab(tabId as "issues" | "events" | "analytics")
+            }
+          />
 
           {activeTab === 'issues' && (
             <>
               <div
-                style={{
-                  display: "flex",
-                  gap: "0.5rem",
-                  flexWrap: "wrap",
-                  marginBottom: "0.75rem",
-                }}
+                className="mb-3 flex flex-wrap gap-2"
               >
                 <span className="pill small">
                   Open: {issueStatusCounts.unresolved}
@@ -280,30 +263,19 @@ function ProjectIssues() {
                 </span>
               </div>
               <div
-                style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  flexWrap: 'wrap',
-                  marginBottom: '1rem',
-                }}
+                className="mb-4 flex flex-wrap gap-2"
               >
                 <input
                   type="text"
                   placeholder="Search issues..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    flex: '1 1 200px',
-                    minWidth: '200px',
-                    border: '1px solid var(--stroke)',
-                    borderRadius: '8px',
-                    padding: '0.5rem 0.75rem',
-                  }}
+                  className="min-w-[200px] flex-1 rounded-lg border border-[color:var(--stroke)] bg-white px-3 py-2"
                 />
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  style={{ flex: '0 0 auto' }}
+                  className="flex-none"
                 >
                   <option value="all">All Statuses</option>
                   <option value="unresolved">Unresolved</option>
@@ -313,7 +285,7 @@ function ProjectIssues() {
                 <select
                   value={levelFilter}
                   onChange={(e) => setLevelFilter(e.target.value)}
-                  style={{ flex: '0 0 auto' }}
+                  className="flex-none"
                 >
                   <option value="all">All Levels</option>
                   <option value="error">Error</option>
@@ -326,7 +298,7 @@ function ProjectIssues() {
                   onChange={(e) =>
                     setSortBy(e.target.value as 'recent' | 'oldest' | 'count')
                   }
-                  style={{ flex: '0 0 auto' }}
+                  className="flex-none"
                 >
                   <option value="recent">Most Recent</option>
                   <option value="oldest">Oldest First</option>
@@ -342,19 +314,16 @@ function ProjectIssues() {
               filteredAndSortedIssues.map((issue) => (
                 <div key={issue.id} className="list-item-expanded">
                   <div className="list-row">
-                    <div style={{ flex: 1 }}>
+                    <div className="flex-1">
                       <div className="list-title">
                         {issue.title}
                         {supportsResolution(issue.level) && (
-                          <span
-                            className="pill small"
-                            style={{ marginLeft: '0.5rem' }}
-                          >
+                          <span className="pill small ml-2">
                             {toTitleCase(issue.status)}
                           </span>
                         )}
                       </div>
-                      <div className="muted" style={{ marginTop: '0.25rem' }}>
+                      <div className="muted mt-1">
                         <span className={`status ${issue.level}`}>
                           {issue.level}
                         </span>
@@ -386,21 +355,19 @@ function ProjectIssues() {
                           <>
                             <button
                               type="button"
-                              className="outline button-success"
                               onClick={() =>
                                 handleStatusChange(issue.id, 'resolved')
                               }
-                              style={{ fontSize: '0.875rem' }}
+                              className="outline button-success text-sm"
                             >
                               Resolve
                             </button>
                             <button
                               type="button"
-                              className="outline button-warning"
                               onClick={() =>
                                 handleStatusChange(issue.id, 'ignored')
                               }
-                              style={{ fontSize: '0.875rem' }}
+                              className="outline button-warning text-sm"
                             >
                               Ignore
                             </button>
@@ -408,11 +375,10 @@ function ProjectIssues() {
                         ) : (
                           <button
                             type="button"
-                            className="outline"
                             onClick={() =>
                               handleStatusChange(issue.id, 'unresolved')
                             }
-                            style={{ fontSize: '0.875rem' }}
+                            className="outline text-sm"
                           >
                             Reopen
                           </button>
@@ -432,11 +398,11 @@ function ProjectIssues() {
             events.length ? (
               events.map((event) => (
                 <div key={event.id} className="list-item">
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <div className="list-title">
                       {event.message || `${event.type} event`}
                     </div>
-                    <div className="muted" style={{ marginTop: '0.25rem' }}>
+                    <div className="muted mt-1">
                       {event.level && (
                         <>
                           <span className={`status ${event.level}`}>
@@ -465,22 +431,13 @@ function ProjectIssues() {
             )
           ) : activeTab === 'analytics' ? (
             <div
-              style={{
-                padding: '1rem',
-                background: 'var(--bg)',
-                borderRadius: '16px',
-                border: '1px solid var(--stroke)',
-              }}
+              className="rounded-2xl border border-[color:var(--stroke)] bg-[color:var(--bg)] p-4"
             >
               <div>
                 {volumeStats.loading ? (
                   <div className="grid metrics mb-1.5">
                     {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className="card skeleton"
-                        style={{ height: '80px' }}
-                      />
+                      <div key={i} className="card skeleton h-20" />
                     ))}
                   </div>
                 ) : volumeStats.data ? (
@@ -490,11 +447,11 @@ function ProjectIssues() {
                 <div className="card mb-1.5">
                   <div className="card-title">Event Volume (Last 14 Days)</div>
                   {timeseriesBreakdown.loading ? (
-                    <div className="skeleton" style={{ height: '400px' }} />
+                    <div className="skeleton h-[400px]" />
                   ) : timeseriesBreakdown.data.length > 0 ? (
                     <EventVolumeChart data={timeseriesBreakdown.data} />
                   ) : (
-                    <div className="muted" style={{ padding: '2rem' }}>
+                    <div className="muted p-8">
                       No event data available
                     </div>
                   )}
@@ -504,11 +461,11 @@ function ProjectIssues() {
                   <div className="card">
                     <div className="card-title">SDK Distribution</div>
                     {sdkDistribution.loading ? (
-                      <div className="skeleton" style={{ height: '200px' }} />
+                      <div className="skeleton h-[200px]" />
                     ) : sdkDistribution.data.length > 0 ? (
                       <SDKDistributionChart data={sdkDistribution.data} />
                     ) : (
-                      <div className="muted" style={{ padding: '2rem' }}>
+                      <div className="muted p-8">
                         No SDK data available
                       </div>
                     )}
@@ -519,23 +476,16 @@ function ProjectIssues() {
                     {topErrors.loading ? (
                       <div className="list">
                         {[1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            className="list-item skeleton"
-                            style={{ height: '48px' }}
-                          />
+                          <div key={i} className="list-item skeleton h-12" />
                         ))}
                       </div>
                     ) : topErrors.data.length > 0 ? (
                       <div className="list">
                         {topErrors.data.slice(0, 5).map((error, idx) => (
                           <div key={idx} className="list-item">
-                            <div style={{ flex: 1 }}>
+                            <div className="flex-1">
                               <div className="list-title">{error.message}</div>
-                              <div
-                                className="muted"
-                                style={{ marginTop: '0.25rem' }}
-                              >
+                              <div className="muted mt-1">
                                 {error.event_count} occurrences
                               </div>
                             </div>
@@ -543,7 +493,7 @@ function ProjectIssues() {
                         ))}
                       </div>
                     ) : (
-                      <div className="muted" style={{ padding: '2rem' }}>
+                      <div className="muted p-8">
                         No error data available
                       </div>
                     )}
@@ -555,33 +505,23 @@ function ProjectIssues() {
                   {releaseStats.loading ? (
                     <div className="list">
                       {[1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className="list-item skeleton"
-                          style={{ height: '48px' }}
-                        />
+                        <div key={i} className="list-item skeleton h-12" />
                       ))}
                     </div>
                   ) : releaseStats.data.length > 0 ? (
                     <div className="list">
                       {releaseStats.data.slice(0, 10).map((stat, idx) => (
                         <div key={idx} className="list-item">
-                          <div style={{ flex: 1 }}>
+                          <div className="flex-1">
                             <div className="list-title">
                               {stat.release || 'Unknown Release'}
                               {stat.environment && (
-                                <span
-                                  className="pill small"
-                                  style={{ marginLeft: '0.5rem' }}
-                                >
+                                <span className="pill small ml-2">
                                   {toTitleCase(stat.environment)}
                                 </span>
                               )}
                             </div>
-                            <div
-                              className="muted"
-                              style={{ marginTop: '0.25rem' }}
-                            >
+                            <div className="muted mt-1">
                               {stat.error_count} errors · {stat.user_count}{' '}
                               users affected
                             </div>
@@ -590,7 +530,7 @@ function ProjectIssues() {
                       ))}
                     </div>
                   ) : (
-                    <div className="muted" style={{ padding: '2rem' }}>
+                    <div className="muted p-8">
                       No release data available
                     </div>
                   )}

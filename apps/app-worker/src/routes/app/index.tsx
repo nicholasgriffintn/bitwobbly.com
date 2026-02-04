@@ -66,15 +66,13 @@ function Overview() {
       <div className="card">
         <div className="flex items-center gap-3">
           <span
-            className={`status-indicator ${overallStatus} w-3 h-3 rounded-full`}
-            style={{
-              backgroundColor:
-                overallStatus === 'operational'
-                  ? 'var(--green)'
-                  : overallStatus === 'degraded'
-                    ? 'var(--red)'
-                    : 'var(--muted)',
-            }}
+            className={`status-indicator ${overallStatus} h-3 w-3 rounded-full ${
+              overallStatus === "operational"
+                ? "bg-[color:var(--green)]"
+                : overallStatus === "degraded"
+                  ? "bg-[color:var(--red)]"
+                  : "bg-[color:var(--muted)]"
+            }`}
           />
           <div>
             <div className="font-semibold text-lg">
@@ -95,15 +93,16 @@ function Overview() {
       <div className="grid metrics">
         <div className="card">
           <div className="metric-label">Monitors up</div>
-          <div className="metric-value" style={{ color: 'var(--green)' }}>
+          <div className="metric-value text-[color:var(--green)]">
             {upCount}
           </div>
         </div>
         <div className="card">
           <div className="metric-label">Monitors down</div>
           <div
-            className="metric-value"
-            style={{ color: downCount > 0 ? 'var(--red)' : undefined }}
+            className={`metric-value ${
+              downCount > 0 ? "text-[color:var(--red)]" : ""
+            }`}
           >
             {downCount}
           </div>
@@ -111,10 +110,9 @@ function Overview() {
         <div className="card">
           <div className="metric-label">Open incidents</div>
           <div
-            className="metric-value"
-            style={{
-              color: incidents.length > 0 ? 'var(--orange)' : undefined,
-            }}
+            className={`metric-value ${
+              incidents.length > 0 ? "text-[color:var(--orange)]" : ""
+            }`}
           >
             {incidents.length}
           </div>
@@ -215,8 +213,7 @@ function Overview() {
                   <div className="list-title">
                     {incident.title}
                     <span
-                      className={`status-pill ${incident.status}`}
-                      style={{ marginLeft: '0.5rem' }}
+                      className={`status-pill ${incident.status} ml-2`}
                     >
                       {toTitleCase(incident.status)}
                     </span>
