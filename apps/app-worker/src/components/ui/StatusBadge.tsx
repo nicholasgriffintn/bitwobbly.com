@@ -1,18 +1,27 @@
-type StatusType =
-  | "up"
-  | "down"
-  | "degraded"
-  | "unknown"
-  | "investigating"
-  | "identified"
-  | "monitoring"
-  | "resolved"
-  | "maintenance"
-  | "error"
-  | "warning"
-  | "info"
-  | "debug"
-  | "operational";
+export const STATUS_TYPES = [
+  "up",
+  "down",
+  "degraded",
+  "unknown",
+  "investigating",
+  "identified",
+  "monitoring",
+  "resolved",
+  "maintenance",
+  "error",
+  "warning",
+  "info",
+  "debug",
+  "operational",
+] as const;
+
+export type StatusType = (typeof STATUS_TYPES)[number];
+
+const statusTypeSet: ReadonlySet<string> = new Set(STATUS_TYPES);
+
+export function isStatusType(value: string): value is StatusType {
+  return statusTypeSet.has(value);
+}
 
 type StatusVariant = "status" | "pill";
 

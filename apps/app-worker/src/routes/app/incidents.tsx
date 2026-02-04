@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
-import { StatusBadge } from "@/components/ui";
+import { StatusBadge, isStatusType } from "@/components/ui";
 import {
   CreateIncidentModal,
   UpdateIncidentModal,
@@ -137,11 +137,9 @@ export default function Incidents() {
                       {incident.title}
                       <StatusBadge
                         status={
-                          incident.status as
-                            | "investigating"
-                            | "identified"
-                            | "monitoring"
-                            | "resolved"
+                          isStatusType(incident.status)
+                            ? incident.status
+                            : "unknown"
                         }
                       >
                         {toTitleCase(incident.status)}

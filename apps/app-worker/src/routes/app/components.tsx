@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
-import { StatusBadge } from "@/components/ui";
+import { StatusBadge, isStatusType } from "@/components/ui";
 import { CheckboxList } from "@/components/form";
 import { ComponentMetrics } from "@/components/ComponentMetrics";
 import {
@@ -143,13 +143,9 @@ export default function Components() {
                         component.currentStatus !== "operational" && (
                           <StatusBadge
                             status={
-                              component.currentStatus as
-                                | "down"
-                                | "degraded"
-                                | "maintenance"
-                                | "investigating"
-                                | "identified"
-                                | "monitoring"
+                              isStatusType(component.currentStatus)
+                                ? component.currentStatus
+                                : "unknown"
                             }
                           >
                             {toTitleCase(component.currentStatus)}

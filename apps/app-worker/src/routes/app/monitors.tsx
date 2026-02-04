@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { MetricsChart } from "@/components/MetricsChart";
 import { PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
+import { Badge, StatusBadge, isStatusType } from "@/components/ui";
 import {
   CreateMonitorModal,
   EditMonitorModal,
@@ -154,104 +155,109 @@ function Monitors() {
         </div>
         <div className="list">
           {monitors.length ? (
-            monitors.map((monitor) => (
-              <React.Fragment key={monitor.id}>
-                <div className="list-item-expanded">
-                  <div className="list-row">
-                    <div className="flex-1">
-                      <div className="list-title">
-                        {monitor.name}
-                        {!monitor.enabled && (
-                          <span className="pill small ml-2">Paused</span>
-                        )}
-                      </div>
-                      {monitor.url && (
-                        <div className="muted">{monitor.url}</div>
-                      )}
-                      <div className="muted mt-1">
-                        <span
-                          className={`status ${monitor.state?.lastStatus || 'unknown'}`}
-                        >
-                          {toTitleCase(monitor.state?.lastStatus || 'unknown')}
-                        </span>
-                        {' · '}
-                        <span className="pill small">
-                          {toTitleCase(monitor.type)}
-                        </span>
-                        {monitor.type !== 'webhook' &&
-                          monitor.type !== 'manual' && (
-                            <>
-                              {' · '}
-                              {monitor.intervalSeconds}s interval ·{' '}
-                              {monitor.timeoutMs}ms timeout ·{' '}
-                              {monitor.failureThreshold} failures
-                            </>
+            monitors.map((monitor) => {
+              const rawStatus = monitor.state?.lastStatus ?? "unknown";
+              const status = isStatusType(rawStatus) ? rawStatus : "unknown";
+
+              return (
+                <React.Fragment key={monitor.id}>
+                  <div className="list-item-expanded">
+                    <div className="list-row">
+                      <div className="flex-1">
+                        <div className="list-title">
+                          {monitor.name}
+                          {!monitor.enabled && (
+                            <span className="ml-2">
+                              <Badge size="small" variant="muted">
+                                Paused
+                              </Badge>
+                            </span>
                           )}
+                        </div>
+                        {monitor.url && (
+                          <div className="muted">{monitor.url}</div>
+                        )}
+                        <div className="muted mt-1">
+                          <StatusBadge status={status}>
+                            {toTitleCase(status)}
+                          </StatusBadge>
+                          {" · "}
+                          <Badge size="small">{toTitleCase(monitor.type)}</Badge>
+                          {monitor.type !== "webhook" &&
+                            monitor.type !== "manual" && (
+                              <>
+                                {" · "}
+                                {monitor.intervalSeconds}s interval ·{" "}
+                                {monitor.timeoutMs}ms timeout ·{" "}
+                                {monitor.failureThreshold} failures
+                              </>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="button-row">
-                      {monitor.type !== 'webhook' &&
-                        monitor.type !== 'manual' && (
+                      <div className="button-row">
+                        {monitor.type !== "webhook" &&
+                          monitor.type !== "manual" && (
+                            <button
+                              type="button"
+                              className="outline"
+                              onClick={() =>
+                                setExpandedMonitorId(
+                                  expandedMonitorId === monitor.id
+                                    ? null
+                                    : monitor.id,
+                                )
+                              }
+                            >
+                              {expandedMonitorId === monitor.id
+                                ? "Hide"
+                                : "Metrics"}
+                            </button>
+                          )}
+                        {monitor.type === "manual" && (
                           <button
                             type="button"
                             className="outline"
-                            onClick={() =>
-                              setExpandedMonitorId(
-                                expandedMonitorId === monitor.id
-                                  ? null
-                                  : monitor.id,
-                              )
-                            }
+                            onClick={() => openManualStatusModal(monitor.id)}
                           >
-                            {expandedMonitorId === monitor.id
-                              ? 'Hide'
-                              : 'Metrics'}
+                            Set Status
                           </button>
                         )}
-                      {monitor.type === 'manual' && (
                         <button
                           type="button"
                           className="outline"
-                          onClick={() => openManualStatusModal(monitor.id)}
+                          onClick={() => startEditing(monitor)}
                         >
-                          Set Status
+                          Edit
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        className="outline"
-                        onClick={() => startEditing(monitor)}
-                      >
-                        Edit
-                      </button>
-                      {monitor.type !== 'webhook' &&
-                        monitor.type !== 'manual' && (
-                          <button
-                            type="button"
-                            className={`outline ${monitor.enabled ? 'button-warning' : 'button-success'}`}
-                            onClick={() => toggleEnabled(monitor)}
-                          >
-                            {monitor.enabled ? 'Pause' : 'Resume'}
-                          </button>
-                        )}
-                      <button
-                        type="button"
-                        className="outline button-danger"
-                        onClick={() => onDelete(monitor.id)}
-                      >
-                        Delete
-                      </button>
+                        {monitor.type !== "webhook" &&
+                          monitor.type !== "manual" && (
+                            <button
+                              type="button"
+                              className={`outline ${monitor.enabled ? "button-warning" : "button-success"}`}
+                              onClick={() => toggleEnabled(monitor)}
+                            >
+                              {monitor.enabled ? "Pause" : "Resume"}
+                            </button>
+                          )}
+                        <button
+                          type="button"
+                          className="outline button-danger"
+                          onClick={() => onDelete(monitor.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {expandedMonitorId === monitor.id && (
-                    <div className="mt-4">
-                      <MetricsChart monitorId={monitor.id} />
-                    </div>
-                  )}
-                </div>
-              </React.Fragment>
-            ))
+                    {expandedMonitorId === monitor.id && (
+                      <div className="mt-4">
+                        <MetricsChart monitorId={monitor.id} />
+                      </div>
+                    )}
+                  </div>
+                </React.Fragment>
+              );
+            })
           ) : (
             <div className="muted">No monitors configured.</div>
           )}

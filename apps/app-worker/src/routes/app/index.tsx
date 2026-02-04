@@ -5,6 +5,7 @@ import { listStatusPagesFn } from '@/server/functions/status-pages';
 import { listOpenIncidentsFn } from '@/server/functions/incidents';
 import { listChannelsFn } from '@/server/functions/notification-channels';
 import { toTitleCase } from '@/utils/format';
+import { Badge, StatusBadge, isStatusType } from '@/components/ui';
 
 export const Route = createFileRoute('/app/')({
   component: Overview,
@@ -165,7 +166,9 @@ function Overview() {
                     </button>
                   </Link>
                 ) : (
-                  <span className="pill small">Done</span>
+                  <Badge size="small" variant="success">
+                    Done
+                  </Badge>
                 )}
               </div>
               <div className="list-row">
@@ -180,7 +183,9 @@ function Overview() {
                     </button>
                   </Link>
                 ) : (
-                  <span className="pill small">Done</span>
+                  <Badge size="small" variant="success">
+                    Done
+                  </Badge>
                 )}
               </div>
               <div className="list-row">
@@ -195,7 +200,9 @@ function Overview() {
                     </button>
                   </Link>
                 ) : (
-                  <span className="pill small">Done</span>
+                  <Badge size="small" variant="success">
+                    Done
+                  </Badge>
                 )}
               </div>
             </div>
@@ -212,11 +219,20 @@ function Overview() {
                 <div>
                   <div className="list-title">
                     {incident.title}
-                    <span
-                      className={`status-pill ${incident.status} ml-2`}
+                    <StatusBadge
+                      className="ml-2"
+                      status={
+                        isStatusType(incident.status)
+                          ? incident.status
+                          : 'unknown'
+                      }
                     >
-                      {toTitleCase(incident.status)}
-                    </span>
+                      {toTitleCase(
+                        isStatusType(incident.status)
+                          ? incident.status
+                          : 'unknown',
+                      )}
+                    </StatusBadge>
                   </div>
                   <div className="muted">
                     Started{' '}
@@ -239,19 +255,22 @@ function Overview() {
           <div className="card-title">Recent monitors</div>
           <div className="list">
             {monitors.length ? (
-              monitors.slice(0, 5).map((monitor) => (
-                <div key={monitor.id} className="list-row">
-                  <div>
-                    <div className="list-title">{monitor.name}</div>
-                    <div className="muted">{monitor.url}</div>
+              monitors.slice(0, 5).map((monitor) => {
+                const rawStatus = monitor.state?.lastStatus ?? 'unknown';
+                const status = isStatusType(rawStatus) ? rawStatus : 'unknown';
+
+                return (
+                  <div key={monitor.id} className="list-row">
+                    <div>
+                      <div className="list-title">{monitor.name}</div>
+                      <div className="muted">{monitor.url}</div>
+                    </div>
+                    <StatusBadge status={status}>
+                      {toTitleCase(status)}
+                    </StatusBadge>
                   </div>
-                  <span
-                    className={`status ${monitor.state?.lastStatus || 'unknown'}`}
-                  >
-                    {toTitleCase(monitor.state?.lastStatus || 'unknown')}
-                  </span>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="muted">No monitors yet.</div>
             )}

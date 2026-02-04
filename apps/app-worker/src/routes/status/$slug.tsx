@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { getPublicStatusFn } from "@/server/functions/public";
 import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
+import { StatusBadge, isStatusType } from "@/components/ui";
 import type { StatusSnapshot } from "@/server/services/status-snapshots";
 
 export const Route = createFileRoute("/status/$slug")({
@@ -173,36 +174,6 @@ function PublicStatusPage() {
             align-items: center;
             gap: 0.5rem;
             overflow-wrap: anywhere;
-          }
-
-          .incident-status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-          }
-
-          .incident-status-badge.investigating {
-            background: #fef3c7;
-            color: #92400e;
-          }
-
-          .incident-status-badge.identified {
-            background: #fee2e2;
-            color: #991b1b;
-          }
-
-          .incident-status-badge.monitoring {
-            background: #dbeafe;
-            color: #1e40af;
-          }
-
-          .incident-status-badge.resolved {
-            background: #d1fae5;
-            color: #065f46;
           }
 
           .incident-meta {
@@ -440,9 +411,11 @@ function PublicStatusPage() {
               >
                 <h3 className="incident-title">
                   {incident.title}
-                  <span className={`incident-status-badge ${incident.status}`}>
-                    {incident.status}
-                  </span>
+                  <StatusBadge
+                    status={
+                      isStatusType(incident.status) ? incident.status : "unknown"
+                    }
+                  />
                 </h3>
                 <div className="incident-meta">
                   Started: {formatDate(incident.started_at)}
@@ -477,9 +450,11 @@ function PublicStatusPage() {
               >
                 <h3 className="incident-title">
                   {incident.title}
-                  <span className={`incident-status-badge ${incident.status}`}>
-                    {incident.status}
-                  </span>
+                  <StatusBadge
+                    status={
+                      isStatusType(incident.status) ? incident.status : "unknown"
+                    }
+                  />
                 </h3>
                 <div className="incident-meta">
                   Started: {formatDate(incident.started_at)}
