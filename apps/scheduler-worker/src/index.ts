@@ -51,7 +51,7 @@ const handler = {
             }
 
             try {
-              if (!m.url) {
+              if (!m.url && m.type !== "heartbeat") {
                 ctx.waitUntil(unlockMonitor(db, m.id, lockUntil));
                 continue;
               }
@@ -61,7 +61,8 @@ const handler = {
                 team_id: m.teamId,
                 monitor_id: m.id,
                 monitor_type: m.type || 'http',
-                url: m.url,
+                url: m.url || "",
+                interval_seconds: Number(m.intervalSeconds) || 60,
                 timeout_ms: Number(m.timeoutMs) || 8000,
                 failure_threshold: Number(m.failureThreshold) || 3,
                 external_config: m.externalConfig || undefined,

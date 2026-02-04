@@ -16,9 +16,10 @@ export interface CheckJob {
   monitor_id: string;
   team_id: string;
   url: string;
+  interval_seconds?: number;
   timeout_ms?: number;
   failure_threshold?: number;
-  monitor_type?: string;
+  monitor_type?: MonitorType;
   external_config?: string;
   reported_status?: "up" | "down" | "degraded";
   reported_reason?: string;
@@ -78,7 +79,7 @@ export interface AlertConditions {
   issueAge?: string;
   release?: string;
   eventType?: ('error' | 'default')[];
-  monitorType?: ('http' | 'ping' | 'tcp')[];
+  monitorType?: MonitorType[];
   latencyThreshold?: number;
 }
 
@@ -95,3 +96,20 @@ export interface ComponentMetrics {
   uptime: UptimeMetrics;
   dataPoints: MetricDataPoint[];
 }
+
+export const MonitorTypeValues = [
+  "http",
+  "http_assert",
+  "http_keyword",
+  "tls",
+  "dns",
+  "tcp",
+  "ping",
+  "heartbeat",
+  "browser",
+  "webhook",
+  "external",
+  "manual",
+] as const;
+
+export type MonitorType = (typeof MonitorTypeValues)[number];

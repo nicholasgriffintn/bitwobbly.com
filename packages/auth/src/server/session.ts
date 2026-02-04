@@ -1,4 +1,4 @@
-import { useSession } from '@tanstack/react-start/server';
+import { getRequestProtocol, useSession } from '@tanstack/react-start/server';
 import { env } from 'cloudflare:workers';
 
 type SessionData = {
@@ -21,7 +21,7 @@ export function useAppSession(): ReturnType<typeof useSession<SessionData>> {
     // @ts-ignore
     password: vars.SESSION_SECRET,
     cookie: {
-      secure: true,
+      secure: getRequestProtocol() === 'https',
       sameSite: 'lax',
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60,

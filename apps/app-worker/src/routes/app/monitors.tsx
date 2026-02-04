@@ -48,8 +48,11 @@ function Monitors() {
   const [threshold, setThreshold] = useState("3");
   const [monitorType, setMonitorType] = useState("http");
   const [externalServiceType, setExternalServiceType] = useState("");
+  const [checkConfig, setCheckConfig] = useState('');
+  const [checkConfigError, setCheckConfigError] = useState<string | null>(null);
   const [webhookToken, setWebhookToken] = useState<string | null>(null);
   const [createdMonitorId, setCreatedMonitorId] = useState<string | null>(null);
+  const [createdTokenType, setCreatedTokenType] = useState<string | null>(null);
   const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(
     null,
   );
@@ -63,6 +66,10 @@ function Monitors() {
   const [editTimeout, setEditTimeout] = useState("");
   const [editThreshold, setEditThreshold] = useState("");
   const [editExternalServiceType, setEditExternalServiceType] = useState("");
+  const [editCheckConfig, setEditCheckConfig] = useState('');
+  const [editCheckConfigError, setEditCheckConfigError] = useState<
+    string | null
+  >(null);
   const [isManualStatusModalOpen, setIsManualStatusModalOpen] = useState(false);
   const [manualStatusMonitorId, setManualStatusMonitorId] = useState<
     string | null
@@ -90,15 +97,26 @@ function Monitors() {
     event.preventDefault();
     setError(null);
     try {
+      if (checkConfigError) {
+        throw new Error('Config JSON is invalid');
+      }
+
       const externalConfig =
-        monitorType === "external" && externalServiceType
+        monitorType === 'external' && externalServiceType
           ? JSON.stringify({ serviceType: externalServiceType })
-          : undefined;
+          : checkConfig.trim()
+            ? checkConfig.trim()
+            : undefined;
 
       const result = await createMonitor({
         data: {
           name,
-          url: url || undefined,
+          url:
+            monitorType === 'webhook' ||
+            monitorType === 'manual' ||
+            monitorType === 'heartbeat'
+              ? undefined
+              : url || undefined,
           interval_seconds: Number(interval),
           timeout_ms: Number(timeout),
           failure_threshold: Number(threshold),
@@ -110,6 +128,7 @@ function Monitors() {
       if (result.webhookToken) {
         setWebhookToken(result.webhookToken);
         setCreatedMonitorId(result.id);
+        setCreatedTokenType(monitorType);
       } else {
         await refreshMonitors();
         closeCreateModal();
@@ -123,6 +142,7 @@ function Monitors() {
     setIsCreateModalOpen(false);
     setWebhookToken(null);
     setCreatedMonitorId(null);
+    setCreatedTokenType(null);
     setName("");
     setUrl("");
     setInterval("60");
@@ -130,6 +150,8 @@ function Monitors() {
     setThreshold("3");
     setMonitorType("http");
     setExternalServiceType("");
+    setCheckConfig('');
+    setCheckConfigError(null);
   };
 
   const onDelete = async (id: string) => {
@@ -150,13 +172,28 @@ function Monitors() {
     setEditInterval(String(monitor.intervalSeconds));
     setEditTimeout(String(monitor.timeoutMs));
     setEditThreshold(String(monitor.failureThreshold));
+    setEditCheckConfigError(null);
     if (monitor.externalConfig) {
-      try {
-        const config = JSON.parse(monitor.externalConfig);
-        setEditExternalServiceType(config.serviceType || "");
-      } catch {
-        setEditExternalServiceType("");
+      if (monitor.type === 'external') {
+        try {
+          const config = JSON.parse(monitor.externalConfig);
+          setEditExternalServiceType(config.serviceType || '');
+          setEditCheckConfig('');
+        } catch {
+          setEditExternalServiceType('');
+          setEditCheckConfig('');
+        }
+      } else {
+        setEditCheckConfig(monitor.externalConfig);
+        try {
+          JSON.parse(monitor.externalConfig);
+        } catch {
+          setEditCheckConfigError('Invalid JSON');
+        }
       }
+    } else {
+      setEditExternalServiceType('');
+      setEditCheckConfig('');
     }
     setIsEditModalOpen(true);
   };
@@ -171,16 +208,27 @@ function Monitors() {
     if (!editingMonitorId) return;
     setError(null);
     try {
+      if (editCheckConfigError) {
+        throw new Error('Config JSON is invalid');
+      }
+
       const externalConfig =
-        editingMonitorType === "external" && editExternalServiceType
+        editingMonitorType === 'external' && editExternalServiceType
           ? JSON.stringify({ serviceType: editExternalServiceType })
-          : undefined;
+          : editCheckConfig.trim()
+            ? editCheckConfig.trim()
+            : undefined;
 
       await updateMonitor({
         data: {
           id: editingMonitorId,
           name: editName,
-          url: editUrl || undefined,
+          url:
+            editingMonitorType === 'webhook' ||
+            editingMonitorType === 'manual' ||
+            editingMonitorType === 'heartbeat'
+              ? undefined
+              : editUrl || undefined,
           interval_seconds: Number(editInterval),
           timeout_ms: Number(editTimeout),
           failure_threshold: Number(editThreshold),
@@ -248,6 +296,93 @@ function Monitors() {
     }
   };
 
+  const configHelp = (type: string) => {
+    if (type === 'http_assert') {
+      return {
+        title: 'HTTP assertions',
+        description:
+          'Assert expected status codes and optionally check the response body contains a string.',
+        schema: `{
+  "expectedStatus"?: number[],
+  "bodyIncludes"?: string
+}`,
+        example: `{
+  "expectedStatus": [200],
+  "bodyIncludes": "ok"
+}`,
+      };
+    }
+    if (type === 'http_keyword') {
+      return {
+        title: 'Keyword match',
+        description:
+          'Fetch the URL and verify the response body contains a keyword.',
+        schema: `{
+  "keyword"?: string,
+  "caseSensitive"?: boolean
+}`,
+        example: `{
+  "keyword": "healthy",
+  "caseSensitive": false
+}`,
+      };
+    }
+    if (type === 'tls') {
+      return {
+        title: 'TLS expiry',
+        description:
+          'Fail if the certificate expires too soon. Optional allowInvalid skips CA validation (not recommended).',
+        schema: `{
+  "minDaysRemaining"?: number,
+  "allowInvalid"?: boolean
+}`,
+        example: `{
+  "minDaysRemaining": 14,
+  "allowInvalid": false
+}`,
+      };
+    }
+    if (type === 'dns') {
+      return {
+        title: 'DNS',
+        description:
+          'Resolve via DNS-over-HTTPS and optionally require an answer containing a substring.',
+        schema: `{
+  "recordType"?: "A" | "AAAA" | "CNAME" | "TXT" | "MX" | "NS",
+  "expectedIncludes"?: string
+}`,
+        example: `{
+  "recordType": "A",
+  "expectedIncludes": "1.2.3.4"
+}`,
+      };
+    }
+    if (type === 'heartbeat') {
+      return {
+        title: 'Cron heartbeat',
+        description:
+          'Check-ins are POSTed to the heartbeat URL. If no check-in arrives within interval + grace, the monitor goes down.',
+        schema: `{
+  "graceSeconds"?: number
+}`,
+        example: `{
+  "graceSeconds": 30
+}`,
+      };
+    }
+    return null;
+  };
+
+  const validateJsonConfig = (value: string) => {
+    if (!value.trim()) return null;
+    try {
+      JSON.parse(value);
+      return null;
+    } catch {
+      return 'Invalid JSON';
+    }
+  };
+
   return (
     <div className="page page-stack">
       <div className="page-header">
@@ -263,26 +398,13 @@ function Monitors() {
       {error ? <div className="card error">{error}</div> : null}
 
       <div className="card">
-        <div
-          className="card-title"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            flexWrap: 'wrap',
-          }}
-        >
+        <div className="card-title flex flex-wrap items-center gap-4">
           Monitors
           <button
             type="button"
-            className="outline button-info"
+            className="outline button-info ml-auto px-3 py-1 text-sm"
             onClick={onTriggerScheduler}
             title="Manually trigger monitor checks (dev mode)"
-            style={{
-              marginLeft: 'auto',
-              fontSize: '0.875rem',
-              padding: '0.25rem 0.75rem',
-            }}
           >
             Check Now
           </button>
@@ -293,14 +415,11 @@ function Monitors() {
               <React.Fragment key={monitor.id}>
                 <div className="list-item-expanded">
                   <div className="list-row">
-                    <div style={{ flex: 1 }}>
+                    <div className="flex-1">
                       <div className="list-title">
                         {monitor.name}
                         {!monitor.enabled && (
-                          <span
-                            className="pill small"
-                            style={{ marginLeft: '0.5rem' }}
-                          >
+                          <span className="pill small ml-2">
                             Paused
                           </span>
                         )}
@@ -308,7 +427,7 @@ function Monitors() {
                       {monitor.url && (
                         <div className="muted">{monitor.url}</div>
                       )}
-                      <div className="muted" style={{ marginTop: '0.25rem' }}>
+                      <div className="muted mt-1">
                         <span
                           className={`status ${monitor.state?.lastStatus || 'unknown'}`}
                         >
@@ -318,36 +437,36 @@ function Monitors() {
                         <span className="pill small">
                           {toTitleCase(monitor.type)}
                         </span>
-                        {(monitor.type === 'http' ||
-                          monitor.type === 'external') && (
-                          <>
-                            {' · '}
-                            {monitor.intervalSeconds}s interval ·{' '}
-                            {monitor.timeoutMs}ms timeout ·{' '}
-                            {monitor.failureThreshold} failures
-                          </>
-                        )}
+                        {monitor.type !== 'webhook' &&
+                          monitor.type !== 'manual' && (
+                            <>
+                              {' · '}
+                              {monitor.intervalSeconds}s interval ·{' '}
+                              {monitor.timeoutMs}ms timeout ·{' '}
+                              {monitor.failureThreshold} failures
+                            </>
+                          )}
                       </div>
                     </div>
                     <div className="button-row">
-                      {(monitor.type === 'http' ||
-                        monitor.type === 'external') && (
-                        <button
-                          type="button"
-                          className="outline"
-                          onClick={() =>
-                            setExpandedMonitorId(
-                              expandedMonitorId === monitor.id
-                                ? null
-                                : monitor.id,
-                            )
-                          }
-                        >
-                          {expandedMonitorId === monitor.id
-                            ? 'Hide'
-                            : 'Metrics'}
-                        </button>
-                      )}
+                      {monitor.type !== 'webhook' &&
+                        monitor.type !== 'manual' && (
+                          <button
+                            type="button"
+                            className="outline"
+                            onClick={() =>
+                              setExpandedMonitorId(
+                                expandedMonitorId === monitor.id
+                                  ? null
+                                  : monitor.id,
+                              )
+                            }
+                          >
+                            {expandedMonitorId === monitor.id
+                              ? 'Hide'
+                              : 'Metrics'}
+                          </button>
+                        )}
                       {monitor.type === 'manual' && (
                         <button
                           type="button"
@@ -364,16 +483,16 @@ function Monitors() {
                       >
                         Edit
                       </button>
-                      {(monitor.type === 'http' ||
-                        monitor.type === 'external') && (
-                        <button
-                          type="button"
-                          className={`outline ${monitor.enabled ? 'button-warning' : 'button-success'}`}
-                          onClick={() => toggleEnabled(monitor)}
-                        >
-                          {monitor.enabled ? 'Pause' : 'Resume'}
-                        </button>
-                      )}
+                      {monitor.type !== 'webhook' &&
+                        monitor.type !== 'manual' && (
+                          <button
+                            type="button"
+                            className={`outline ${monitor.enabled ? 'button-warning' : 'button-success'}`}
+                            onClick={() => toggleEnabled(monitor)}
+                          >
+                            {monitor.enabled ? 'Pause' : 'Resume'}
+                          </button>
+                        )}
                       <button
                         type="button"
                         className="outline button-danger"
@@ -385,7 +504,7 @@ function Monitors() {
                   </div>
 
                   {expandedMonitorId === monitor.id && (
-                    <div style={{ marginTop: '1rem' }}>
+                    <div className="mt-4">
                       <MetricsChart monitorId={monitor.id} />
                     </div>
                   )}
@@ -405,82 +524,47 @@ function Monitors() {
       >
         {webhookToken ? (
           <div className="form">
-            <div
-              style={{
-                padding: '1rem',
-                marginBottom: '1rem',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '4px',
-                border: '2px solid #28a745',
-              }}
-            >
-              <div
-                style={{
-                  marginBottom: '0.75rem',
-                  color: '#28a745',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                }}
-              >
+            <div className="mb-4 rounded border-2 border-green-600 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-base font-semibold text-green-600">
                 <span>✓</span>
                 Webhook Monitor Created
               </div>
-              <p
-                style={{
-                  margin: '0 0 1rem 0',
-                  padding: '0.5rem',
-                  backgroundColor: '#fff3cd',
-                  border: '1px solid #ffc107',
-                  borderRadius: '4px',
-                  color: '#856404',
-                  fontSize: '0.875rem',
-                }}
-              >
+              <p className="mb-4 rounded border border-amber-400 bg-amber-100 p-2 text-sm text-amber-800">
                 <strong>⚠️</strong> Save this webhook URL and token securely.
                 You will not be able to see it again.
               </p>
 
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                  Webhook URL
+              <div className="mb-3">
+                <label className="text-sm font-semibold">
+                  {createdTokenType === 'heartbeat'
+                    ? 'Heartbeat URL'
+                    : 'Webhook URL'}
                 </label>
                 <input
                   readOnly
-                  value={`${window.location.origin}/api/webhooks/${createdMonitorId}`}
+                  value={`${window.location.origin}/api/${
+                    createdTokenType === 'heartbeat' ? 'heartbeats' : 'webhooks'
+                  }/${createdMonitorId}`}
                   onClick={(e) => e.currentTarget.select()}
-                  style={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                    width: '100%',
-                  }}
+                  className="w-full cursor-pointer font-mono text-xs"
                 />
               </div>
 
               <div>
-                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                <label className="text-sm font-semibold">
                   Token
                 </label>
                 <input
                   readOnly
                   value={webhookToken}
                   onClick={(e) => e.currentTarget.select()}
-                  style={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                    width: '100%',
-                  }}
+                  className="w-full cursor-pointer font-mono text-xs"
                 />
-                <p
-                  className="muted"
-                  style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem' }}
-                >
+                <p className="muted mt-2 text-xs">
                   POST to the URL with JSON:{' '}
-                  {`{ "token": "...", "status": "up|down|degraded", "message": "..." }`}
+                  {createdTokenType === 'heartbeat'
+                    ? `{ "token": "...", "message": "..." }`
+                    : `{ "token": "...", "status": "up|down|degraded", "message": "..." }`}
                 </p>
               </div>
             </div>
@@ -503,9 +587,18 @@ function Monitors() {
             <select
               id="monitor-type"
               value={monitorType}
-              onChange={(e) => setMonitorType(e.target.value)}
+              onChange={(e) => {
+                setMonitorType(e.target.value);
+                setCheckConfigError(validateJsonConfig(checkConfig));
+              }}
             >
               <option value="http">HTTP</option>
+              <option value="http_assert">HTTP (Assertions)</option>
+              <option value="http_keyword">HTTP (Keyword match)</option>
+              <option value="tls">TLS</option>
+              <option value="dns">DNS</option>
+              <option value="tcp">TCP</option>
+              <option value="heartbeat">Cron heartbeat</option>
               <option value="webhook">Webhook</option>
               <option value="external">External Service</option>
               <option value="manual">Manual</option>
@@ -520,7 +613,9 @@ function Monitors() {
               required
             />
 
-            {monitorType === 'http' && (
+            {(monitorType === 'http' ||
+              monitorType === 'http_assert' ||
+              monitorType === 'http_keyword') && (
               <>
                 <label htmlFor="monitor-url">URL</label>
                 <input
@@ -533,10 +628,35 @@ function Monitors() {
               </>
             )}
 
+            {(monitorType === 'tls' ||
+              monitorType === 'dns' ||
+              monitorType === 'tcp') && (
+              <>
+                <label htmlFor="monitor-url">Target</label>
+                <input
+                  id="monitor-url"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder={
+                    monitorType === 'dns' ? 'example.com' : 'example.com:443'
+                  }
+                  required
+                />
+              </>
+            )}
+
             {monitorType === 'webhook' && (
               <p className="muted">
                 A webhook token will be generated. External services will push
                 status updates to your webhook endpoint.
+              </p>
+            )}
+
+            {monitorType === 'heartbeat' && (
+              <p className="muted">
+                A token will be generated. Your cron will POST check-ins to your
+                heartbeat endpoint. Missing check-ins will mark the monitor
+                down.
               </p>
             )}
 
@@ -569,6 +689,110 @@ function Monitors() {
                   <option value="cloudflare-kv">Cloudflare KV</option>
                   <option value="custom">Custom Status Page</option>
                 </select>
+              </>
+            )}
+
+            {monitorType !== 'http' &&
+              monitorType !== 'webhook' &&
+              monitorType !== 'external' &&
+              monitorType !== 'manual' &&
+              monitorType !== 'heartbeat' && (
+                <>
+                  <label htmlFor="monitor-config">Config (JSON)</label>
+                  <p className="muted -mt-1">
+                    Optional. Leave blank to use defaults.
+                  </p>
+                  <textarea
+                    id="monitor-config"
+                    value={checkConfig}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setCheckConfig(value);
+                      setCheckConfigError(validateJsonConfig(value));
+                    }}
+                    rows={4}
+                  />
+                  {checkConfigError ? <p className="text-red-600">{checkConfigError}</p> : null}
+                  {(() => {
+                    const help = configHelp(monitorType);
+                    if (!help) return null;
+                    return (
+                      <details className="mt-2 rounded bg-light p-2">
+                        <summary className="muted cursor-pointer select-none">
+                          {help.title} config help
+                        </summary>
+                        <p className="muted mt-2">
+                          {help.description}
+                        </p>
+                        <div className="mt-2">
+                          <div className="muted mb-1">
+                            Example
+                          </div>
+                          <pre className="m-0 whitespace-pre-wrap">
+                            {help.example}
+                          </pre>
+                        </div>
+                        <div className="mt-2">
+                          <div className="muted mb-1">
+                            Schema
+                          </div>
+                          <pre className="m-0 whitespace-pre-wrap">
+                            {help.schema}
+                          </pre>
+                        </div>
+                      </details>
+                    );
+                  })()}
+                </>
+              )}
+
+            {monitorType === 'heartbeat' && (
+              <>
+                <label htmlFor="monitor-config">Config (JSON)</label>
+                <p className="muted -mt-1">
+                  Optional. Leave blank to use defaults.
+                </p>
+                <textarea
+                  id="monitor-config"
+                  value={checkConfig}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setCheckConfig(value);
+                    setCheckConfigError(validateJsonConfig(value));
+                  }}
+                  rows={3}
+                />
+                {checkConfigError ? <p className="text-red-600">{checkConfigError}</p> : null}
+                {(() => {
+                  const help = configHelp('heartbeat');
+                  if (!help) return null;
+                  return (
+                    <details className="mt-2">
+                      <summary className="muted cursor-pointer select-none">
+                        {help.title} config help
+                      </summary>
+                      <p className="muted mt-2">
+                        {help.description}
+                      </p>
+                      <div className="mt-2">
+                        <div className="muted mb-1">
+                          Example
+                        </div>
+                        <pre className="m-0 whitespace-pre-wrap">
+                          {help.example}
+                        </pre>
+                      </div>
+                      <div className="mt-2">
+                        <div className="muted mb-1">
+                          Schema
+                        </div>
+                        <pre className="m-0 whitespace-pre-wrap">
+                          {help.schema}
+                        </pre>
+                      </div>
+                    </details>
+                  );
+                })()}
               </>
             )}
 
@@ -616,7 +840,7 @@ function Monitors() {
                 </div>
               </div>
             )}
-            <div className="button-row" style={{ marginTop: '1rem' }}>
+            <div className="button-row mt-4">
               <button type="submit">Create Monitor</button>
               <button
                 type="button"
@@ -644,18 +868,26 @@ function Monitors() {
             required
           />
 
-          {(editingMonitorType === 'http' ||
-            editingMonitorType === 'external') && (
-            <>
-              <label htmlFor="edit-url">URL</label>
-              <input
-                id="edit-url"
-                value={editUrl}
-                onChange={(e) => setEditUrl(e.target.value)}
-                required
-              />
-            </>
-          )}
+          {editingMonitorType !== 'webhook' &&
+            editingMonitorType !== 'manual' &&
+            editingMonitorType !== 'heartbeat' && (
+              <>
+                <label htmlFor="edit-url">
+                  {editingMonitorType === 'dns' ||
+                  editingMonitorType === 'tcp' ||
+                  editingMonitorType === 'ping' ||
+                  editingMonitorType === 'tls'
+                    ? 'Target'
+                    : 'URL'}
+                </label>
+                <input
+                  id="edit-url"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  required
+                />
+              </>
+            )}
 
           {editingMonitorType === 'external' && (
             <>
@@ -674,6 +906,59 @@ function Monitors() {
               </select>
             </>
           )}
+
+          {editingMonitorType !== 'http' &&
+            editingMonitorType !== 'webhook' &&
+            editingMonitorType !== 'external' &&
+            editingMonitorType !== 'manual' && (
+              <>
+                <label htmlFor="edit-config">Config (JSON)</label>
+                <p className="muted -mt-1">
+                  Optional. Leave blank to use defaults.
+                </p>
+                <textarea
+                  id="edit-config"
+                  value={editCheckConfig}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEditCheckConfig(value);
+                    setEditCheckConfigError(validateJsonConfig(value));
+                  }}
+                  rows={4}
+                />
+                {editCheckConfigError ? <p className="text-red-600">{editCheckConfigError}</p> : null}
+                {(() => {
+                  const help = configHelp(editingMonitorType);
+                  if (!help) return null;
+                  return (
+                    <details className="mt-2">
+                      <summary className="muted cursor-pointer select-none">
+                        {help.title} config help
+                      </summary>
+                      <p className="muted mt-2">
+                        {help.description}
+                      </p>
+                      <div className="mt-2">
+                        <div className="muted mb-1">
+                          Example
+                        </div>
+                        <pre className="m-0 whitespace-pre-wrap">
+                          {help.example}
+                        </pre>
+                      </div>
+                      <div className="mt-2">
+                        <div className="muted mb-1">
+                          Schema
+                        </div>
+                        <pre className="m-0 whitespace-pre-wrap">
+                          {help.schema}
+                        </pre>
+                      </div>
+                    </details>
+                  );
+                })()}
+              </>
+            )}
 
           {editingMonitorType !== 'webhook' &&
             editingMonitorType !== 'manual' && (
@@ -714,7 +999,7 @@ function Monitors() {
               </div>
             )}
 
-          <div className="button-row" style={{ marginTop: '1rem' }}>
+          <div className="button-row mt-4">
             <button type="submit">Save Changes</button>
             <button type="button" className="outline" onClick={cancelEditing}>
               Cancel
@@ -748,7 +1033,7 @@ function Monitors() {
             placeholder="Optional status message"
           />
 
-          <div className="button-row" style={{ marginTop: '1rem' }}>
+          <div className="button-row mt-4">
             <button type="submit">Update Status</button>
             <button
               type="button"

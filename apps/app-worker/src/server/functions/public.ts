@@ -10,15 +10,8 @@ import {
 } from "../repositories/status-pages";
 import { rebuildStatusSnapshot, type StatusSnapshot } from "../services/status-snapshots";
 
-const PublicStatusSchema = {
-  slug: /^[a-z0-9-]{2,60}$/,
-};
-
-export const getPublicStatusFn = createServerFn({ method: "GET" })
+export const getPublicStatusFn = createServerFn({ method: 'GET' })
   .inputValidator((data: { slug: string }) => {
-    if (!PublicStatusSchema.slug.test(data.slug)) {
-      throw new Error("Invalid slug");
-    }
     return data;
   })
   .handler(async ({ data }): Promise<StatusSnapshot> => {
@@ -29,7 +22,7 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
     });
 
     if (!success) {
-      throw new Error("Rate limit exceeded");
+      throw new Error('Rate limit exceeded');
     }
 
     const db = getDb(vars.DB);
@@ -40,7 +33,7 @@ export const getPublicStatusFn = createServerFn({ method: "GET" })
 
     const cached = await vars.KV.get(
       getPublicStatusSnapshotCacheKey(data.slug),
-      "json",
+      'json',
     );
     if (isStatusSnapshot(cached)) {
       return cached;

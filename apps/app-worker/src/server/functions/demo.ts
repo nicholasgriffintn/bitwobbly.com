@@ -308,12 +308,21 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
     const monitorWebhookId = demoId('mon', key, 'webhook');
     const monitorManualId = demoId('mon', key, 'manual');
     const monitorExternalId = demoId('mon', key, 'external');
+    const monitorKeywordId = demoId('mon', key, 'keyword');
+    const monitorAssertionsId = demoId('mon', key, 'assertions');
+    const monitorTlsId = demoId('mon', key, 'tls');
+    const monitorDnsId = demoId('mon', key, 'dns');
+    const monitorTcpId = demoId('mon', key, 'tcp');
+    const monitorHeartbeatId = demoId('mon', key, 'heartbeat');
 
     const webhookTokenHash = await hashWebhookToken(
       `demo-webhook-token-${key}`,
     );
+    const heartbeatTokenHash = await hashWebhookToken(
+      `demo-heartbeat-token-${key}`,
+    );
 
-    await db.insert(schema.monitors).values([
+    const demoMonitors = [
       {
         id: monitorApiId,
         teamId,
@@ -347,6 +356,120 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         webhookToken: null,
         externalConfig: null,
         createdAt: unixToIso(now - 65 * DAY_SECONDS),
+      },
+      {
+        id: monitorAssertionsId,
+        teamId,
+        name: 'API Health (Assertions)',
+        url: 'https://demo-api.bitwobbly.com/health',
+        method: 'GET',
+        timeoutMs: 5000,
+        intervalSeconds: 60,
+        failureThreshold: 2,
+        enabled: 1,
+        nextRunAt: now + 55,
+        lockedUntil: 0,
+        type: 'http_assert',
+        webhookToken: null,
+        externalConfig: JSON.stringify({
+          expectedStatus: [200],
+          bodyIncludes: 'ok',
+        }),
+        createdAt: unixToIso(now - 30 * DAY_SECONDS),
+      },
+      {
+        id: monitorKeywordId,
+        teamId,
+        name: 'Docs Keyword (Match)',
+        url: 'https://example.com',
+        method: 'GET',
+        timeoutMs: 8000,
+        intervalSeconds: 120,
+        failureThreshold: 2,
+        enabled: 1,
+        nextRunAt: now + 35,
+        lockedUntil: 0,
+        type: 'http_keyword',
+        webhookToken: null,
+        externalConfig: JSON.stringify({
+          keyword: 'example',
+          caseSensitive: false,
+        }),
+        createdAt: unixToIso(now - 25 * DAY_SECONDS),
+      },
+      {
+        id: monitorTlsId,
+        teamId,
+        name: 'TLS Certificate (Expiry)',
+        url: 'example.com:443',
+        method: 'GET',
+        timeoutMs: 8000,
+        intervalSeconds: 3600,
+        failureThreshold: 1,
+        enabled: 1,
+        nextRunAt: now + 250,
+        lockedUntil: 0,
+        type: 'tls',
+        webhookToken: null,
+        externalConfig: JSON.stringify({
+          minDaysRemaining: 14,
+          allowInvalid: false,
+        }),
+        createdAt: unixToIso(now - 8 * DAY_SECONDS),
+      },
+      {
+        id: monitorDnsId,
+        teamId,
+        name: 'DNS (DoH)',
+        url: 'example.com',
+        method: 'GET',
+        timeoutMs: 6000,
+        intervalSeconds: 300,
+        failureThreshold: 2,
+        enabled: 1,
+        nextRunAt: now + 190,
+        lockedUntil: 0,
+        type: 'dns',
+        webhookToken: null,
+        externalConfig: JSON.stringify({
+          recordType: 'A',
+          expectedIncludes: '.',
+        }),
+        createdAt: unixToIso(now - 6 * DAY_SECONDS),
+      },
+      {
+        id: monitorTcpId,
+        teamId,
+        name: 'TCP (Connect)',
+        url: 'example.com:443',
+        method: 'GET',
+        timeoutMs: 5000,
+        intervalSeconds: 120,
+        failureThreshold: 2,
+        enabled: 1,
+        nextRunAt: now + 140,
+        lockedUntil: 0,
+        type: 'tcp',
+        webhookToken: null,
+        externalConfig: null,
+        createdAt: unixToIso(now - 5 * DAY_SECONDS),
+      },
+      {
+        id: monitorHeartbeatId,
+        teamId,
+        name: 'Cron Heartbeat',
+        url: null,
+        method: 'GET',
+        timeoutMs: 8000,
+        intervalSeconds: 300,
+        failureThreshold: 1,
+        enabled: 1,
+        nextRunAt: now + 300,
+        lockedUntil: 0,
+        type: 'heartbeat',
+        webhookToken: heartbeatTokenHash,
+        externalConfig: JSON.stringify({ graceSeconds: 60 }),
+        createdAt: unixToIso(now - 3 * DAY_SECONDS),
       },
       {
         id: monitorWebhookId,
@@ -399,9 +522,17 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         externalConfig: JSON.stringify({ serviceType: 'cloudflare-kv' }),
         createdAt: unixToIso(now - 10 * DAY_SECONDS),
       },
-    ]);
+    ];
 
-    await db.insert(schema.monitorState).values([
+    for (const monitor of demoMonitors) {
+      try {
+        await db.insert(schema.monitors).values(monitor);
+      } catch (e) {
+        console.error('Error inserting monitor:', e);
+      }
+    }
+
+    const demoMonitorStates = [
       {
         monitorId: monitorApiId,
         lastCheckedAt: now - 30,
@@ -421,6 +552,66 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         lastError: '503 Service Unavailable',
         incidentOpen: 1,
         updatedAt: unixToIso(now - 25),
+      },
+      {
+        monitorId: monitorAssertionsId,
+        lastCheckedAt: now - 40,
+        lastStatus: 'up',
+        lastLatencyMs: 180,
+        consecutiveFailures: 0,
+        lastError: null,
+        incidentOpen: 0,
+        updatedAt: unixToIso(now - 40),
+      },
+      {
+        monitorId: monitorKeywordId,
+        lastCheckedAt: now - 70,
+        lastStatus: 'up',
+        lastLatencyMs: 210,
+        consecutiveFailures: 0,
+        lastError: null,
+        incidentOpen: 0,
+        updatedAt: unixToIso(now - 70),
+      },
+      {
+        monitorId: monitorTlsId,
+        lastCheckedAt: now - 200,
+        lastStatus: 'up',
+        lastLatencyMs: 120,
+        consecutiveFailures: 0,
+        lastError: null,
+        incidentOpen: 0,
+        updatedAt: unixToIso(now - 200),
+      },
+      {
+        monitorId: monitorDnsId,
+        lastCheckedAt: now - 160,
+        lastStatus: 'up',
+        lastLatencyMs: 95,
+        consecutiveFailures: 0,
+        lastError: null,
+        incidentOpen: 0,
+        updatedAt: unixToIso(now - 160),
+      },
+      {
+        monitorId: monitorTcpId,
+        lastCheckedAt: now - 110,
+        lastStatus: 'up',
+        lastLatencyMs: 60,
+        consecutiveFailures: 0,
+        lastError: null,
+        incidentOpen: 0,
+        updatedAt: unixToIso(now - 110),
+      },
+      {
+        monitorId: monitorHeartbeatId,
+        lastCheckedAt: now - 240,
+        lastStatus: 'up',
+        lastLatencyMs: null,
+        consecutiveFailures: 0,
+        lastError: null,
+        incidentOpen: 0,
+        updatedAt: unixToIso(now - 240),
       },
       {
         monitorId: monitorWebhookId,
@@ -452,7 +643,15 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         incidentOpen: 0,
         updatedAt: unixToIso(now - 140),
       },
-    ]);
+    ];
+
+    for (const state of demoMonitorStates) {
+      try {
+        await db.insert(schema.monitorState).values(state);
+      } catch (e) {
+        console.error('Error inserting monitor state:', e);
+      }
+    }
 
     const componentApiId = demoId('cmp', key, 'api');
     const componentCheckoutId = demoId('cmp', key, 'checkout');
@@ -460,7 +659,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
     const componentAuthId = demoId('cmp', key, 'auth');
     const componentSupportId = demoId('cmp', key, 'support');
 
-    await db.insert(schema.components).values([
+    const demoComponents = [
       {
         id: componentApiId,
         teamId,
@@ -506,7 +705,15 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         statusUpdatedAt: now - 600,
         createdAt: unixToIso(now - 30 * DAY_SECONDS),
       },
-    ]);
+    ];
+
+    for (const component of demoComponents) {
+      try {
+        await db.insert(schema.components).values(component);
+      } catch (e) {
+        console.error('Error inserting component:', e);
+      }
+    }
 
     const statusPagePublicId = demoId('sp', key, 'public');
     const statusPageInternalId = demoId('sp', key, 'internal');

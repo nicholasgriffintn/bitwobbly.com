@@ -6,23 +6,18 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ## Plan of Completion
 
-#### Phase 0 (Complete)
-
-- [x] Enforce unique slugs per team and globally safe public routing; validate `is_public` for `/status/$slug`.
-- [x] Fix monitor rule API contracts (`monitorId` in create/update validators and repository writes).
-- [x] Route webhook/manual status transitions through the same incident + alert pipeline as checker events.
-- [x] Add idempotency guards for queue handlers (dedupe keys for alert jobs and sentry event writes).
-- [x] Add strict authn/authz checks on all mutable server functions, and apply API rate limiter on authenticated API surfaces.
-- [x] Turn on baseline observability (logs, traces, queue failure metrics, dead-letter queues).
-
 #### Phase 1
 
-- Expand monitor types: HTTP assertions, keyword/body match, TLS expiry, DNS, TCP, ping, cron heartbeat, browser checks.
-- Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
-- Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
-- Add status page access modes: public, private (password), and internal (team-only).
-- Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
-- Add SLO/Uptime reporting with exportable monthly reports and historical availability APIs.
+- [ ] Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
+- [ ] Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
+- [ ] Add status page access modes: public, private (password), and internal (team-only).
+- [ ] Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
+- [ ] Add SLO/Uptime reporting with exportable monthly reports and historical availability APIs.
+
+#### Phase 1.5
+
+- [ ] Potentially add Ping (ICMP) checks if not too complex to implement in Workers.
+- [ ] Implement browser checks with https://developers.cloudflare.com/browser-rendering/, potentially even https://developers.cloudflare.com/browser-rendering/stagehand/.
 
 #### Phase 2
 

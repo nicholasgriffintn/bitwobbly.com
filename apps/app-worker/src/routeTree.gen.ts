@@ -31,6 +31,7 @@ import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
 import { Route as AppComponentsRouteImport } from './routes/app/components'
 import { Route as AppIssuesIndexRouteImport } from './routes/app/issues/index'
 import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.$monitorId'
+import { Route as ApiHeartbeatsMonitorIdRouteImport } from './routes/api.heartbeats.$monitorId'
 import { Route as AppIssuesProjectIdIndexRouteImport } from './routes/app/issues/$projectId/index'
 import { Route as AppIssuesProjectIdIssueIssueIdRouteImport } from './routes/app/issues/$projectId/issue/$issueId'
 
@@ -144,6 +145,11 @@ const ApiWebhooksMonitorIdRoute = ApiWebhooksMonitorIdRouteImport.update({
   path: '/api/webhooks/$monitorId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHeartbeatsMonitorIdRoute = ApiHeartbeatsMonitorIdRouteImport.update({
+  id: '/api/heartbeats/$monitorId',
+  path: '/api/heartbeats/$monitorId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppIssuesProjectIdIndexRoute = AppIssuesProjectIdIndexRouteImport.update({
   id: '/issues/$projectId/',
   path: '/issues/$projectId/',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRoute
   '/app/': typeof AppIndexRoute
+  '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
   '/app/issues/': typeof AppIssuesIndexRoute
   '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRoute
   '/app': typeof AppIndexRoute
+  '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
   '/app/issues': typeof AppIssuesIndexRoute
   '/app/issues/$projectId': typeof AppIssuesProjectIdIndexRoute
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRoute
   '/app/': typeof AppIndexRoute
+  '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
   '/app/issues/': typeof AppIssuesIndexRoute
   '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app/'
+    | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
     | '/app/issues/'
     | '/app/issues/$projectId/'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app'
+    | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
     | '/app/issues'
     | '/app/issues/$projectId'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app/'
+    | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
     | '/app/issues/'
     | '/app/issues/$projectId/'
@@ -328,6 +340,7 @@ export interface RootRouteChildren {
   SetupMfaRoute: typeof SetupMfaRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   StatusSlugRoute: typeof StatusSlugRoute
+  ApiHeartbeatsMonitorIdRoute: typeof ApiHeartbeatsMonitorIdRoute
   ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute
 }
 
@@ -487,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksMonitorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/heartbeats/$monitorId': {
+      id: '/api/heartbeats/$monitorId'
+      path: '/api/heartbeats/$monitorId'
+      fullPath: '/api/heartbeats/$monitorId'
+      preLoaderRoute: typeof ApiHeartbeatsMonitorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/issues/$projectId/': {
       id: '/app/issues/$projectId/'
       path: '/issues/$projectId'
@@ -546,6 +566,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupMfaRoute: SetupMfaRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   StatusSlugRoute: StatusSlugRoute,
+  ApiHeartbeatsMonitorIdRoute: ApiHeartbeatsMonitorIdRoute,
   ApiWebhooksMonitorIdRoute: ApiWebhooksMonitorIdRoute,
 }
 export const routeTree = rootRouteImport
