@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
-import { getPublicStatusFn } from "@/server/functions/public";
+import {
+  getPublicStatusFn,
+  type PublicStatusResult,
+} from "@/server/functions/public";
 import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
 import { StatusBadge, isStatusType } from "@/components/ui";
-import type { StatusSnapshot } from "@/server/services/status-snapshots";
+import { PrivateStatusPasswordGate } from "@/components/status/PrivateStatusPasswordGate";
 
 export const Route = createFileRoute("/status/$slug")({
-  component: PublicStatusPage,
-  loader: async ({ params }): Promise<StatusSnapshot> => {
-    const snapshot = await getPublicStatusFn({ data: { slug: params.slug } });
-    return snapshot;
+  component: StatusPage,
+  loader: async ({ params }): Promise<PublicStatusResult> => {
+    return await getPublicStatusFn({ data: { slug: params.slug } });
   },
   notFoundComponent: () => {
     return (
@@ -26,9 +28,17 @@ export const Route = createFileRoute("/status/$slug")({
   },
 });
 
-function PublicStatusPage() {
-  const snapshot = Route.useLoaderData();
+function StatusPage() {
+  const data = Route.useLoaderData();
+  const { slug } = Route.useParams();
+
+  if (data.kind === "password_required") {
+    return <PrivateStatusPasswordGate slug={slug} page={data.page} />;
+  }
+
+  const snapshot = data.snapshot;
   const { page, components, incidents } = snapshot;
+  const brandColor = page.brand_color || "#007bff";
 
   const activeIncidents = incidents.filter((i) => i.status !== "resolved");
   const pastIncidents = incidents.filter((i) => i.status === "resolved");
@@ -207,7 +217,7 @@ function PublicStatusPage() {
             font-weight: 600;
             font-size: 0.875rem;
             text-transform: capitalize;
-            color: ${page.brand_color};
+            color: ${brandColor};
           }
 
           .update-time {
@@ -254,7 +264,7 @@ function PublicStatusPage() {
           }
 
           .powered-by a {
-            color: ${page.brand_color};
+            color: ${brandColor};
             text-decoration: none;
             font-weight: 500;
           }

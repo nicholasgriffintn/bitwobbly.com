@@ -9,9 +9,10 @@ type StatusPage = {
   id: string;
   name: string;
   slug: string;
-  logo_url?: string;
-  brand_color?: string;
-  custom_css?: string;
+  access_mode: "public" | "private" | "internal";
+  logo_url: string | null;
+  brand_color: string | null;
+  custom_css: string | null;
 };
 
 interface EditStatusPageModalProps {
@@ -29,6 +30,10 @@ export function EditStatusPageModal({
 }: EditStatusPageModalProps) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [accessMode, setAccessMode] = useState<
+    "public" | "private" | "internal"
+  >("public");
+  const [password, setPassword] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [brandColor, setBrandColor] = useState("#007bff");
   const [customCss, setCustomCss] = useState("");
@@ -40,6 +45,8 @@ export function EditStatusPageModal({
     if (page) {
       setName(page.name);
       setSlug(page.slug);
+      setAccessMode(page.access_mode);
+      setPassword("");
       setLogoUrl(page.logo_url || "");
       setBrandColor(page.brand_color || "#007bff");
       setCustomCss(page.custom_css || "");
@@ -61,6 +68,11 @@ export function EditStatusPageModal({
           id: page.id,
           name,
           slug,
+          access_mode: accessMode,
+          password:
+            accessMode === "private" && password.trim().length
+              ? password
+              : undefined,
           logo_url: logoUrl.trim() || null,
           brand_color: brandColor.trim() || "#007bff",
           custom_css: customCss.trim() || null,
@@ -91,6 +103,40 @@ export function EditStatusPageModal({
           onChange={(event) => setSlug(event.target.value)}
           required
         />
+
+        <label htmlFor="edit-status-access-mode">Access</label>
+        <select
+          id="edit-status-access-mode"
+          value={accessMode}
+          onChange={(event) => {
+            const mode = event.target.value as typeof accessMode;
+            setAccessMode(mode);
+            if (mode !== "private") setPassword("");
+          }}
+        >
+          <option value="public">Public</option>
+          <option value="private">Private (password)</option>
+          <option value="internal">Internal (team-only)</option>
+        </select>
+
+        {accessMode === "private" && (
+          <>
+            <label htmlFor="edit-status-password">
+              {page?.access_mode === "private"
+                ? "Set new password (optional)"
+                : "Password"}
+            </label>
+            <input
+              id="edit-status-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="At least 8 characters"
+              minLength={8}
+              required={page?.access_mode !== "private"}
+            />
+          </>
+        )}
 
         <div className="mb-2 mt-4 font-semibold">Customization (optional)</div>
 

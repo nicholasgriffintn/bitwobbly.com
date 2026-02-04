@@ -12,21 +12,29 @@ export async function rebuildAllSnapshots(env: {
       slug: schema.statusPages.slug,
       name: schema.statusPages.name,
       teamId: schema.statusPages.teamId,
+      logoUrl: schema.statusPages.logoUrl,
+      brandColor: schema.statusPages.brandColor,
+      customCss: schema.statusPages.customCss,
     })
     .from(schema.statusPages)
-    .where(eq(schema.statusPages.isPublic, 1));
+    .where(inArray(schema.statusPages.accessMode, ["public", "private"]));
 
   for (const p of pages) {
-    await rebuildStatusSnapshot(env, p.id, p.slug, p.name, p.teamId);
+    await rebuildStatusSnapshot(env, p);
   }
 }
 
 async function rebuildStatusSnapshot(
   env: { DB: D1Database; KV: KVNamespace },
-  statusPageId: string,
-  slug: string,
-  name: string,
-  teamId: string,
+  page: {
+    id: string;
+    slug: string;
+    name: string;
+    teamId: string;
+    logoUrl: string | null;
+    brandColor: string | null;
+    customCss: string | null;
+  },
 ) {
   const db = createDb(env.DB);
 
@@ -41,7 +49,7 @@ async function rebuildStatusSnapshot(
       schema.components,
       eq(schema.components.id, schema.statusPageComponents.componentId),
     )
-    .where(eq(schema.statusPageComponents.statusPageId, statusPageId))
+    .where(eq(schema.statusPageComponents.statusPageId, page.id))
     .orderBy(schema.statusPageComponents.sortOrder);
 
   const compsWithStatus = [];
@@ -69,8 +77,8 @@ async function rebuildStatusSnapshot(
     .from(schema.incidents)
     .where(
       and(
-        eq(schema.incidents.teamId, teamId),
-        eq(schema.incidents.statusPageId, statusPageId),
+        eq(schema.incidents.teamId, page.teamId),
+        eq(schema.incidents.statusPageId, page.id),
         ne(schema.incidents.status, "resolved"),
       ),
     )
@@ -82,8 +90,8 @@ async function rebuildStatusSnapshot(
     .from(schema.incidents)
     .where(
       and(
-        eq(schema.incidents.teamId, teamId),
-        eq(schema.incidents.statusPageId, statusPageId),
+        eq(schema.incidents.teamId, page.teamId),
+        eq(schema.incidents.statusPageId, page.id),
         eq(schema.incidents.status, "resolved"),
       ),
     )
@@ -114,7 +122,14 @@ async function rebuildStatusSnapshot(
 
   const snapshot = {
     generated_at: new Date().toISOString(),
-    page: { id: statusPageId, name, slug },
+    page: {
+      id: page.id,
+      name: page.name,
+      slug: page.slug,
+      logo_url: page.logoUrl,
+      brand_color: page.brandColor,
+      custom_css: page.customCss,
+    },
     components: compsWithStatus,
     incidents: incidents.map((i) => ({
       id: i.id,
@@ -131,7 +146,7 @@ async function rebuildStatusSnapshot(
     })),
   };
 
-  await env.KV.put(`status:public:${slug}`, JSON.stringify(snapshot), {
+  await env.KV.put(`status:public:${page.slug}`, JSON.stringify(snapshot), {
     expirationTtl: 60,
   });
 }

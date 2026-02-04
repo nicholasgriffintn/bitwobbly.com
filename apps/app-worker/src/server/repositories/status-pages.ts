@@ -1,5 +1,7 @@
 import { schema, nowIso, randomId, type DB } from "@bitwobbly/shared";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
+
+export type StatusPageAccessMode = "public" | "private" | "internal";
 
 export async function listStatusPages(db: DB, teamId: string) {
   return await db
@@ -15,6 +17,8 @@ export async function createStatusPage(
   input: {
     name: string;
     slug: string;
+    access_mode: StatusPageAccessMode;
+    password_hash?: string | null;
     logo_url?: string;
     brand_color?: string;
     custom_css?: string;
@@ -35,7 +39,12 @@ export async function createStatusPage(
   const existing = await db
     .select({ id: schema.statusPages.id })
     .from(schema.statusPages)
-    .where(and(eq(schema.statusPages.slug, input.slug), eq(schema.statusPages.isPublic, 1)))
+    .where(
+      and(
+        eq(schema.statusPages.slug, input.slug),
+        inArray(schema.statusPages.accessMode, ["public", "private"]),
+      ),
+    )
     .limit(1);
 
   if (existing.length) {
@@ -48,7 +57,9 @@ export async function createStatusPage(
     teamId,
     slug: input.slug,
     name: input.name,
-    isPublic: 1,
+    isPublic: input.access_mode === "internal" ? 0 : 1,
+    accessMode: input.access_mode,
+    passwordHash: input.password_hash ?? null,
     logoUrl: input.logo_url || null,
     brandColor: input.brand_color || "#007bff",
     customCss: input.custom_css || null,
@@ -86,23 +97,31 @@ export async function getStatusPageBySlug(
   return rows[0] || null;
 }
 
-export async function getPublicStatusPageBySlug(db: DB, slug: string) {
+export async function getExternalStatusPageBySlug(db: DB, slug: string) {
   const rows = await db
     .select()
     .from(schema.statusPages)
-    .where(and(eq(schema.statusPages.slug, slug), eq(schema.statusPages.isPublic, 1)))
+    .where(
+      and(
+        eq(schema.statusPages.slug, slug),
+        inArray(schema.statusPages.accessMode, ["public", "private"]),
+      ),
+    )
     .limit(2);
 
   if (rows.length !== 1) return null;
   return rows[0];
 }
 
-export async function publicStatusPageExistsBySlug(db: DB, slug: string) {
+export async function externalStatusPageExistsBySlug(db: DB, slug: string) {
   const page = await db
     .select({ id: schema.statusPages.id })
     .from(schema.statusPages)
     .where(
-      and(eq(schema.statusPages.slug, slug), eq(schema.statusPages.isPublic, 1)),
+      and(
+        eq(schema.statusPages.slug, slug),
+        inArray(schema.statusPages.accessMode, ["public", "private"]),
+      ),
     )
     .limit(2);
 
@@ -116,11 +135,20 @@ export async function updateStatusPage(
   input: {
     name?: string;
     slug?: string;
+    access_mode?: StatusPageAccessMode;
+    password_hash?: string | null;
     logo_url?: string | null;
     brand_color?: string;
     custom_css?: string | null;
   },
 ) {
+  const current = await getStatusPageById(db, teamId, statusPageId);
+  if (!current) {
+    throw new Error("Status page not found");
+  }
+
+  const nextSlug = input.slug ?? current.slug;
+
   if (input.slug !== undefined) {
     const existingInTeam = await db
       .select({ id: schema.statusPages.id })
@@ -136,23 +164,34 @@ export async function updateStatusPage(
     if (existingInTeam.length && existingInTeam[0].id !== statusPageId) {
       throw new Error("Status page slug is already in use");
     }
-
-    const existing = await db
-      .select({ id: schema.statusPages.id })
-      .from(schema.statusPages)
-      .where(
-        and(eq(schema.statusPages.slug, input.slug), eq(schema.statusPages.isPublic, 1)),
-      )
-      .limit(1);
-
-    if (existing.length && existing[0].id !== statusPageId) {
-      throw new Error("Status page slug is already in use");
-    }
   }
 
-  const updates: Record<string, string | null> = {};
+  const externalSlugConflict = await db
+    .select({ id: schema.statusPages.id })
+    .from(schema.statusPages)
+    .where(
+      and(
+        eq(schema.statusPages.slug, nextSlug),
+        inArray(schema.statusPages.accessMode, ["public", "private"]),
+      ),
+    )
+    .limit(2);
+
+  if (
+    externalSlugConflict.length &&
+    externalSlugConflict.some((r) => r.id !== statusPageId)
+  ) {
+    throw new Error("Status page slug is already in use");
+  }
+
+  const updates: Record<string, string | number | null> = {};
   if (input.name !== undefined) updates.name = input.name;
   if (input.slug !== undefined) updates.slug = input.slug;
+  if (input.access_mode !== undefined) {
+    updates.accessMode = input.access_mode;
+    updates.isPublic = input.access_mode === "internal" ? 0 : 1;
+  }
+  if (input.password_hash !== undefined) updates.passwordHash = input.password_hash;
   if (input.logo_url !== undefined) updates.logoUrl = input.logo_url;
   if (input.brand_color !== undefined) updates.brandColor = input.brand_color;
   if (input.custom_css !== undefined) updates.customCss = input.custom_css;

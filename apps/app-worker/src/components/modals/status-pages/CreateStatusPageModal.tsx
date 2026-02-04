@@ -18,6 +18,10 @@ export function CreateStatusPageModal({
 }: CreateStatusPageModalProps) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [accessMode, setAccessMode] = useState<
+    "public" | "private" | "internal"
+  >("public");
+  const [password, setPassword] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [brandColor, setBrandColor] = useState("#007bff");
   const [customCss, setCustomCss] = useState("");
@@ -28,6 +32,8 @@ export function CreateStatusPageModal({
   const handleClose = () => {
     setName("");
     setSlug("");
+    setAccessMode("public");
+    setPassword("");
     setLogoUrl("");
     setBrandColor("#007bff");
     setCustomCss("");
@@ -43,6 +49,8 @@ export function CreateStatusPageModal({
         data: {
           name,
           slug,
+          access_mode: accessMode,
+          password: accessMode === "private" ? password : undefined,
           logo_url: logoUrl.trim() || undefined,
           brand_color: brandColor.trim() || "#007bff",
           custom_css: customCss.trim() || undefined,
@@ -75,6 +83,34 @@ export function CreateStatusPageModal({
           placeholder="status"
           required
         />
+
+        <label htmlFor="status-access-mode">Access</label>
+        <select
+          id="status-access-mode"
+          value={accessMode}
+          onChange={(event) =>
+            setAccessMode(event.target.value as typeof accessMode)
+          }
+        >
+          <option value="public">Public</option>
+          <option value="private">Private (password)</option>
+          <option value="internal">Internal (team-only)</option>
+        </select>
+
+        {accessMode === "private" && (
+          <>
+            <label htmlFor="status-password">Password</label>
+            <input
+              id="status-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="At least 8 characters"
+              minLength={8}
+              required
+            />
+          </>
+        )}
 
         <div className="mb-2 mt-4 font-semibold">Customization (optional)</div>
 

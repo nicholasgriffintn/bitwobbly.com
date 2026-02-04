@@ -6,6 +6,7 @@ import { requireOwner } from '@bitwobbly/auth/server';
 import { hashWebhookToken, schema } from '@bitwobbly/shared';
 
 import { getDb } from '../lib/db';
+import { hashPassword } from '../lib/auth';
 import { requireTeam } from '../lib/auth-middleware';
 import {
   getPublicStatusSnapshotCacheKey,
@@ -716,6 +717,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
     }
 
     const statusPagePublicId = demoId('sp', key, 'public');
+    const statusPagePrivateId = demoId('sp', key, 'private');
     const statusPageInternalId = demoId('sp', key, 'internal');
 
     await db.insert(schema.statusPages).values([
@@ -725,10 +727,25 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         slug: `acme-demo-${key}`,
         name: 'Acme Demo Status',
         isPublic: 1,
+        accessMode: 'public',
+        passwordHash: null,
         logoUrl: null,
         brandColor: '#0f766e',
         customCss: null,
         createdAt: unixToIso(now - 100 * DAY_SECONDS),
+      },
+      {
+        id: statusPagePrivateId,
+        teamId,
+        slug: `acme-demo-private-${key}`,
+        name: 'Acme Demo (Password Protected)',
+        isPublic: 1,
+        accessMode: 'private',
+        passwordHash: await hashPassword('demo-password-123'),
+        logoUrl: null,
+        brandColor: '#2563eb',
+        customCss: null,
+        createdAt: unixToIso(now - 60 * DAY_SECONDS),
       },
       {
         id: statusPageInternalId,
@@ -736,6 +753,8 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         slug: `acme-demo-internal-${key}`,
         name: 'Acme Internal Ops',
         isPublic: 0,
+        accessMode: 'internal',
+        passwordHash: null,
         logoUrl: null,
         brandColor: '#b45309',
         customCss: '.status-header { letter-spacing: 0.02em; }',
@@ -763,6 +782,21 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         statusPageId: statusPagePublicId,
         componentId: componentAuthId,
         sortOrder: 4,
+      },
+      {
+        statusPageId: statusPagePrivateId,
+        componentId: componentApiId,
+        sortOrder: 1,
+      },
+      {
+        statusPageId: statusPagePrivateId,
+        componentId: componentPaymentsId,
+        sortOrder: 2,
+      },
+      {
+        statusPageId: statusPagePrivateId,
+        componentId: componentAuthId,
+        sortOrder: 3,
       },
       {
         statusPageId: statusPageInternalId,

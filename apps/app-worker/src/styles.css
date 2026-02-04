@@ -443,6 +443,36 @@ button.button-danger {
   margin-bottom: 16px;
 }
 
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title-text {
+  min-width: 0;
+}
+
+.card-title-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.card-title-link {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.card-title-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
 .card-actions {
   display: flex;
   gap: 10px;

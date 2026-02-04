@@ -213,7 +213,15 @@ function Overview() {
 
       {incidents.length > 0 && (
         <Card>
-          <CardTitle>Active incidents</CardTitle>
+          <CardTitle
+            actions={
+              <Link className="card-title-link" to="/app/incidents">
+                View all
+              </Link>
+            }
+          >
+            Active incidents
+          </CardTitle>
           <ListContainer isEmpty={false}>
             {incidents.slice(0, 3).map((incident) => (
               <ListRow
@@ -253,7 +261,17 @@ function Overview() {
 
       <div className="grid two">
         <Card>
-          <CardTitle>Recent monitors</CardTitle>
+          <CardTitle
+            actions={
+              monitors.length > 0 ? (
+                <Link className="card-title-link" to="/app/monitors">
+                  View all
+                </Link>
+              ) : null
+            }
+          >
+            Recent monitors
+          </CardTitle>
           <ListContainer
             isEmpty={!monitors.length}
             emptyMessage="No monitors yet."
@@ -265,28 +283,33 @@ function Overview() {
               return (
                 <ListRow
                   key={monitor.id}
-                  title={monitor.name}
-                  subtitle={monitor.url}
-                  actions={
-                    <StatusBadge status={status}>
-                      {toTitleCase(status)}
-                    </StatusBadge>
+                  title={
+                    <>
+                      {monitor.name}
+                      <StatusBadge className="ml-2" status={status}>
+                        {toTitleCase(status)}
+                      </StatusBadge>
+                    </>
                   }
+                  subtitle={monitor.url}
                 />
               );
             })}
-            {monitors.length > 0 && (
-              <Link to="/app/monitors">
-                <Button type="button" variant="outline" className="w-full mt-2">
-                  View all monitors
-                </Button>
-              </Link>
-            )}
           </ListContainer>
         </Card>
 
         <Card>
-          <CardTitle>Status pages</CardTitle>
+          <CardTitle
+            actions={
+              pages.length > 0 ? (
+                <Link className="card-title-link" to="/app/status-pages">
+                  View all
+                </Link>
+              ) : null
+            }
+          >
+            Status pages
+          </CardTitle>
           <ListContainer
             isEmpty={!pages.length}
             emptyMessage="No status pages yet."
@@ -309,13 +332,6 @@ function Overview() {
                 }
               />
             ))}
-            {pages.length > 0 && (
-              <Link to="/app/status-pages">
-                <Button type="button" variant="outline" className="w-full mt-2">
-                  Manage status pages
-                </Button>
-              </Link>
-            )}
           </ListContainer>
         </Card>
       </div>

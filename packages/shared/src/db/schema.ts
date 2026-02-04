@@ -55,6 +55,8 @@ export const statusPages = sqliteTable(
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     isPublic: integer("is_public").notNull().default(1),
+    accessMode: text("access_mode").notNull().default("public"),
+    passwordHash: text("password_hash"),
     logoUrl: text("logo_url"),
     brandColor: text("brand_color").default("#007bff"),
     customCss: text("custom_css"),

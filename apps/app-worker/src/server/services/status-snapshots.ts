@@ -1,7 +1,7 @@
 import type { DB } from "@bitwobbly/shared";
 
 import {
-  getPublicStatusPageBySlug,
+  getExternalStatusPageBySlug,
   getStatusPageById,
   getStatusPageBySlug,
   listComponentsForStatusPage,
@@ -78,13 +78,9 @@ export async function rebuildStatusSnapshot(
   apiToken?: string,
   options?: { teamId?: string; includePrivate?: boolean },
 ): Promise<StatusSnapshot | null> {
-  const includePrivate = options?.includePrivate ?? false;
-
   const page = options?.teamId
     ? await getStatusPageBySlug(db, options.teamId, slug)
-    : includePrivate
-      ? null
-      : await getPublicStatusPageBySlug(db, slug);
+    : await getExternalStatusPageBySlug(db, slug);
 
   if (!page) return null;
 
@@ -160,7 +156,7 @@ export async function rebuildStatusSnapshot(
   };
 
   const cacheKey =
-    options?.teamId && includePrivate
+    options?.teamId
       ? getTeamStatusSnapshotCacheKey(options.teamId, slug)
       : getPublicStatusSnapshotCacheKey(slug);
 
@@ -178,7 +174,7 @@ export async function clearStatusPageCache(
   if (!page) return;
 
   await kv.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug));
-  if (page.isPublic === 1) {
+  if (page.accessMode !== "internal") {
     await kv.delete(getPublicStatusSnapshotCacheKey(page.slug));
   }
 }
@@ -191,9 +187,8 @@ export async function clearAllStatusPageCaches(
   const pages = await listStatusPages(db, teamId);
   for (const page of pages) {
     await kv.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug));
-    if (page.isPublic === 1) {
+    if (page.accessMode !== "internal") {
       await kv.delete(getPublicStatusSnapshotCacheKey(page.slug));
     }
   }
 }
-

@@ -21,11 +21,12 @@ import {
 
 type StatusPage = {
   id: string;
+  access_mode: "public" | "private" | "internal";
   name: string;
   slug: string;
-  logo_url?: string;
-  brand_color?: string;
-  custom_css?: string;
+  logo_url: string | null;
+  brand_color: string | null;
+  custom_css: string | null;
 };
 
 type Component = {
@@ -140,6 +141,11 @@ export default function StatusPages() {
   };
 
   const linkedComponentIds = pageComponents.map((pc) => pc.componentId);
+  const accessLabel = (mode: StatusPage["access_mode"]) => {
+    if (mode === "public") return "Public";
+    if (mode === "private") return "Password";
+    return "Internal";
+  };
 
   return (
     <Page className="page-stack">
@@ -165,7 +171,7 @@ export default function StatusPages() {
                 key={page.id}
                 className="list-item-expanded"
                 title={page.name}
-                subtitle={`/${page.slug}`}
+                subtitle={`/${page.slug} • ${accessLabel(page.access_mode)}`}
                 actions={
                   <>
                     <Button

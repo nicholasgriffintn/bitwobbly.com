@@ -15,7 +15,7 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 #### Monitoring
 
-- [ ] Add status page access modes: public, private (password), and internal (team-only).
+- [x] Add status page access modes: public, private (password), and internal (team-only).
 - [ ] Potentially add Ping (ICMP) checks if not too complex to implement in Workers.
 - [ ] Implement browser checks with https://developers.cloudflare.com/browser-rendering/, potentially even https://developers.cloudflare.com/browser-rendering/stagehand/.
 - [ ] Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
