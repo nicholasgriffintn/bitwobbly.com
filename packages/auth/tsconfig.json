@@ -7,7 +7,8 @@
     "declaration": true,
     "declarationMap": true,
     "jsx": "react-jsx",
-    "types": ["@cloudflare/workers-types"],
+    "allowImportingTsExtensions": true,
+    "types": ["@cloudflare/workers-types", "node"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": ["src/**/*"],

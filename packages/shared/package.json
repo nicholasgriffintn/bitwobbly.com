@@ -7,18 +7,20 @@
     "./db": "./src/db/index.ts",
     "./schema": "./src/db/schema.ts"
   },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --experimental-strip-types --test src/**/*.test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
   "dependencies": {
     "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260123.0",
+    "@types/node": "^25.2.0",
     "drizzle-kit": "^0.28.1",
     "typescript": "^5.9.3"
-  },
-  "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
   }
 }

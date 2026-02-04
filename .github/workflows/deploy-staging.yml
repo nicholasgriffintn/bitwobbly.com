@@ -40,7 +40,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Deploy to Staging
-        run: pnpm deploy:staging
+      - name: Deploy to Production
+        run: pnpm deploy:prod
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # - name: Deploy to Staging
+      #   run: pnpm deploy:staging
+      #   env:
+      #     CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

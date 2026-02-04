@@ -6,13 +6,6 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 ## Plan of Completion
 
-### MVP
-
-- [ ] Complete actions workflows for proper CI/CD and testing.
-- [ ] Expand testing across the full system: unit, integration, e2e, and load tests.
-- [ ] Refactor the codebase and cleanup.
-- [ ] make sure the full system can be used locally.
-
 #### Monitoring
 
 - [ ] Potentially add Ping (ICMP) checks if not too complex to implement in Workers.
@@ -67,7 +60,7 @@ flowchart TD
 
 | App                            | Purpose                                                                                                                                  |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/app-worker`              | React 19 dashboard + API. Manages monitors, status pages, notification channels, issue tracking projects, and auth.                      |
+| `apps/app-worker`              | React dashboard + API. Manages monitors, status pages, notification channels, issue tracking projects, and auth.                      |
 | `apps/scheduler-worker`        | Cron-triggered dispatcher. Finds due monitors and enqueues check jobs.                                                                   |
 | `apps/checker-worker`          | Queue consumer. Performs HTTP checks, tracks failures, opens/resolves incidents via Durable Objects, writes metrics to Analytics Engine. |
 | `apps/notifier-worker`         | Queue consumer. Delivers alerts via webhooks and email (Resend API).                                                                     |
@@ -95,33 +88,35 @@ flowchart TD
 
 ### Prerequisites
 
-- Node.js (ES2022+)
+- Node.js 24+
 - pnpm 10.27.0 (`corepack enable && corepack prepare pnpm@10.27.0`)
-- A Cloudflare account (free tier works for dev)
 
-### Setup
+### Quick Start
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Run database migrations locally
-pnpm --filter @bitwobbly/app-worker db:migrate:local
-
-# Start all workers (each in a separate terminal)
-pnpm -C apps/app-worker dev
-pnpm -C apps/scheduler-worker dev
-pnpm -C apps/checker-worker dev
-pnpm -C apps/notifier-worker dev
-pnpm -C apps/sentry-ingest-worker dev
-pnpm -C apps/sentry-processor-worker dev
+pnpm db:migrate:local
+pnpm dev
 ```
 
-The app worker serves the dashboard at `http://localhost:5173`. API routes are under `/api/*`.
+This runs all core workers concurrently via Turbo. The dashboard is at `http://localhost:5173`.
 
-Local dev uses Wrangler's simulator for D1, KV, Queues, and Durable Objects. All workers share the same persistent state in `/.data` at the workspace root.
+### Running Individual Workers
 
-**Note:** Cron triggers don't auto-run locally. To test monitors, use the "Check Now" button in the UI or run:
+```bash
+pnpm dev:app              # Dashboard + API (port 5173)
+pnpm dev:scheduler        # Cron dispatcher (port 8788)
+pnpm dev:checker          # HTTP checks (port 8787)
+pnpm dev:notifier         # Email/webhook alerts
+pnpm dev:sentry-ingest    # Sentry SDK ingestion
+pnpm dev:sentry-processor # Event grouping
+```
+
+### Local State
+
+Wrangler's simulator handles D1, KV, Queues, and Durable Objects locally. State persists in `.data/` at the workspace root.
+
+Cron triggers don't auto-run locally. Test monitors via the "Check Now" button or:
 
 ```bash
 curl "http://localhost:8788/cdn-cgi/handler/scheduled"
@@ -129,55 +124,12 @@ curl "http://localhost:8788/cdn-cgi/handler/scheduled"
 
 ### Environment Variables
 
-Create `apps/app-worker/.dev.vars`:
+For email notifications, create `apps/notifier-worker/.dev.vars`:
 
-For email notifications locally, add `RESEND_API_KEY` to `apps/notifier-worker/.dev.vars`.
-
-### Scripts
-
-| Command              | Scope | Description                                  |
-| -------------------- | ----- | -------------------------------------------- |
-| `pnpm install`       | Root  | Install all workspace dependencies           |
-| `pnpm lint`          | All   | Run linting across all packages              |
-| `pnpm lint:monorepo` | Root  | Check monorepo constraints (sherif)          |
-| `pnpm typecheck`     | All   | TypeScript type checking across all packages |
+```
+RESEND_API_KEY=re_xxxxx
+```
 
 ## Deployment
 
 All workers deploy to Cloudflare via Wrangler. See [docs/SETUP.md](docs/SETUP.md) for full resource provisioning steps.
-
-### Quick Deploy
-
-1. **Create Cloudflare resources:**
-   - D1 database: `bitwobbly_db`
-   - KV namespace: `bitwobbly_kv`
-   - R2 buckets: `bitwobbly-issues-raw`, `bitwobbly-issues-catalog`
-   - Queues: `bitwobbly-check-jobs`, `bitwobbly-alert-jobs`, `bitwobbly-sentry-events`
-   - Pipelines: `bitwobbly-issues-pipeline` (with R2 Data Catalog sink)
-
-2. **Update `wrangler.jsonc`** in each app with your resource IDs (replace `REPLACE_ME` values).
-
-3. **Set secrets:**
-
-   ```bash
-   cd ../notifier-worker
-   wrangler secret put RESEND_API_KEY
-   ```
-
-4. **Apply migrations remotely:**
-
-   ```bash
-   pnpm -C apps/app-worker db:migrate:remote
-   ```
-
-5. **Deploy each worker:**
-   ```bash
-   pnpm -C apps/app-worker run deploy
-   pnpm -C apps/scheduler-worker run deploy
-   pnpm -C apps/checker-worker run deploy
-   pnpm -C apps/notifier-worker run deploy
-   pnpm -C apps/sentry-ingest-worker run deploy
-   pnpm -C apps/sentry-processor-worker run deploy
-   ```
-
-The app worker is configured to serve from `bitwobbly.com` via custom domain. Update the `routes` in `apps/app-worker/wrangler.jsonc` for your own domain.

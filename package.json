@@ -1,6 +1,7 @@
 {
   "name": "bitwobbly",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@10.27.0",
   "workspaces": [
     "apps/*",
@@ -12,8 +13,13 @@
     "dev:scheduler": "pnpm -C apps/scheduler-worker dev",
     "dev:checker": "pnpm -C apps/checker-worker dev",
     "dev:notifier": "pnpm -C apps/notifier-worker dev",
-    "lint": "turbo run lint",
+    "dev:sentry-ingest": "pnpm -C apps/sentry-ingest-worker dev",
+    "dev:sentry-processor": "pnpm -C apps/sentry-processor-worker dev",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "lint:monorepo": "sherif",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "turbo run typecheck",
     "cf-typegen": "pnpm run -r cf-typegen",
     "build": "turbo run build",
@@ -21,11 +27,20 @@
     "test": "turbo run test",
     "deploy": "pnpm run -r deploy",
     "deploy:staging": "pnpm run -r deploy:staging",
-    "deploy:prod": "pnpm run -r deploy:prod"
+    "deploy:prod": "pnpm run -r deploy:prod",
+    "db:migrate:local": "pnpm -C apps/app-worker db:migrate:local",
+    "db:migrate:remote": "pnpm -C apps/app-worker db:migrate:remote"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "concurrently": "^9.1.2",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1",
     "sherif": "^1.10.0",
-    "turbo": "^2.7.6"
+    "turbo": "^2.8.3",
+    "typescript-eslint": "^8.54.0"
   }
 }

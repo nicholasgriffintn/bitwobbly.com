@@ -65,7 +65,7 @@ function ProjectIssues() {
     Route.useLoaderData();
 
   const [activeTab, setActiveTab] = useState<"issues" | "events" | "analytics">(
-    "issues",
+    "issues"
   );
   const [issues, setIssues] = useState<Issue[]>(initialIssues);
   const [events] = useState<Event[]>(initialEvents);
@@ -78,7 +78,7 @@ function ProjectIssues() {
   const listIssues = useServerFn(listSentryIssuesFn);
   const getStats = useServerFn(getEventVolumeStatsFn);
   const getTimeseriesBreakdown = useServerFn(
-    getEventVolumeTimeseriesBreakdownFn,
+    getEventVolumeTimeseriesBreakdownFn
   );
   const getTopErrors = useServerFn(getTopErrorMessagesFn);
   const getReleaseStats = useServerFn(getErrorRateByReleaseFn);
@@ -126,18 +126,12 @@ function ProjectIssues() {
     loading: boolean;
   }>({ data: [], loading: false });
 
-  useEffect(() => {
-    if (activeTab === 'analytics' && !analyticsLoaded) {
-      loadAnalytics();
-    }
-  }, [activeTab, analyticsLoaded]);
-
   const loadAnalytics = () => {
     setAnalyticsLoaded(true);
 
     const endDate = new Date().toISOString();
     const startDate = new Date(
-      Date.now() - 14 * 24 * 60 * 60 * 1000,
+      Date.now() - 14 * 24 * 60 * 60 * 1000
     ).toISOString();
 
     setVolumeStats((s) => ({ ...s, loading: true }));
@@ -147,7 +141,7 @@ function ProjectIssues() {
 
     setTimeseriesBreakdown((s) => ({ ...s, loading: true }));
     getTimeseriesBreakdown({
-      data: { projectId, startDate, endDate, interval: 'hour' },
+      data: { projectId, startDate, endDate, interval: "hour" },
     })
       .then((data) => setTimeseriesBreakdown({ data, loading: false }))
       .catch(() => setTimeseriesBreakdown({ data: [], loading: false }));
@@ -168,6 +162,12 @@ function ProjectIssues() {
       .catch(() => setReleaseStats({ data: [], loading: false }));
   };
 
+  useEffect(() => {
+    if (activeTab === "analytics" && !analyticsLoaded) {
+      loadAnalytics();
+    }
+  }, [activeTab, analyticsLoaded]);
+
   const handleStatusChange = async (issueId: string, newStatus: string) => {
     try {
       await updateIssue({
@@ -185,7 +185,7 @@ function ProjectIssues() {
 
     if (searchQuery) {
       filtered = filtered.filter((issue) =>
-        issue.title.toLowerCase().includes(searchQuery.toLowerCase()),
+        issue.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -217,7 +217,7 @@ function ProjectIssues() {
         else if (issue.status === "ignored") acc.ignored += 1;
         return acc;
       },
-      { unresolved: 0, resolved: 0, ignored: 0 },
+      { unresolved: 0, resolved: 0, ignored: 0 }
     );
   }, [issues]);
 
@@ -247,11 +247,9 @@ function ProjectIssues() {
             }
           />
 
-          {activeTab === 'issues' && (
+          {activeTab === "issues" && (
             <>
-              <div
-                className="mb-3 flex flex-wrap gap-2"
-              >
+              <div className="mb-3 flex flex-wrap gap-2">
                 <span className="pill small">
                   Open: {issueStatusCounts.unresolved}
                 </span>
@@ -262,9 +260,7 @@ function ProjectIssues() {
                   Ignored: {issueStatusCounts.ignored}
                 </span>
               </div>
-              <div
-                className="mb-4 flex flex-wrap gap-2"
-              >
+              <div className="mb-4 flex flex-wrap gap-2">
                 <input
                   type="text"
                   placeholder="Search issues..."
@@ -296,7 +292,7 @@ function ProjectIssues() {
                 <select
                   value={sortBy}
                   onChange={(e) =>
-                    setSortBy(e.target.value as 'recent' | 'oldest' | 'count')
+                    setSortBy(e.target.value as "recent" | "oldest" | "count")
                   }
                   className="flex-none"
                 >
@@ -309,7 +305,7 @@ function ProjectIssues() {
           )}
         </div>
         <div className="list">
-          {activeTab === 'issues' ? (
+          {activeTab === "issues" ? (
             filteredAndSortedIssues.length ? (
               filteredAndSortedIssues.map((issue) => (
                 <div key={issue.id} className="list-item-expanded">
@@ -327,17 +323,17 @@ function ProjectIssues() {
                         <span className={`status ${issue.level}`}>
                           {issue.level}
                         </span>
-                        {' · '}
+                        {" · "}
                         {issue.eventCount} event
-                        {issue.eventCount !== 1 ? 's' : ''}
+                        {issue.eventCount !== 1 ? "s" : ""}
                         {issue.userCount > 0 && (
                           <>
-                            {' · '}
+                            {" · "}
                             {issue.userCount} user
-                            {issue.userCount !== 1 ? 's' : ''}
+                            {issue.userCount !== 1 ? "s" : ""}
                           </>
                         )}
-                        {' · '}
+                        {" · "}
                         Last seen {formatRelativeTime(issue.lastSeenAt)}
                       </div>
                     </div>
@@ -351,12 +347,12 @@ function ProjectIssues() {
                         </button>
                       </Link>
                       {supportsResolution(issue.level) &&
-                        (issue.status === 'unresolved' ? (
+                        (issue.status === "unresolved" ? (
                           <>
                             <button
                               type="button"
                               onClick={() =>
-                                handleStatusChange(issue.id, 'resolved')
+                                handleStatusChange(issue.id, "resolved")
                               }
                               className="outline button-success text-sm"
                             >
@@ -365,7 +361,7 @@ function ProjectIssues() {
                             <button
                               type="button"
                               onClick={() =>
-                                handleStatusChange(issue.id, 'ignored')
+                                handleStatusChange(issue.id, "ignored")
                               }
                               className="outline button-warning text-sm"
                             >
@@ -376,7 +372,7 @@ function ProjectIssues() {
                           <button
                             type="button"
                             onClick={() =>
-                              handleStatusChange(issue.id, 'unresolved')
+                              handleStatusChange(issue.id, "unresolved")
                             }
                             className="outline text-sm"
                           >
@@ -389,12 +385,12 @@ function ProjectIssues() {
               ))
             ) : (
               <div className="muted">
-                {searchQuery || statusFilter !== 'all' || levelFilter !== 'all'
-                  ? 'No issues match your filters.'
-                  : 'No issues found.'}
+                {searchQuery || statusFilter !== "all" || levelFilter !== "all"
+                  ? "No issues match your filters."
+                  : "No issues found."}
               </div>
             )
-          ) : activeTab === 'events' ? (
+          ) : activeTab === "events" ? (
             events.length ? (
               events.map((event) => (
                 <div key={event.id} className="list-item">
@@ -408,7 +404,7 @@ function ProjectIssues() {
                           <span className={`status ${event.level}`}>
                             {event.level}
                           </span>
-                          {' · '}
+                          {" · "}
                         </>
                       )}
                       {formatRelativeTime(event.receivedAt)}
@@ -429,10 +425,8 @@ function ProjectIssues() {
             ) : (
               <div className="muted">No events found.</div>
             )
-          ) : activeTab === 'analytics' ? (
-            <div
-              className="rounded-2xl border border-[color:var(--stroke)] bg-[color:var(--bg)] p-4"
-            >
+          ) : activeTab === "analytics" ? (
+            <div className="rounded-2xl border border-[color:var(--stroke)] bg-[color:var(--bg)] p-4">
               <div>
                 {volumeStats.loading ? (
                   <div className="grid metrics mb-1.5">
@@ -451,9 +445,7 @@ function ProjectIssues() {
                   ) : timeseriesBreakdown.data.length > 0 ? (
                     <EventVolumeChart data={timeseriesBreakdown.data} />
                   ) : (
-                    <div className="muted p-8">
-                      No event data available
-                    </div>
+                    <div className="muted p-8">No event data available</div>
                   )}
                 </div>
 
@@ -465,9 +457,7 @@ function ProjectIssues() {
                     ) : sdkDistribution.data.length > 0 ? (
                       <SDKDistributionChart data={sdkDistribution.data} />
                     ) : (
-                      <div className="muted p-8">
-                        No SDK data available
-                      </div>
+                      <div className="muted p-8">No SDK data available</div>
                     )}
                   </div>
 
@@ -493,9 +483,7 @@ function ProjectIssues() {
                         ))}
                       </div>
                     ) : (
-                      <div className="muted p-8">
-                        No error data available
-                      </div>
+                      <div className="muted p-8">No error data available</div>
                     )}
                   </div>
                 </div>
@@ -514,7 +502,7 @@ function ProjectIssues() {
                         <div key={idx} className="list-item">
                           <div className="flex-1">
                             <div className="list-title">
-                              {stat.release || 'Unknown Release'}
+                              {stat.release || "Unknown Release"}
                               {stat.environment && (
                                 <span className="pill small ml-2">
                                   {toTitleCase(stat.environment)}
@@ -522,7 +510,7 @@ function ProjectIssues() {
                               )}
                             </div>
                             <div className="muted mt-1">
-                              {stat.error_count} errors · {stat.user_count}{' '}
+                              {stat.error_count} errors · {stat.user_count}{" "}
                               users affected
                             </div>
                           </div>
@@ -530,9 +518,7 @@ function ProjectIssues() {
                       ))}
                     </div>
                   ) : (
-                    <div className="muted p-8">
-                      No release data available
-                    </div>
+                    <div className="muted p-8">No release data available</div>
                   )}
                 </div>
               </div>

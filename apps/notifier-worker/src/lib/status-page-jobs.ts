@@ -11,6 +11,7 @@ import {
   listUnsentSubscriberEventsByIds,
   markSubscriberEventsSent,
 } from "../repositories/status-page-events";
+import { escapeHtml } from "./html-utils.ts";
 
 export type StatusPageJob =
   | {
@@ -43,8 +44,8 @@ export async function handleStatusPageJob(
   db: DB,
   sendWebhook: (
     config: { url?: string },
-    payload: Record<string, unknown>,
-  ) => Promise<void>,
+    payload: Record<string, unknown>
+  ) => Promise<void>
 ) {
   if (job.type === "status_page_confirm_email") {
     await handleConfirmEmail(job, env, db);
@@ -66,7 +67,7 @@ export async function handleStatusPageJob(
 async function handleConfirmEmail(
   job: Extract<StatusPageJob, { type: "status_page_confirm_email" }>,
   env: Env,
-  db: DB,
+  db: DB
 ) {
   const subscriber = await getStatusPageSubscriberById(db, job.subscriber_id);
   if (!subscriber) return;
@@ -80,15 +81,15 @@ async function handleConfirmEmail(
   const slug = page?.slug || job.slug;
 
   const confirmUrl = `${getAppOrigin()}/status/${encodeURIComponent(
-    slug,
+    slug
   )}/confirm?token=${encodeURIComponent(job.confirm_token)}`;
 
   const sig = await unsubscribeSig(env.SESSION_SECRET, subscriber.id);
   const unsubscribeUrl = sig
     ? `${getAppOrigin()}/status/${encodeURIComponent(
-        slug,
+        slug
       )}/unsubscribe?sid=${encodeURIComponent(subscriber.id)}&sig=${encodeURIComponent(
-        sig,
+        sig
       )}`
     : null;
 
@@ -130,8 +131,8 @@ async function handleVerifyWebhook(
   db: DB,
   sendWebhook: (
     config: { url?: string },
-    payload: Record<string, unknown>,
-  ) => Promise<void>,
+    payload: Record<string, unknown>
+  ) => Promise<void>
 ) {
   const subscriber = await getStatusPageSubscriberById(db, job.subscriber_id);
   if (!subscriber) return;
@@ -188,8 +189,8 @@ async function handleDeliverEvents(
   db: DB,
   sendWebhook: (
     config: { url?: string },
-    payload: Record<string, unknown>,
-  ) => Promise<void>,
+    payload: Record<string, unknown>
+  ) => Promise<void>
 ) {
   if (!Array.isArray(job.event_ids) || !job.event_ids.length) return;
 
@@ -200,7 +201,7 @@ async function handleDeliverEvents(
   const events = await listUnsentSubscriberEventsByIds(
     db,
     subscriber.id,
-    job.event_ids,
+    job.event_ids
   );
   if (!events.length) return;
 
@@ -235,13 +236,13 @@ async function handleDeliverEvents(
             : null,
         })),
         ts: new Date().toISOString(),
-      },
+      }
     );
   } else if (subscriber.channelType === "email") {
     const sig = await unsubscribeSig(env.SESSION_SECRET, subscriber.id);
     const unsubscribeUrl = sig
       ? `${getAppOrigin()}/status/${encodeURIComponent(
-          pageSlug,
+          pageSlug
         )}/unsubscribe?sid=${encodeURIComponent(subscriber.id)}&sig=${encodeURIComponent(sig)}`
       : null;
 
@@ -290,7 +291,7 @@ async function handleDeliverEvents(
     db,
     subscriber.id,
     events.map((e) => e.eventId),
-    sentAt,
+    sentAt
   );
 
   await insertStatusPageAuditLog(db, {
@@ -307,19 +308,10 @@ function getAppOrigin(): string {
 
 async function unsubscribeSig(
   sessionSecret: string | undefined,
-  subscriberId: string,
+  subscriberId: string
 ): Promise<string | null> {
   if (!sessionSecret?.trim()) return null;
   return sha256Hex(`${sessionSecret}:status_page_unsubscribe:${subscriberId}`);
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 function renderConfirmEmailHtml(input: {
@@ -398,4 +390,3 @@ function renderUpdateEmailHtml(input: {
     </html>
   `;
 }
-

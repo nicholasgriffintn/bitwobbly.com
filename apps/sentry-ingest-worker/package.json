@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --local  --persist-to ../../.data",
+    "dev": "wrangler dev --local --persist-to ../../.data",
     "deploy": "wrangler deploy",
+    "deploy:prod": "pnpm run deploy",
     "cf-typegen": "wrangler types",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test src/**/*.test.ts"
   },
   "dependencies": {
     "@bitwobbly/shared": "workspace:*",
@@ -15,6 +17,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260123.0",
+    "@types/node": "^25.2.0",
     "drizzle-orm": "^0.45.1",
     "typescript": "^5.9.3",
     "wrangler": "^4.60.0"

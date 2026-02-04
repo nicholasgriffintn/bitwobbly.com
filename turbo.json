@@ -1,56 +1,37 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": [
-    "CLOUDFLARE_API_TOKEN"
-  ],
+  "globalPassThroughEnv": ["CLOUDFLARE_API_TOKEN"],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "dist/**",
-        ".wrangler/**"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".wrangler/**"]
     },
     "build:staging": {
-      "dependsOn": [
-        "^build:staging"
-      ],
-      "outputs": [
-        "dist/**",
-        ".wrangler/**"
-      ]
+      "dependsOn": ["^build:staging"],
+      "outputs": ["dist/**", ".wrangler/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "lint": {
-      "outputs": []
-    },
     "typecheck": {
+      "dependsOn": ["^typecheck"],
       "outputs": []
     },
     "deploy": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "outputs": []
     },
     "deploy:staging": {
-      "dependsOn": [
-        "build:staging"
-      ],
+      "dependsOn": ["build:staging"],
       "outputs": []
     },
     "deploy:prod": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "outputs": []
     },
     "test": {
+      "dependsOn": ["^build"],
       "outputs": []
     }
   }

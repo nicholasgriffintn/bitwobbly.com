@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Run lint checks
+  lint:
+    name: Lint and format check
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -38,3 +38,6 @@ jobs:
 
       - name: Run lint
         run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
