@@ -28,6 +28,7 @@
     "deploy": "pnpm run -r deploy",
     "deploy:staging": "pnpm run -r deploy:staging",
     "deploy:prod": "pnpm run -r deploy:prod",
+    "db:generate": "pnpm -C packages/shared db:generate",
     "db:migrate:local": "pnpm -C apps/app-worker db:migrate:local",
     "db:migrate:remote": "pnpm -C apps/app-worker db:migrate:remote"
   },
