@@ -13,6 +13,7 @@ import {
   updateTeamNameFn,
   deleteTeamFn,
   getCurrentTeamFn,
+  createTeamFn,
 } from '@/server/functions/teams';
 import { seedDemoDataFn } from '@/server/functions/demo';
 import { toTitleCase } from '@/utils/format';
@@ -66,6 +67,10 @@ export default function Settings() {
   const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
   const [teamName, setTeamName] = useState(currentTeam?.name || '');
 
+  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+
   const [isCreateInviteModalOpen, setIsCreateInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
@@ -86,6 +91,7 @@ export default function Settings() {
   const updateTeamName = useServerFn(updateTeamNameFn);
   const deleteTeam = useServerFn(deleteTeamFn);
   const getCurrentTeam = useServerFn(getCurrentTeamFn);
+  const createTeam = useServerFn(createTeamFn);
   const seedDemoData = useServerFn(seedDemoDataFn);
 
   const currentUserTeam = teams?.find(
@@ -158,6 +164,27 @@ export default function Settings() {
       setIsEditNameModalOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const onCreateTeam = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+
+    const name = newTeamName.trim();
+    if (!name) {
+      setError('Team name is required.');
+      return;
+    }
+
+    setIsCreatingTeam(true);
+    try {
+      await createTeam({ data: { name } });
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsCreatingTeam(false);
     }
   };
 
@@ -241,6 +268,19 @@ export default function Settings() {
         <div>
           <h1>Team Settings</h1>
           <p>Manage your team members, invitations, and settings.</p>
+        </div>
+        <div className="button-row">
+          <button
+            type="button"
+            className="outline button-success"
+            onClick={() => {
+              setError(null);
+              setNewTeamName('');
+              setIsCreateTeamModalOpen(true);
+            }}
+          >
+            New Team
+          </button>
         </div>
       </div>
 
@@ -421,6 +461,44 @@ export default function Settings() {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isCreateTeamModalOpen}
+        onClose={() => setIsCreateTeamModalOpen(false)}
+        title="Create New Team"
+      >
+        <form className="form" onSubmit={onCreateTeam}>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Creating a team will switch you to it.
+          </p>
+          <label htmlFor="new-team-name">Team Name</label>
+          <input
+            id="new-team-name"
+            value={newTeamName}
+            onChange={(e) => setNewTeamName(e.target.value)}
+            placeholder="My Team"
+            required
+          />
+          {error ? <div className="form-error">{error}</div> : null}
+          <div className="button-row" style={{ marginTop: '1rem' }}>
+            <button
+              type="submit"
+              className="button-success"
+              disabled={isCreatingTeam}
+            >
+              {isCreatingTeam ? 'Creating...' : 'Create Team'}
+            </button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setIsCreateTeamModalOpen(false)}
+              disabled={isCreatingTeam}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal
         isOpen={isEditNameModalOpen}

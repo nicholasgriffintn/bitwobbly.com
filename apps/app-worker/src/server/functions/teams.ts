@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { requireOwner, useAppSession } from '@bitwobbly/auth/server';
 
 import { getDb } from "../lib/db";
+import { CreateTeamInputSchema } from "../validators/teams";
 import {
   createTeam,
   addUserToTeam,
@@ -26,10 +27,6 @@ import {
 } from "../repositories/teams";
 import { requireTeam } from '../lib/auth-middleware';
 
-const CreateTeamSchema = z.object({
-  name: z.string().min(1).max(100),
-});
-
 const JoinTeamSchema = z.object({
   inviteCode: z.string().min(1),
 });
@@ -39,7 +36,7 @@ const SwitchTeamSchema = z.object({
 });
 
 export const createTeamFn = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => CreateTeamSchema.parse(data))
+  .inputValidator((data: unknown) => CreateTeamInputSchema.parse(data))
   .handler(async ({ data }) => {
     const session = await useAppSession();
     const userId = session.data.userId;
