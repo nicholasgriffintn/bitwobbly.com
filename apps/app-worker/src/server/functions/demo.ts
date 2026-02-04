@@ -8,6 +8,7 @@ import { hashWebhookToken, schema } from '@bitwobbly/shared';
 import { getDb } from '../lib/db';
 import { hashPassword } from '../lib/auth';
 import { requireTeam } from '../lib/auth-middleware';
+import { DEFAULT_TEAM_SLO_TARGET_PPM } from '../lib/availability';
 import {
   getPublicStatusSnapshotCacheKey,
   getTeamStatusSnapshotCacheKey,
@@ -174,6 +175,7 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
     await db
       .delete(schema.sentryProjects)
       .where(eq(schema.sentryProjects.teamId, teamId));
+    await db.delete(schema.sloTargets).where(eq(schema.sloTargets.teamId, teamId));
 
     const demoUserOwnerId = demoId('usr', key, 'owner');
     const demoUserMemberId = demoId('usr', key, 'member');
@@ -192,6 +194,23 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       .update(schema.teams)
       .set({ name: 'Acme Retail Demo', createdAt })
       .where(eq(schema.teams.id, teamId));
+
+    try {
+      await db
+        .insert(schema.sloTargets)
+        .values({
+          id: demoId('slo', key, 'team_default'),
+          teamId,
+          scopeType: 'team',
+          scopeId: teamId,
+          targetPpm: DEFAULT_TEAM_SLO_TARGET_PPM,
+          createdAt,
+          updatedAt: createdAt,
+        })
+        .onConflictDoNothing();
+    } catch (e) {
+      console.warn('Skipping demo SLO targets (missing migrations?)', e);
+    }
 
     await db.insert(schema.users).values([
       {
@@ -761,6 +780,43 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
       }
     }
 
+    try {
+      await db
+        .insert(schema.sloTargets)
+        .values([
+          {
+            id: demoId('slo', key, 'component_api'),
+            teamId,
+            scopeType: 'component',
+            scopeId: componentApiId,
+            targetPpm: 999_000,
+            createdAt,
+            updatedAt: createdAt,
+          },
+          {
+            id: demoId('slo', key, 'component_checkout'),
+            teamId,
+            scopeType: 'component',
+            scopeId: componentCheckoutId,
+            targetPpm: 999_500,
+            createdAt,
+            updatedAt: createdAt,
+          },
+          {
+            id: demoId('slo', key, 'component_payments'),
+            teamId,
+            scopeType: 'component',
+            scopeId: componentPaymentsId,
+            targetPpm: 999_000,
+            createdAt,
+            updatedAt: createdAt,
+          },
+        ])
+        .onConflictDoNothing();
+    } catch (e) {
+      console.warn('Skipping demo SLO targets for components', e);
+    }
+
     await db.insert(schema.componentDependencies).values([
       {
         componentId: componentCheckoutId,
@@ -817,6 +873,34 @@ export const seedDemoDataFn = createServerFn({ method: 'POST' }).handler(
         createdAt: unixToIso(now - 45 * DAY_SECONDS),
       },
     ]);
+
+    try {
+      await db
+        .insert(schema.sloTargets)
+        .values([
+          {
+            id: demoId('slo', key, 'status_page_public'),
+            teamId,
+            scopeType: 'status_page',
+            scopeId: statusPagePublicId,
+            targetPpm: 999_000,
+            createdAt,
+            updatedAt: createdAt,
+          },
+          {
+            id: demoId('slo', key, 'status_page_private'),
+            teamId,
+            scopeType: 'status_page',
+            scopeId: statusPagePrivateId,
+            targetPpm: 999_000,
+            createdAt,
+            updatedAt: createdAt,
+          },
+        ])
+        .onConflictDoNothing();
+    } catch (e) {
+      console.warn('Skipping demo SLO targets for status pages', e);
+    }
 
     await db.insert(schema.statusPageComponents).values([
       {

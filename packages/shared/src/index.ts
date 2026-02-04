@@ -1,3 +1,3 @@
-export * from './types';
-export * from './db';
-export * from './lib';
+export * from './types/index.ts';
+export * from './db/index.ts';
+export * from './lib/index.ts';

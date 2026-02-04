@@ -10,6 +10,7 @@ import { subscribeToStatusPageFn } from "@/server/functions/status-page-subscrib
 import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
 import { StatusBadge, isStatusType } from "@/components/ui";
 import { PrivateStatusPasswordGate } from "@/components/status/PrivateStatusPasswordGate";
+import { Modal } from "@/components/Modal";
 
 export const Route = createFileRoute("/status/$slug")({
   component: StatusPage,
@@ -36,6 +37,7 @@ function StatusPage() {
   const { slug } = Route.useParams();
   const subscribeToStatusPage = useServerFn(subscribeToStatusPageFn);
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
+  const [isApiHelpOpen, setIsApiHelpOpen] = useState(false);
   const [subscribeChannel, setSubscribeChannel] = useState<"email" | "webhook">(
     "email",
   );
@@ -58,6 +60,11 @@ function StatusPage() {
   const snapshot = data.snapshot;
   const { page, components, incidents } = snapshot;
   const brandColor = page.brand_color || "#007bff";
+  const origin =
+    typeof window === "undefined" ? "https://<your-domain>" : window.location.origin;
+  const encodedSlug = encodeURIComponent(slug);
+  const availabilityApiBase = `${origin}/api/status/${encodedSlug}`;
+  const exampleComponentId = components[0]?.id;
 
   const activeIncidents = incidents.filter((i) => i.status !== "resolved");
   const pastIncidents = incidents.filter((i) => i.status === "resolved");
@@ -363,62 +370,94 @@ function StatusPage() {
             cursor: pointer;
           }
 
+          .status-header-actions {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            justify-content: center;
+          }
+
           .subscribe-button-inline:hover {
             opacity: 0.96;
           }
 
-          .subscribe-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            display: flex;
+          .api-help-button {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
-            z-index: 50;
+            gap: 0.5rem;
+            background: transparent;
+            color: ${brandColor};
+            border: 1px solid rgba(17, 24, 39, 0.15);
+            border-radius: 9999px;
+            padding: 0.65rem 1rem;
+            font-weight: 700;
+            cursor: pointer;
           }
 
-          .subscribe-modal {
-            width: min(640px, 100%);
-            background: white;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
+          .api-help-button:hover {
+            background: rgba(17, 24, 39, 0.04);
           }
 
-          .subscribe-modal-header {
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+          .api-help-note {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin: 0 0 0.5rem 0;
+          }
+
+          .api-help-code {
+            background: #0b1020;
+            color: #e5e7eb;
+            padding: 0.9rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            line-height: 1.55;
+            border: 1px solid rgba(229, 231, 235, 0.12);
+            margin: 0.75rem 0;
+          }
+
+          .api-help-code code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+              "Liberation Mono", "Courier New", monospace;
+          }
+
+          .api-help-list {
+            margin: 0;
+            padding-left: 1rem;
+            display: grid;
             gap: 0.75rem;
           }
 
-          .subscribe-modal-title {
-            margin: 0;
-            font-size: 1.125rem;
-            font-weight: 700;
-            color: #111827;
-          }
-
-          .subscribe-modal-close {
-            border: 1px solid #e5e7eb;
-            background: white;
-            border-radius: 8px;
-            padding: 0.5rem 0.75rem;
-            cursor: pointer;
+          .api-help-list li {
             color: #374151;
-            font-weight: 600;
           }
 
-          .subscribe-modal-close:hover {
-            background: #f9fafb;
+          .api-help-list strong {
+            display: block;
+            margin-bottom: 0.2rem;
           }
 
-          .subscribe-modal-body {
-            padding: 1.25rem;
+          .api-help-component-list {
+            margin: 0;
+            padding-left: 1rem;
+            display: grid;
+            gap: 0.35rem;
+          }
+
+          .api-help-component-list li {
+            color: #374151;
+            line-height: 1.4;
+          }
+
+          .api-help-component-list code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+              "Liberation Mono", "Courier New", monospace;
+            background: #f3f4f6;
+            border-radius: 4px;
+            padding: 0.1rem 0.3rem;
           }
 
           .subscribe-form {
@@ -599,20 +638,95 @@ function StatusPage() {
             <img src={page.logo_url} alt={page.name} className="status-logo" />
           )}
           <h1 className="status-title">{page.name}</h1>
-          <button
-            type="button"
-            className="subscribe-button-inline"
-            onClick={() => {
-              setSubscribeResult(null);
-              setSubscribeEndpoint("");
-              setSubscribeChannel("email");
-              setSubscribeCadence("immediate");
-              setIsSubscribeOpen(true);
-            }}
-          >
-            Subscribe to updates
-          </button>
+          <div className="status-header-actions">
+            <button
+              type="button"
+              className="subscribe-button-inline"
+              onClick={() => {
+                setSubscribeResult(null);
+                setSubscribeEndpoint("");
+                setSubscribeChannel("email");
+                setSubscribeCadence("immediate");
+                setIsSubscribeOpen(true);
+              }}
+            >
+              Subscribe to updates
+            </button>
+            <button
+              type="button"
+              className="api-help-button"
+              onClick={() => setIsApiHelpOpen(true)}
+            >
+              Availability API
+            </button>
+          </div>
         </div>
+
+        <Modal
+          isOpen={isApiHelpOpen}
+          onClose={() => setIsApiHelpOpen(false)}
+          title="Availability API"
+        >
+          <p className="api-help-note">
+            These endpoints return availability based on incidents and maintenance
+            windows. Times are UTC, and the examples use this page domain.
+          </p>
+
+          <ul className="api-help-list">
+            <li>
+              <strong>Overall daily uptime (JSON)</strong>
+              <span className="api-help-note">
+                Returns summary uptime plus daily buckets for the past 90 days.
+              </span>
+              <div className="api-help-code">
+                <code>{`curl "${availabilityApiBase}/availability?days=90&bucket=day"`}</code>
+              </div>
+            </li>
+            <li>
+              <strong>Overall hourly uptime in a custom range (JSON)</strong>
+              <span className="api-help-note">
+                Use epoch seconds in UTC for high-resolution incident windows.
+              </span>
+              <div className="api-help-code">
+                <code>{`curl "${availabilityApiBase}/availability?from=1735689600&to=1736294400&bucket=hour"`}</code>
+              </div>
+            </li>
+            {exampleComponentId && (
+              <li>
+                <strong>Single component availability (JSON)</strong>
+                <span className="api-help-note">
+                  Filters results to one status page component using `component_id`.
+                </span>
+                <div className="api-help-code">
+                  <code>{`curl "${availabilityApiBase}/availability?component_id=${encodeURIComponent(exampleComponentId)}&days=30&bucket=day"`}</code>
+                </div>
+              </li>
+            )}
+            <li>
+              <strong>Monthly report (CSV download)</strong>
+              <span className="api-help-note">
+                Returns daily rows for the month with uptime and downtime minutes.
+              </span>
+              <div className="api-help-code">
+                <code>{`curl -L "${availabilityApiBase}/reports/availability/monthly?month=2026-01&format=csv" -o availability.csv`}</code>
+              </div>
+            </li>
+          </ul>
+          {components.length > 0 && (
+            <>
+              <p className="api-help-note">
+                Component IDs on this status page (use with `component_id`):
+              </p>
+              <ul className="api-help-component-list">
+                {components.map((component) => (
+                  <li key={component.id}>
+                    {component.name}: <code>{component.id}</code>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Modal>
 
         {components.length > 0 && (
           <>
@@ -781,143 +895,104 @@ function StatusPage() {
             </div>
           )}
 
-        {isSubscribeOpen && (
-          <div
-            className="subscribe-modal-overlay"
-            role="presentation"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) {
-                setIsSubscribeOpen(false);
-              }
-            }}
-          >
-            <div
-              className="subscribe-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Subscribe to updates"
-            >
-              <div className="subscribe-modal-header">
-                <h2 className="subscribe-modal-title">Subscribe to updates</h2>
-                <button
-                  type="button"
-                  className="subscribe-modal-close"
-                  onClick={() => setIsSubscribeOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
+        <Modal
+          isOpen={isSubscribeOpen}
+          onClose={() => setIsSubscribeOpen(false)}
+          title="Subscribe to updates"
+        >
+          <p className="subscribe-help">
+            Subscribe to incident updates for this status page.
+          </p>
 
-              <div className="subscribe-modal-body">
-                <p className="subscribe-help">
-                  Subscribe to incident updates for this status page.
-                </p>
-
-                <form className="subscribe-form" onSubmit={onSubscribe}>
-                  <div className="subscribe-row">
-                    <label
-                      className="subscribe-label"
-                      htmlFor="subscribe-channel"
-                    >
-                      Delivery
-                    </label>
-                    <select
-                      id="subscribe-channel"
-                      className="subscribe-select"
-                      value={subscribeChannel}
-                      onChange={(e) =>
-                        setSubscribeChannel(
-                          e.target.value === "webhook" ? "webhook" : "email",
-                        )
-                      }
-                    >
-                      <option value="email">Email</option>
-                      <option value="webhook">Webhook</option>
-                    </select>
-                  </div>
-
-                  <div className="subscribe-row">
-                    <label
-                      className="subscribe-label"
-                      htmlFor="subscribe-cadence"
-                    >
-                      Cadence
-                    </label>
-                    <select
-                      id="subscribe-cadence"
-                      className="subscribe-select"
-                      value={subscribeCadence}
-                      onChange={(e) =>
-                        setSubscribeCadence(
-                          e.target.value === "daily"
-                            ? "daily"
-                            : e.target.value === "weekly"
-                              ? "weekly"
-                              : "immediate",
-                        )
-                      }
-                    >
-                      <option value="immediate">Immediate</option>
-                      <option value="daily">Daily digest</option>
-                      <option value="weekly">Weekly digest</option>
-                    </select>
-                  </div>
-
-                  <div className="subscribe-row">
-                    <label
-                      className="subscribe-label"
-                      htmlFor="subscribe-endpoint"
-                    >
-                      {subscribeChannel === "email" ? "Email" : "Webhook URL"}
-                    </label>
-                    <input
-                      id="subscribe-endpoint"
-                      className="subscribe-input"
-                      type={subscribeChannel === "email" ? "email" : "url"}
-                      value={subscribeEndpoint}
-                      onChange={(e) => setSubscribeEndpoint(e.target.value)}
-                      placeholder={
-                        subscribeChannel === "email"
-                          ? "you@example.com"
-                          : "https://example.com/webhook"
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div className="subscribe-actions">
-                    <button
-                      type="submit"
-                      className="subscribe-button"
-                      disabled={subscribeResult?.kind === "working"}
-                    >
-                      {subscribeResult?.kind === "working"
-                        ? "Submitting…"
-                        : "Subscribe"}
-                    </button>
-                  </div>
-                </form>
-
-                {subscribeResult?.kind === "success" && (
-                  <div className="subscribe-result">
-                    <div>{subscribeResult.message}</div>
-                    {subscribeResult.unsubscribeUrl && (
-                      <div style={{ marginTop: "0.5rem" }}>
-                        <a href={subscribeResult.unsubscribeUrl}>Unsubscribe</a>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {subscribeResult?.kind === "error" && (
-                  <div className="subscribe-result error">
-                    {subscribeResult.message}
-                  </div>
-                )}
-              </div>
+          <form className="subscribe-form" onSubmit={onSubscribe}>
+            <div className="subscribe-row">
+              <label className="subscribe-label" htmlFor="subscribe-channel">
+                Delivery
+              </label>
+              <select
+                id="subscribe-channel"
+                className="subscribe-select"
+                value={subscribeChannel}
+                onChange={(e) =>
+                  setSubscribeChannel(
+                    e.target.value === "webhook" ? "webhook" : "email",
+                  )
+                }
+              >
+                <option value="email">Email</option>
+                <option value="webhook">Webhook</option>
+              </select>
             </div>
-          </div>
-        )}
+
+            <div className="subscribe-row">
+              <label className="subscribe-label" htmlFor="subscribe-cadence">
+                Cadence
+              </label>
+              <select
+                id="subscribe-cadence"
+                className="subscribe-select"
+                value={subscribeCadence}
+                onChange={(e) =>
+                  setSubscribeCadence(
+                    e.target.value === "daily"
+                      ? "daily"
+                      : e.target.value === "weekly"
+                        ? "weekly"
+                        : "immediate",
+                  )
+                }
+              >
+                <option value="immediate">Immediate</option>
+                <option value="daily">Daily digest</option>
+                <option value="weekly">Weekly digest</option>
+              </select>
+            </div>
+
+            <div className="subscribe-row">
+              <label className="subscribe-label" htmlFor="subscribe-endpoint">
+                {subscribeChannel === "email" ? "Email" : "Webhook URL"}
+              </label>
+              <input
+                id="subscribe-endpoint"
+                className="subscribe-input"
+                type={subscribeChannel === "email" ? "email" : "url"}
+                value={subscribeEndpoint}
+                onChange={(e) => setSubscribeEndpoint(e.target.value)}
+                placeholder={
+                  subscribeChannel === "email"
+                    ? "you@example.com"
+                    : "https://example.com/webhook"
+                }
+                required
+              />
+            </div>
+
+            <div className="subscribe-actions">
+              <button
+                type="submit"
+                className="subscribe-button"
+                disabled={subscribeResult?.kind === "working"}
+              >
+                {subscribeResult?.kind === "working" ? "Submitting…" : "Subscribe"}
+              </button>
+            </div>
+          </form>
+
+          {subscribeResult?.kind === "success" && (
+            <div className="subscribe-result">
+              <div>{subscribeResult.message}</div>
+              {subscribeResult.unsubscribeUrl && (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <a href={subscribeResult.unsubscribeUrl}>Unsubscribe</a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {subscribeResult?.kind === "error" && (
+            <div className="subscribe-result error">{subscribeResult.message}</div>
+          )}
+        </Modal>
 
         <div className="footer">
           Last updated: {formatDate(snapshot.generated_at)}

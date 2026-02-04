@@ -85,6 +85,13 @@
       "when": 1770179189856,
       "tag": "0011_early_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1770233780632,
+      "tag": "0012_open_vance_astro",
+      "breakpoints": true
     }
   ]
 }

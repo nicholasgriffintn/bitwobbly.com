@@ -15,22 +15,18 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 #### Monitoring
 
-- [x] Add status page access modes: public, private (password), and internal (team-only).
 - [ ] Potentially add Ping (ICMP) checks if not too complex to implement in Workers.
 - [ ] Implement browser checks with https://developers.cloudflare.com/browser-rendering/, potentially even https://developers.cloudflare.com/browser-rendering/stagehand/.
-- [x] Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
-- [x] Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
-- [ ] Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
-- [ ] Add SLO/Uptime reporting with exportable monthly reports and historical availability APIs.
 
 #### Issues
 
-- Persist and query sessions/client reports; expose crash-free session and release health views.
-- Improve grouping with stacktrace-based fingerprinting rules, frame normalisation, and configurable overrides.
-- Track issue ownership and workflow (`assigned`, `snoozed`, `ignored until`, `resolved in release`, `regressed`).
-- Add source maps and symbolication pipeline with secure upload endpoints and retention controls.
-- Add search and faceting over tags, release, environment, user, transaction, and time windows.
-- Add performance primitives: transaction summaries, Apdex-style score, and slow span hotspots.
+- [ ] Persist and query sessions/client reports; expose crash-free session and release health views.
+- [ ] Improve grouping with stacktrace-based fingerprinting rules, frame normalisation, and configurable overrides.
+- [ ] Track issue ownership and workflow (`assigned`, `snoozed`, `ignored until`, `resolved in release`, `regressed`).
+- [ ] Add source maps and symbolication pipeline with secure upload endpoints and retention controls.
+- [ ] Add search and faceting over tags, release, environment, user, transaction, and time windows.
+- [ ] Add performance primitives: transaction summaries, Apdex-style score, and slow span hotspots.
+- [ ] Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
 
 ### Potential expansions
 
@@ -50,23 +46,21 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 Multiple Workers collaborate via Cloudflare Queues, Durable Objects, and Pipelines:
 
-```
-Scheduler (cron, every 1 min)
-  → bitwobbly-check-jobs queue
-    → Checker Worker (performs HTTP checks, manages incidents via Durable Object)
-      → bitwobbly-alert-jobs queue
-        → Notifier Worker (sends webhooks / emails via Resend)
+```mermaid
+flowchart TD
+  Scheduler["Scheduler (cron, every 1 min)"] --> CheckQueue["bitwobbly-check-jobs queue"]
+  CheckQueue --> Checker["Checker Worker<br/>HTTP checks + incident management (Durable Object)"]
+  Checker --> AlertQueue["bitwobbly-alert-jobs queue"]
+  AlertQueue --> Notifier["Notifier Worker<br/>Webhooks / email (Resend)"]
 
-App Worker (React dashboard + REST API)
-  → Serves the UI, handles auth, CRUD for monitors/status pages/notifications/issue tracking
-  → Public status page snapshots cached in KV
+  App["App Worker (React dashboard + REST API)"] --> AppTasks["UI, auth, CRUD for monitors/status pages/notifications/issues"]
+  App --> KV["Public status page snapshots cached in KV"]
 
-Sentry Ingest Worker (SDK-compatible issue ingestion)
-  → Receives Sentry SDK envelopes
-  → Stores raw payloads in R2, writes manifests to Pipelines
-  → bitwobbly-sentry-events queue
-    → Sentry Processor Worker (event grouping and fingerprinting)
-      → Groups events into issues, writes to D1
+  Ingest["Sentry Ingest Worker (SDK-compatible issue ingestion)"] --> Envelopes["Receives Sentry SDK envelopes"]
+  Ingest --> Storage["Stores raw payloads in R2 + writes manifests to Pipelines"]
+  Ingest --> SentryQueue["bitwobbly-sentry-events queue"]
+  SentryQueue --> Processor["Sentry Processor Worker<br/>event grouping + fingerprinting"]
+  Processor --> D1["Groups events into issues, writes to D1"]
 ```
 
 ### Apps

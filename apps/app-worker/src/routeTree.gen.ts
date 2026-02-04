@@ -36,7 +36,9 @@ import { Route as StatusSlugConfirmRouteImport } from './routes/status/$slug/con
 import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.$monitorId'
 import { Route as ApiHeartbeatsMonitorIdRouteImport } from './routes/api.heartbeats.$monitorId'
 import { Route as AppIssuesProjectIdIndexRouteImport } from './routes/app/issues/$projectId/index'
+import { Route as ApiStatusSlugAvailabilityRouteImport } from './routes/api.status.$slug.availability'
 import { Route as AppIssuesProjectIdIssueIssueIdRouteImport } from './routes/app/issues/$projectId/issue/$issueId'
+import { Route as ApiStatusSlugReportsAvailabilityMonthlyRouteImport } from './routes/api.status.$slug.reports.availability.monthly'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -173,11 +175,23 @@ const AppIssuesProjectIdIndexRoute = AppIssuesProjectIdIndexRouteImport.update({
   path: '/issues/$projectId/',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiStatusSlugAvailabilityRoute =
+  ApiStatusSlugAvailabilityRouteImport.update({
+    id: '/api/status/$slug/availability',
+    path: '/api/status/$slug/availability',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppIssuesProjectIdIssueIssueIdRoute =
   AppIssuesProjectIdIssueIssueIdRouteImport.update({
     id: '/issues/$projectId/issue/$issueId',
     path: '/issues/$projectId/issue/$issueId',
     getParentRoute: () => AppRoute,
+  } as any)
+const ApiStatusSlugReportsAvailabilityMonthlyRoute =
+  ApiStatusSlugReportsAvailabilityMonthlyRouteImport.update({
+    id: '/api/status/$slug/reports/availability/monthly',
+    path: '/api/status/$slug/reports/availability/monthly',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -207,8 +221,10 @@ export interface FileRoutesByFullPath {
   '/status/$slug/confirm': typeof StatusSlugConfirmRoute
   '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
   '/app/issues/': typeof AppIssuesIndexRoute
+  '/api/status/$slug/availability': typeof ApiStatusSlugAvailabilityRoute
   '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
   '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
+  '/api/status/$slug/reports/availability/monthly': typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -236,8 +252,10 @@ export interface FileRoutesByTo {
   '/status/$slug/confirm': typeof StatusSlugConfirmRoute
   '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
   '/app/issues': typeof AppIssuesIndexRoute
+  '/api/status/$slug/availability': typeof ApiStatusSlugAvailabilityRoute
   '/app/issues/$projectId': typeof AppIssuesProjectIdIndexRoute
   '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
+  '/api/status/$slug/reports/availability/monthly': typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -267,8 +285,10 @@ export interface FileRoutesById {
   '/status/$slug/confirm': typeof StatusSlugConfirmRoute
   '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
   '/app/issues/': typeof AppIssuesIndexRoute
+  '/api/status/$slug/availability': typeof ApiStatusSlugAvailabilityRoute
   '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
   '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
+  '/api/status/$slug/reports/availability/monthly': typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -299,8 +319,10 @@ export interface FileRouteTypes {
     | '/status/$slug/confirm'
     | '/status/$slug/unsubscribe'
     | '/app/issues/'
+    | '/api/status/$slug/availability'
     | '/app/issues/$projectId/'
     | '/app/issues/$projectId/issue/$issueId'
+    | '/api/status/$slug/reports/availability/monthly'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -328,8 +350,10 @@ export interface FileRouteTypes {
     | '/status/$slug/confirm'
     | '/status/$slug/unsubscribe'
     | '/app/issues'
+    | '/api/status/$slug/availability'
     | '/app/issues/$projectId'
     | '/app/issues/$projectId/issue/$issueId'
+    | '/api/status/$slug/reports/availability/monthly'
   id:
     | '__root__'
     | '/'
@@ -358,8 +382,10 @@ export interface FileRouteTypes {
     | '/status/$slug/confirm'
     | '/status/$slug/unsubscribe'
     | '/app/issues/'
+    | '/api/status/$slug/availability'
     | '/app/issues/$projectId/'
     | '/app/issues/$projectId/issue/$issueId'
+    | '/api/status/$slug/reports/availability/monthly'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -378,6 +404,8 @@ export interface RootRouteChildren {
   StatusSlugRoute: typeof StatusSlugRouteWithChildren
   ApiHeartbeatsMonitorIdRoute: typeof ApiHeartbeatsMonitorIdRoute
   ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute
+  ApiStatusSlugAvailabilityRoute: typeof ApiStatusSlugAvailabilityRoute
+  ApiStatusSlugReportsAvailabilityMonthlyRoute: typeof ApiStatusSlugReportsAvailabilityMonthlyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -571,12 +599,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIssuesProjectIdIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/status/$slug/availability': {
+      id: '/api/status/$slug/availability'
+      path: '/api/status/$slug/availability'
+      fullPath: '/api/status/$slug/availability'
+      preLoaderRoute: typeof ApiStatusSlugAvailabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/issues/$projectId/issue/$issueId': {
       id: '/app/issues/$projectId/issue/$issueId'
       path: '/issues/$projectId/issue/$issueId'
       fullPath: '/app/issues/$projectId/issue/$issueId'
       preLoaderRoute: typeof AppIssuesProjectIdIssueIssueIdRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/status/$slug/reports/availability/monthly': {
+      id: '/api/status/$slug/reports/availability/monthly'
+      path: '/api/status/$slug/reports/availability/monthly'
+      fullPath: '/api/status/$slug/reports/availability/monthly'
+      preLoaderRoute: typeof ApiStatusSlugReportsAvailabilityMonthlyRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -641,6 +683,9 @@ const rootRouteChildren: RootRouteChildren = {
   StatusSlugRoute: StatusSlugRouteWithChildren,
   ApiHeartbeatsMonitorIdRoute: ApiHeartbeatsMonitorIdRoute,
   ApiWebhooksMonitorIdRoute: ApiWebhooksMonitorIdRoute,
+  ApiStatusSlugAvailabilityRoute: ApiStatusSlugAvailabilityRoute,
+  ApiStatusSlugReportsAvailabilityMonthlyRoute:
+    ApiStatusSlugReportsAvailabilityMonthlyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

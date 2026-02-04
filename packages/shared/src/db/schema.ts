@@ -359,6 +359,28 @@ export const queueDedupe = sqliteTable("queue_dedupe", {
   createdAt: text("created_at").notNull(),
 });
 
+export const sloTargets = sqliteTable(
+  "slo_targets",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    scopeType: text("scope_type").notNull(), // "monitor" | "component" | "status_page"
+    scopeId: text("scope_id").notNull(),
+    targetPpm: integer("target_ppm").notNull(), // 0..1_000_000 (e.g. 99.9% => 999_000)
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    teamScopeUnique: uniqueIndex("slo_targets_team_scope_unique").on(
+      table.teamId,
+      table.scopeType,
+      table.scopeId,
+    ),
+  }),
+);
+
 export const userTeams = sqliteTable(
   "user_teams",
   {

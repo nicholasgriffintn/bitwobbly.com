@@ -8,6 +8,7 @@ import { requireOwner, useAppSession } from '@bitwobbly/auth/server';
 
 import { getDb } from "../lib/db";
 import { CreateTeamInputSchema } from "../validators/teams";
+import { DEFAULT_TEAM_SLO_TARGET_PPM } from "../lib/availability";
 import {
   createTeam,
   addUserToTeam,
@@ -26,6 +27,7 @@ import {
   deleteTeam,
 } from "../repositories/teams";
 import { requireTeam } from '../lib/auth-middleware';
+import { upsertSloTarget } from "../repositories/slo-targets";
 
 const JoinTeamSchema = z.object({
   inviteCode: z.string().min(1),
@@ -49,6 +51,15 @@ export const createTeamFn = createServerFn({ method: "POST" })
     const db = getDb(vars.DB);
 
     const { teamId } = await createTeam(db, userId, data.name);
+
+    try {
+      await upsertSloTarget(db, teamId, "team", teamId, DEFAULT_TEAM_SLO_TARGET_PPM);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (!(message.toLowerCase().includes("no such table") && message.includes("slo_targets"))) {
+        throw e;
+      }
+    }
 
     return { teamId };
   });
