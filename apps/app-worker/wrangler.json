@@ -51,6 +51,10 @@
   "queues": {
     "producers": [
       {
+        "binding": "ALERT_JOBS",
+        "queue": "bitwobbly-alert-jobs"
+      },
+      {
         "binding": "CHECK_JOBS",
         "queue": "bitwobbly-check-jobs"
       }

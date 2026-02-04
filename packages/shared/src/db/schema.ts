@@ -208,6 +208,69 @@ export const incidentComponents = sqliteTable(
   }),
 );
 
+export const statusPageSubscribers = sqliteTable(
+  "status_page_subscribers",
+  {
+    id: text("id").primaryKey(),
+    statusPageId: text("status_page_id")
+      .notNull()
+      .references(() => statusPages.id, { onDelete: "cascade" }),
+    channelType: text("channel_type").notNull(), // "email" | "webhook"
+    endpoint: text("endpoint").notNull(), // email address or webhook URL
+    digestCadence: text("digest_cadence").notNull().default("immediate"), // "immediate" | "daily" | "weekly"
+    status: text("status").notNull().default("pending"), // "pending" | "active" | "unsubscribed"
+    confirmTokenHash: text("confirm_token_hash"),
+    confirmExpiresAt: integer("confirm_expires_at"),
+    confirmedAt: text("confirmed_at"),
+    unsubscribedAt: text("unsubscribed_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    statusPageSubscriberUnique: uniqueIndex(
+      "status_page_subscribers_status_page_channel_endpoint_unique",
+    ).on(table.statusPageId, table.channelType, table.endpoint),
+  }),
+);
+
+export const statusPageSubscriberEvents = sqliteTable(
+  "status_page_subscriber_events",
+  {
+    id: text("id").primaryKey(),
+    statusPageId: text("status_page_id")
+      .notNull()
+      .references(() => statusPages.id, { onDelete: "cascade" }),
+    subscriberId: text("subscriber_id")
+      .notNull()
+      .references(() => statusPageSubscribers.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull(), // "incident_created" | "incident_updated" | "incident_resolved"
+    incidentId: text("incident_id")
+      .notNull()
+      .references(() => incidents.id, { onDelete: "cascade" }),
+    incidentUpdateId: text("incident_update_id").references(
+      () => incidentUpdates.id,
+      { onDelete: "cascade" },
+    ),
+    createdAt: text("created_at").notNull(),
+    sentAt: text("sent_at"),
+  },
+);
+
+export const statusPageSubscriberAuditLogs = sqliteTable(
+  "status_page_subscriber_audit_logs",
+  {
+    id: text("id").primaryKey(),
+    statusPageId: text("status_page_id")
+      .notNull()
+      .references(() => statusPages.id, { onDelete: "cascade" }),
+    subscriberId: text("subscriber_id").references(() => statusPageSubscribers.id, {
+      onDelete: "cascade",
+    }),
+    action: text("action").notNull(),
+    meta: text("meta", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    createdAt: text("created_at").notNull(),
+  },
+);
+
 export const notificationChannels = sqliteTable("notification_channels", {
   id: text("id").primaryKey(),
   teamId: text("team_id")
@@ -483,6 +546,16 @@ export type IncidentUpdate = typeof incidentUpdates.$inferSelect;
 export type NewIncidentUpdate = typeof incidentUpdates.$inferInsert;
 export type IncidentComponent = typeof incidentComponents.$inferSelect;
 export type NewIncidentComponent = typeof incidentComponents.$inferInsert;
+export type StatusPageSubscriber = typeof statusPageSubscribers.$inferSelect;
+export type NewStatusPageSubscriber = typeof statusPageSubscribers.$inferInsert;
+export type StatusPageSubscriberEvent =
+  typeof statusPageSubscriberEvents.$inferSelect;
+export type NewStatusPageSubscriberEvent =
+  typeof statusPageSubscriberEvents.$inferInsert;
+export type StatusPageSubscriberAuditLog =
+  typeof statusPageSubscriberAuditLogs.$inferSelect;
+export type NewStatusPageSubscriberAuditLog =
+  typeof statusPageSubscriberAuditLogs.$inferInsert;
 export type NotificationChannel = typeof notificationChannels.$inferSelect;
 export type NewNotificationChannel = typeof notificationChannels.$inferInsert;
 export type AlertRule = typeof alertRules.$inferSelect;

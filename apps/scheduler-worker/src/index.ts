@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
 import { getDb } from "./lib/db";
+import { runStatusPageDigests } from "./lib/status-page-digests";
 import {
   getDueMonitors,
   claimMonitor,
@@ -40,6 +41,12 @@ const handler = {
           }
         } catch (error) {
           console.error('[SCHEDULER] session cleanup failed', error);
+        }
+
+        try {
+          await runStatusPageDigests(db, env, ctx);
+        } catch (error) {
+          console.error("[SCHEDULER] status page digest failed", error);
         }
 
         for (let batchIndex = 0; batchIndex < maxBatches; batchIndex += 1) {

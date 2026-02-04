@@ -43,6 +43,34 @@ export async function listOpenIncidents(
   return incs.map((i) => ({ ...i, updates: byId.get(i.id) || [] }));
 }
 
+export async function getIncidentStatusPageId(
+  db: DB,
+  teamId: string,
+  incidentId: string,
+): Promise<string | null> {
+  const rows = await db
+    .select({ statusPageId: schema.incidents.statusPageId })
+    .from(schema.incidents)
+    .where(
+      and(eq(schema.incidents.teamId, teamId), eq(schema.incidents.id, incidentId)),
+    )
+    .limit(1);
+
+  return rows[0]?.statusPageId ?? null;
+}
+
+export async function listIncidentComponentIds(
+  db: DB,
+  incidentId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ componentId: schema.incidentComponents.componentId })
+    .from(schema.incidentComponents)
+    .where(eq(schema.incidentComponents.incidentId, incidentId));
+
+  return rows.map((r) => r.componentId);
+}
+
 export async function listRecentResolvedIncidents(
   db: DB,
   teamId: string,

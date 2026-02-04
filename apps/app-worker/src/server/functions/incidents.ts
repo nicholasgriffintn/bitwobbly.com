@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
+import { randomId } from "@bitwobbly/shared";
 
 import { getDb } from "../lib/db";
 import {
@@ -8,8 +9,16 @@ import {
   listOpenIncidents,
   createIncident,
   addIncidentUpdate,
+  getIncidentStatusPageId,
+  listIncidentComponentIds,
   deleteIncident,
 } from "../repositories/incidents";
+import {
+  createSubscriberEvent,
+  insertSubscriptionAuditLog,
+  listDeliverableSubscribersForStatusPage,
+  listStatusPageIdsForComponents,
+} from "../repositories/status-page-subscribers";
 import {
   clearStatusPageCache,
   clearAllStatusPageCaches,
@@ -72,6 +81,51 @@ export const createIncidentFn = createServerFn({ method: "POST" })
       await clearStatusPageCache(db, vars.KV, teamId, data.statusPageId);
     }
 
+    const targetStatusPageIds = new Set<string>();
+    if (data.statusPageId) {
+      targetStatusPageIds.add(data.statusPageId);
+    }
+    if (data.affectedComponents?.length) {
+      const componentIds = data.affectedComponents.map((c) => c.componentId);
+      const pageIds = await listStatusPageIdsForComponents(db, teamId, componentIds);
+      for (const pageId of pageIds) targetStatusPageIds.add(pageId);
+    }
+
+    for (const statusPageId of targetStatusPageIds) {
+      const subscribers = await listDeliverableSubscribersForStatusPage(
+        db,
+        statusPageId,
+      );
+
+      for (const sub of subscribers) {
+        const { eventId } = await createSubscriberEvent(db, {
+          statusPageId,
+          subscriberId: sub.id,
+          eventType: "incident_created",
+          incidentId: created.id,
+          incidentUpdateId: null,
+        });
+
+        if (sub.digestCadence === "immediate") {
+          await vars.ALERT_JOBS.send({
+            type: "status_page_deliver_events",
+            job_id: randomId("spj"),
+            subscriber_id: sub.id,
+            event_ids: [eventId],
+          });
+        }
+      }
+
+      await insertSubscriptionAuditLog(db, {
+        statusPageId,
+        action: "incident_event_fanned_out",
+        meta: {
+          incident_id: created.id,
+          subscriber_count: subscribers.length,
+        },
+      });
+    }
+
     return { ok: true, ...created };
   });
 
@@ -87,6 +141,64 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
     });
 
     await clearAllStatusPageCaches(db, vars.KV, teamId);
+
+    const targetStatusPageIds = new Set<string>();
+    const linkedStatusPageId = await getIncidentStatusPageId(
+      db,
+      teamId,
+      data.incidentId,
+    );
+    if (linkedStatusPageId) targetStatusPageIds.add(linkedStatusPageId);
+
+    const componentIds = await listIncidentComponentIds(db, data.incidentId);
+    if (componentIds.length) {
+      const pageIds = await listStatusPageIdsForComponents(
+        db,
+        teamId,
+        componentIds,
+      );
+      for (const pageId of pageIds) targetStatusPageIds.add(pageId);
+    }
+
+    const eventType =
+      data.status === "resolved" ? "incident_resolved" : "incident_updated";
+
+    for (const statusPageId of targetStatusPageIds) {
+      const subscribers = await listDeliverableSubscribersForStatusPage(
+        db,
+        statusPageId,
+      );
+
+      for (const sub of subscribers) {
+        const { eventId } = await createSubscriberEvent(db, {
+          statusPageId,
+          subscriberId: sub.id,
+          eventType,
+          incidentId: data.incidentId,
+          incidentUpdateId: result.id,
+        });
+
+        if (sub.digestCadence === "immediate") {
+          await vars.ALERT_JOBS.send({
+            type: "status_page_deliver_events",
+            job_id: randomId("spj"),
+            subscriber_id: sub.id,
+            event_ids: [eventId],
+          });
+        }
+      }
+
+      await insertSubscriptionAuditLog(db, {
+        statusPageId,
+        action: "incident_event_fanned_out",
+        meta: {
+          incident_id: data.incidentId,
+          incident_update_id: result.id,
+          subscriber_count: subscribers.length,
+          event_type: eventType,
+        },
+      });
+    }
 
     return { ok: true, ...result };
   });

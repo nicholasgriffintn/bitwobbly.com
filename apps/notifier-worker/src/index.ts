@@ -8,6 +8,7 @@ import { withSentry } from "@sentry/cloudflare";
 import type { Env } from "./types/env";
 import { sendAlertEmail, sendIssueAlertEmail } from "./lib/email";
 import { getDb } from './lib/db';
+import { handleStatusPageJob, type StatusPageJob } from "./lib/status-page-jobs";
 import {
   getAlertRuleById,
   getChannelById,
@@ -18,28 +19,63 @@ import {
 import { acquireQueueDedupe } from "./repositories/queue-dedupe";
 
 const handler = {
-  async queue(batch: MessageBatch<AlertJob>, env: Env): Promise<void> {
+  async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
     const db = getDb(env.DB);
 
     for (const msg of batch.messages) {
       try {
-        const job = msg.body;
+        const job = msg.body as unknown;
 
-        const ok = await acquireQueueDedupe(db, `alert:${job.alert_id}`);
-        if (!ok) {
+        if (!job || typeof job !== "object") {
           msg.ack();
           continue;
         }
 
-        if (job.type === "issue") {
-          await handleIssueAlert(job, env, db);
-        } else {
-          await handleMonitorAlert(job, env, db);
+        const jobType = (job as { type?: unknown }).type;
+        if (typeof jobType !== "string") {
+          msg.ack();
+          continue;
         }
+
+        if (jobType === "issue" || jobType === "monitor") {
+          const alertJob = job as AlertJob;
+          const ok = await acquireQueueDedupe(db, `alert:${alertJob.alert_id}`);
+          if (!ok) {
+            msg.ack();
+            continue;
+          }
+
+          if (alertJob.type === "issue") {
+            await handleIssueAlert(alertJob, env, db);
+          } else {
+            await handleMonitorAlert(alertJob, env, db);
+          }
+          msg.ack();
+          continue;
+        }
+
+        if (jobType.startsWith("status_page_")) {
+          const jobId = (job as { job_id?: unknown }).job_id;
+          if (typeof jobId !== "string" || !jobId) {
+            msg.ack();
+            continue;
+          }
+
+          const ok = await acquireQueueDedupe(db, `status_page:${jobId}`);
+          if (!ok) {
+            msg.ack();
+            continue;
+          }
+
+          await handleStatusPageJob(job as StatusPageJob, env, db, sendWebhook);
+          msg.ack();
+          continue;
+        }
+
         msg.ack();
       } catch (e: unknown) {
         const error = e as Error;
-        console.error("alert delivery failed", error?.message || e);
+        console.error("job delivery failed", error?.message || e);
       }
     }
   },

@@ -31,6 +31,8 @@ import { Route as AppMaintenanceRouteImport } from './routes/app/maintenance'
 import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
 import { Route as AppComponentsRouteImport } from './routes/app/components'
 import { Route as AppIssuesIndexRouteImport } from './routes/app/issues/index'
+import { Route as StatusSlugUnsubscribeRouteImport } from './routes/status/$slug/unsubscribe'
+import { Route as StatusSlugConfirmRouteImport } from './routes/status/$slug/confirm'
 import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.$monitorId'
 import { Route as ApiHeartbeatsMonitorIdRouteImport } from './routes/api.heartbeats.$monitorId'
 import { Route as AppIssuesProjectIdIndexRouteImport } from './routes/app/issues/$projectId/index'
@@ -146,6 +148,16 @@ const AppIssuesIndexRoute = AppIssuesIndexRouteImport.update({
   path: '/issues/',
   getParentRoute: () => AppRoute,
 } as any)
+const StatusSlugUnsubscribeRoute = StatusSlugUnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => StatusSlugRoute,
+} as any)
+const StatusSlugConfirmRoute = StatusSlugConfirmRouteImport.update({
+  id: '/confirm',
+  path: '/confirm',
+  getParentRoute: () => StatusSlugRoute,
+} as any)
 const ApiWebhooksMonitorIdRoute = ApiWebhooksMonitorIdRouteImport.update({
   id: '/api/webhooks/$monitorId',
   path: '/api/webhooks/$monitorId',
@@ -188,10 +200,12 @@ export interface FileRoutesByFullPath {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/status-pages': typeof AppStatusPagesRoute
-  '/status/$slug': typeof StatusSlugRoute
+  '/status/$slug': typeof StatusSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
+  '/status/$slug/confirm': typeof StatusSlugConfirmRoute
+  '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
   '/app/issues/': typeof AppIssuesIndexRoute
   '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
   '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
@@ -215,10 +229,12 @@ export interface FileRoutesByTo {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/status-pages': typeof AppStatusPagesRoute
-  '/status/$slug': typeof StatusSlugRoute
+  '/status/$slug': typeof StatusSlugRouteWithChildren
   '/app': typeof AppIndexRoute
   '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
+  '/status/$slug/confirm': typeof StatusSlugConfirmRoute
+  '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
   '/app/issues': typeof AppIssuesIndexRoute
   '/app/issues/$projectId': typeof AppIssuesProjectIdIndexRoute
   '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
@@ -244,10 +260,12 @@ export interface FileRoutesById {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/status-pages': typeof AppStatusPagesRoute
-  '/status/$slug': typeof StatusSlugRoute
+  '/status/$slug': typeof StatusSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
+  '/status/$slug/confirm': typeof StatusSlugConfirmRoute
+  '/status/$slug/unsubscribe': typeof StatusSlugUnsubscribeRoute
   '/app/issues/': typeof AppIssuesIndexRoute
   '/app/issues/$projectId/': typeof AppIssuesProjectIdIndexRoute
   '/app/issues/$projectId/issue/$issueId': typeof AppIssuesProjectIdIssueIssueIdRoute
@@ -278,6 +296,8 @@ export interface FileRouteTypes {
     | '/app/'
     | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
+    | '/status/$slug/confirm'
+    | '/status/$slug/unsubscribe'
     | '/app/issues/'
     | '/app/issues/$projectId/'
     | '/app/issues/$projectId/issue/$issueId'
@@ -305,6 +325,8 @@ export interface FileRouteTypes {
     | '/app'
     | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
+    | '/status/$slug/confirm'
+    | '/status/$slug/unsubscribe'
     | '/app/issues'
     | '/app/issues/$projectId'
     | '/app/issues/$projectId/issue/$issueId'
@@ -333,6 +355,8 @@ export interface FileRouteTypes {
     | '/app/'
     | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
+    | '/status/$slug/confirm'
+    | '/status/$slug/unsubscribe'
     | '/app/issues/'
     | '/app/issues/$projectId/'
     | '/app/issues/$projectId/issue/$issueId'
@@ -351,7 +375,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetupMfaRoute: typeof SetupMfaRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
-  StatusSlugRoute: typeof StatusSlugRoute
+  StatusSlugRoute: typeof StatusSlugRouteWithChildren
   ApiHeartbeatsMonitorIdRoute: typeof ApiHeartbeatsMonitorIdRoute
   ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute
 }
@@ -512,6 +536,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIssuesIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/status/$slug/unsubscribe': {
+      id: '/status/$slug/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/status/$slug/unsubscribe'
+      preLoaderRoute: typeof StatusSlugUnsubscribeRouteImport
+      parentRoute: typeof StatusSlugRoute
+    }
+    '/status/$slug/confirm': {
+      id: '/status/$slug/confirm'
+      path: '/confirm'
+      fullPath: '/status/$slug/confirm'
+      preLoaderRoute: typeof StatusSlugConfirmRouteImport
+      parentRoute: typeof StatusSlugRoute
+    }
     '/api/webhooks/$monitorId': {
       id: '/api/webhooks/$monitorId'
       path: '/api/webhooks/$monitorId'
@@ -573,6 +611,20 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface StatusSlugRouteChildren {
+  StatusSlugConfirmRoute: typeof StatusSlugConfirmRoute
+  StatusSlugUnsubscribeRoute: typeof StatusSlugUnsubscribeRoute
+}
+
+const StatusSlugRouteChildren: StatusSlugRouteChildren = {
+  StatusSlugConfirmRoute: StatusSlugConfirmRoute,
+  StatusSlugUnsubscribeRoute: StatusSlugUnsubscribeRoute,
+}
+
+const StatusSlugRouteWithChildren = StatusSlugRoute._addFileChildren(
+  StatusSlugRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
@@ -586,7 +638,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SetupMfaRoute: SetupMfaRoute,
   VerifyEmailRoute: VerifyEmailRoute,
-  StatusSlugRoute: StatusSlugRoute,
+  StatusSlugRoute: StatusSlugRouteWithChildren,
   ApiHeartbeatsMonitorIdRoute: ApiHeartbeatsMonitorIdRoute,
   ApiWebhooksMonitorIdRoute: ApiWebhooksMonitorIdRoute,
 }

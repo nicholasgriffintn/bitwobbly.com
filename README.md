@@ -19,7 +19,7 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 - [ ] Potentially add Ping (ICMP) checks if not too complex to implement in Workers.
 - [ ] Implement browser checks with https://developers.cloudflare.com/browser-rendering/, potentially even https://developers.cloudflare.com/browser-rendering/stagehand/.
 - [x] Add maintenance windows, monitor groups, dependency-aware component health, and scoped alert suppression.
-- [ ] Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
+- [x] Add subscriber workflows: email/webhook subscriptions, digest cadence, confirmation/unsubscribe, and audit logs.
 - [ ] Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
 - [ ] Add SLO/Uptime reporting with exportable monthly reports and historical availability APIs.
 
