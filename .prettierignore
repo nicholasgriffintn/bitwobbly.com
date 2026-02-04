@@ -7,3 +7,4 @@ pnpm-lock.yaml
 *.d.ts
 cdk.out
 package-lock.json
+apps/app-worker/src/routeTree.gen.ts

@@ -1,5 +1,5 @@
 import { schema, type DB } from "@bitwobbly/shared";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
 export async function listSentryEvents(
   db: DB,
@@ -9,6 +9,10 @@ export async function listSentryEvents(
     until?: number;
     type?: string;
     issueId?: string;
+    release?: string;
+    environment?: string;
+    transaction?: string;
+    query?: string;
     limit?: number;
   }
 ) {
@@ -25,6 +29,21 @@ export async function listSentryEvents(
   }
   if (options.issueId) {
     conditions.push(eq(schema.sentryEvents.issueId, options.issueId));
+  }
+  if (options.release) {
+    conditions.push(eq(schema.sentryEvents.release, options.release));
+  }
+  if (options.environment) {
+    conditions.push(eq(schema.sentryEvents.environment, options.environment));
+  }
+  if (options.transaction) {
+    conditions.push(eq(schema.sentryEvents.transaction, options.transaction));
+  }
+  if (options.query) {
+    const q = `%${options.query.toLowerCase()}%`;
+    conditions.push(
+      sql`(lower(coalesce(${schema.sentryEvents.message}, '')) like ${q} OR lower(coalesce(${schema.sentryEvents.transaction}, '')) like ${q})`
+    );
   }
 
   return db
@@ -57,12 +76,57 @@ export async function getSentryEvent(
 export async function listSentryIssues(
   db: DB,
   projectId: string,
-  options: { status?: string; limit?: number }
+  options: {
+    status?: string;
+    since?: number;
+    until?: number;
+    query?: string;
+    release?: string;
+    environment?: string;
+    assignedToUserId?: string;
+    unassigned?: boolean;
+    includeSnoozed?: boolean;
+    limit?: number;
+  }
 ) {
   const conditions = [eq(schema.sentryIssues.projectId, projectId)];
 
   if (options.status) {
     conditions.push(eq(schema.sentryIssues.status, options.status));
+  }
+  if (options.since) {
+    conditions.push(gte(schema.sentryIssues.lastSeenAt, options.since));
+  }
+  if (options.until) {
+    conditions.push(lte(schema.sentryIssues.lastSeenAt, options.until));
+  }
+  if (options.release) {
+    conditions.push(eq(schema.sentryIssues.lastSeenRelease, options.release));
+  }
+  if (options.environment) {
+    conditions.push(
+      eq(schema.sentryIssues.lastSeenEnvironment, options.environment)
+    );
+  }
+  if (options.assignedToUserId) {
+    conditions.push(
+      eq(schema.sentryIssues.assignedToUserId, options.assignedToUserId)
+    );
+  }
+  if (options.unassigned) {
+    conditions.push(sql`${schema.sentryIssues.assignedToUserId} IS NULL`);
+  }
+  if (!options.includeSnoozed) {
+    const now = Math.floor(Date.now() / 1000);
+    conditions.push(
+      sql`(${schema.sentryIssues.snoozedUntil} IS NULL OR ${schema.sentryIssues.snoozedUntil} <= ${now})`
+    );
+  }
+  if (options.query) {
+    const q = `%${options.query.toLowerCase()}%`;
+    conditions.push(
+      sql`(lower(${schema.sentryIssues.title}) like ${q} OR lower(coalesce(${schema.sentryIssues.culprit}, '')) like ${q})`
+    );
   }
 
   return db
@@ -96,14 +160,36 @@ export async function updateSentryIssue(
   db: DB,
   projectId: string,
   issueId: string,
-  updates: { status?: string }
+  updates: {
+    status?: string;
+    assignedToUserId?: string | null;
+    snoozedUntil?: number | null;
+    ignoredUntil?: number | null;
+    resolvedInRelease?: string | null;
+  }
 ) {
   const issue = await getSentryIssue(db, projectId, issueId);
   if (!issue) return null;
 
+  const now = Math.floor(Date.now() / 1000);
+  const nextUpdates: Record<string, unknown> = { ...updates };
+
+  if ("assignedToUserId" in updates) {
+    nextUpdates.assignedAt =
+      updates.assignedToUserId && updates.assignedToUserId.length ? now : null;
+  }
+
+  if (updates.status === "resolved") {
+    nextUpdates.resolvedAt = now;
+  }
+
+  if (updates.status === "unresolved") {
+    nextUpdates.resolvedAt = null;
+  }
+
   await db
     .update(schema.sentryIssues)
-    .set(updates)
+    .set(nextUpdates)
     .where(
       and(
         eq(schema.sentryIssues.id, issueId),

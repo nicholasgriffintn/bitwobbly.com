@@ -14,12 +14,14 @@ import {
   parseSentryEvent,
   parseSessionPayload,
 } from "./lib/sentry-payloads";
+import { createGroupingRulesResolver } from "./lib/grouping-rules";
 import {
   upsertIssue,
   insertEvent,
   insertSession,
   insertClientReport,
   eventExists,
+  listIssueGroupingRules,
 } from "./repositories/events";
 import { getProjectTeamId } from "./repositories/alert-rules";
 import type { Env, ProcessJob } from "./types/env";
@@ -28,6 +30,11 @@ import {
   normaliseSessionStatus,
   toUnixSeconds,
 } from "./lib/session-utils";
+
+const groupingRulesResolver = createGroupingRulesResolver({
+  ttlMs: 60_000,
+  listRules: listIssueGroupingRules,
+});
 
 const handler = {
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
@@ -121,14 +128,27 @@ async function processEvent(
   const level =
     job.item_type === "transaction" ? "info" : event.level || "error";
 
+  const groupingRules = await groupingRulesResolver.getCachedRules(
+    db,
+    job.project_id
+  );
+  const overrideFingerprint = groupingRulesResolver.pickOverrideFingerprint(
+    groupingRules,
+    event,
+    culprit
+  );
+  const effectiveFingerprint = overrideFingerprint ?? fingerprint;
+
   const { issueId, isNewIssue, wasResolved } = await upsertIssue(
     db,
     job.project_id,
     {
-      fingerprint,
+      fingerprint: effectiveFingerprint,
       title,
       level,
       culprit,
+      release: event.release || null,
+      environment: event.environment || null,
     }
   );
 
@@ -141,7 +161,8 @@ async function processEvent(
     type: job.item_type,
     level,
     message: event.message || null,
-    fingerprint,
+    transaction: event.transaction || null,
+    fingerprint: effectiveFingerprint,
     release: event.release || null,
     environment: event.environment || null,
     r2Key: job.r2_raw_key,

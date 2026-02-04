@@ -3,6 +3,7 @@ import {
   integer,
   sqliteTable,
   primaryKey,
+  index,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
@@ -450,23 +451,75 @@ export const sentryKeys = sqliteTable("sentry_keys", {
   revokedAt: text("revoked_at"),
 });
 
-export const sentryIssues = sqliteTable("sentry_issues", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id")
-    .notNull()
-    .references(() => sentryProjects.id),
-  fingerprint: text("fingerprint").notNull(),
-  title: text("title").notNull(),
-  culprit: text("culprit"),
-  level: text("level").notNull(),
-  status: text("status").notNull().default("unresolved"),
-  eventCount: integer("event_count").notNull().default(1),
-  userCount: integer("user_count").notNull().default(0),
-  firstSeenAt: integer("first_seen_at").notNull(),
-  lastSeenAt: integer("last_seen_at").notNull(),
-  resolvedAt: integer("resolved_at"),
-  createdAt: text("created_at").notNull(),
-});
+export const sentryIssues = sqliteTable(
+  "sentry_issues",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => sentryProjects.id),
+    fingerprint: text("fingerprint").notNull(),
+    title: text("title").notNull(),
+    culprit: text("culprit"),
+    level: text("level").notNull(),
+    status: text("status").notNull().default("unresolved"),
+    assignedToUserId: text("assigned_to_user_id").references(() => users.id),
+    assignedAt: integer("assigned_at"),
+    snoozedUntil: integer("snoozed_until"),
+    ignoredUntil: integer("ignored_until"),
+    resolvedInRelease: text("resolved_in_release"),
+    regressedAt: integer("regressed_at"),
+    regressedCount: integer("regressed_count").notNull().default(0),
+    eventCount: integer("event_count").notNull().default(1),
+    userCount: integer("user_count").notNull().default(0),
+    firstSeenAt: integer("first_seen_at").notNull(),
+    lastSeenAt: integer("last_seen_at").notNull(),
+    lastSeenRelease: text("last_seen_release"),
+    lastSeenEnvironment: text("last_seen_environment"),
+    resolvedAt: integer("resolved_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    projectFingerprintUnique: uniqueIndex(
+      "sentry_issues_project_fingerprint_unique"
+    ).on(table.projectId, table.fingerprint),
+    projectLastSeenIdx: index("sentry_issues_project_last_seen_idx").on(
+      table.projectId,
+      table.lastSeenAt
+    ),
+    projectStatusIdx: index("sentry_issues_project_status_idx").on(
+      table.projectId,
+      table.status
+    ),
+  })
+);
+
+export const sentryIssueGroupingRules = sqliteTable(
+  "sentry_issue_grouping_rules",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => sentryProjects.id),
+    name: text("name").notNull(),
+    enabled: integer("enabled").notNull().default(1),
+    matchers: text("matchers", { mode: "json" }).$type<{
+      exceptionType?: string;
+      level?: string;
+      messageIncludes?: string;
+      culpritIncludes?: string;
+      transactionIncludes?: string;
+      frameIncludes?: string;
+    }>(),
+    fingerprint: text("fingerprint").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    projectCreatedIdx: index(
+      "sentry_issue_grouping_rules_project_created_idx"
+    ).on(table.projectId, table.createdAt),
+  })
+);
 
 export const sentryEvents = sqliteTable("sentry_events", {
   id: text("id").primaryKey(),
@@ -476,6 +529,7 @@ export const sentryEvents = sqliteTable("sentry_events", {
   type: text("type").notNull(),
   level: text("level"),
   message: text("message"),
+  transaction: text("transaction"),
   fingerprint: text("fingerprint"),
   issueId: text("issue_id").references(() => sentryIssues.id),
   release: text("release"),

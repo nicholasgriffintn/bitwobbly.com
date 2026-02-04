@@ -19,6 +19,17 @@ import {
   getSentryIssue,
   updateSentryIssue,
 } from "../repositories/sentry-events";
+import {
+  getSentryReleaseHealth,
+  listSentrySessions,
+} from "../repositories/sentry-sessions";
+import { listSentryClientReports } from "../repositories/sentry-client-reports";
+import {
+  createSentryIssueGroupingRule,
+  deleteSentryIssueGroupingRule,
+  listSentryIssueGroupingRules,
+  updateSentryIssueGroupingRule,
+} from "../repositories/sentry-issue-grouping-rules";
 
 const CreateProjectSchema = z.object({
   name: z.string().min(1),
@@ -45,6 +56,10 @@ const ListSentryEventsSchema = z.object({
   until: z.number().int().positive().optional(),
   type: z.string().min(1).optional(),
   issueId: z.string().min(1).optional(),
+  release: z.string().min(1).optional(),
+  environment: z.string().min(1).optional(),
+  transaction: z.string().min(1).optional(),
+  query: z.string().min(1).optional(),
   limit: z.number().int().min(1).max(500).optional(),
 });
 
@@ -53,15 +68,85 @@ const GetSentryEventPayloadSchema = z.object({
   eventId: z.string().min(1),
 });
 
+const ListSentrySessionsSchema = z.object({
+  projectId: z.string().min(1),
+  since: z.number().int().positive().optional(),
+  until: z.number().int().positive().optional(),
+  release: z.string().min(1).optional(),
+  environment: z.string().min(1).optional(),
+  status: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(500).optional(),
+});
+
+const GetSentryReleaseHealthSchema = z.object({
+  projectId: z.string().min(1),
+  since: z.number().int().positive().optional(),
+  until: z.number().int().positive().optional(),
+});
+
+const ListSentryClientReportsSchema = z.object({
+  projectId: z.string().min(1),
+  since: z.number().int().positive().optional(),
+  until: z.number().int().positive().optional(),
+  limit: z.number().int().min(1).max(500).optional(),
+});
+
+const IssueGroupingMatchersSchema = z.object({
+  exceptionType: z.string().min(1).optional(),
+  level: z.string().min(1).optional(),
+  messageIncludes: z.string().min(1).optional(),
+  culpritIncludes: z.string().min(1).optional(),
+  transactionIncludes: z.string().min(1).optional(),
+  frameIncludes: z.string().min(1).optional(),
+});
+
+const ListIssueGroupingRulesSchema = z.object({
+  projectId: z.string().min(1),
+});
+
+const CreateIssueGroupingRuleSchema = z.object({
+  projectId: z.string().min(1),
+  name: z.string().min(1),
+  enabled: z.boolean().optional(),
+  matchers: IssueGroupingMatchersSchema.nullable().optional(),
+  fingerprint: z.string().min(1),
+});
+
+const UpdateIssueGroupingRuleSchema = z.object({
+  projectId: z.string().min(1),
+  ruleId: z.string().min(1),
+  name: z.string().min(1).optional(),
+  enabled: z.boolean().optional(),
+  matchers: IssueGroupingMatchersSchema.nullable().optional(),
+  fingerprint: z.string().min(1).optional(),
+});
+
+const DeleteIssueGroupingRuleSchema = z.object({
+  projectId: z.string().min(1),
+  ruleId: z.string().min(1),
+});
+
 const ListSentryIssuesSchema = z.object({
   projectId: z.string().min(1),
   status: SentryIssueStatusSchema.optional(),
+  since: z.number().int().positive().optional(),
+  until: z.number().int().positive().optional(),
+  query: z.string().min(1).optional(),
+  release: z.string().min(1).optional(),
+  environment: z.string().min(1).optional(),
+  assignedToUserId: z.string().min(1).optional(),
+  unassigned: z.boolean().optional(),
+  includeSnoozed: z.boolean().optional(),
 });
 
 const UpdateSentryIssueSchema = z.object({
   projectId: z.string().min(1),
   issueId: z.string().min(1),
-  status: SentryIssueStatusSchema,
+  status: SentryIssueStatusSchema.optional(),
+  assignedToUserId: z.string().min(1).nullable().optional(),
+  snoozedUntil: z.number().int().positive().nullable().optional(),
+  ignoredUntil: z.number().int().positive().nullable().optional(),
+  resolvedInRelease: z.string().min(1).nullable().optional(),
 });
 
 const GetSentryIssueSchema = z.object({
@@ -128,6 +213,10 @@ export const listSentryEventsFn = createServerFn({ method: "GET" })
       until: data.until,
       type: data.type,
       issueId: data.issueId,
+      release: data.release,
+      environment: data.environment,
+      transaction: data.transaction,
+      query: data.query,
       limit: data.limit,
     });
     return { events };
@@ -152,6 +241,144 @@ export const getSentryEventPayloadFn = createServerFn({ method: "GET" })
     return { event, payload };
   });
 
+export const listSentryIssueGroupingRulesFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => ListIssueGroupingRulesSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const rules = await listSentryIssueGroupingRules(db, data.projectId);
+    return { rules };
+  });
+
+export const createSentryIssueGroupingRuleFn = createServerFn({
+  method: "POST",
+})
+  .inputValidator((data: unknown) => CreateIssueGroupingRuleSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const rule = await createSentryIssueGroupingRule(db, data.projectId, {
+      name: data.name,
+      enabled: data.enabled,
+      matchers: data.matchers,
+      fingerprint: data.fingerprint,
+    });
+
+    if (!rule) throw new Error("Could not create rule");
+    return { ok: true, rule };
+  });
+
+export const updateSentryIssueGroupingRuleFn = createServerFn({
+  method: "POST",
+})
+  .inputValidator((data: unknown) => UpdateIssueGroupingRuleSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const rule = await updateSentryIssueGroupingRule(
+      db,
+      data.projectId,
+      data.ruleId,
+      {
+        name: data.name,
+        enabled: data.enabled,
+        matchers: data.matchers,
+        fingerprint: data.fingerprint,
+      }
+    );
+
+    if (!rule) throw new Error("Rule not found");
+    return { ok: true, rule };
+  });
+
+export const deleteSentryIssueGroupingRuleFn = createServerFn({
+  method: "POST",
+})
+  .inputValidator((data: unknown) => DeleteIssueGroupingRuleSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const ok = await deleteSentryIssueGroupingRule(
+      db,
+      data.projectId,
+      data.ruleId
+    );
+    if (!ok) throw new Error("Rule not found");
+    return { ok: true };
+  });
+
+export const listSentrySessionsFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => ListSentrySessionsSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const sessions = await listSentrySessions(db, data.projectId, {
+      since: data.since,
+      until: data.until,
+      release: data.release,
+      environment: data.environment,
+      status: data.status,
+      limit: data.limit,
+    });
+
+    return { sessions };
+  });
+
+export const getSentryReleaseHealthFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => GetSentryReleaseHealthSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const health = await getSentryReleaseHealth(db, data.projectId, {
+      since: data.since,
+      until: data.until,
+    });
+
+    return { health };
+  });
+
+export const listSentryClientReportsFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => ListSentryClientReportsSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const reports = await listSentryClientReports(db, data.projectId, {
+      since: data.since,
+      until: data.until,
+      limit: data.limit,
+    });
+
+    return { reports };
+  });
+
 export const listSentryIssuesFn = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => ListSentryIssuesSchema.parse(data))
   .handler(async ({ data }) => {
@@ -163,6 +390,14 @@ export const listSentryIssuesFn = createServerFn({ method: "GET" })
 
     const issues = await listSentryIssues(db, data.projectId, {
       status: data.status,
+      since: data.since,
+      until: data.until,
+      query: data.query,
+      release: data.release,
+      environment: data.environment,
+      assignedToUserId: data.assignedToUserId,
+      unassigned: data.unassigned,
+      includeSnoozed: data.includeSnoozed,
     });
     return { issues };
   });
@@ -188,6 +423,10 @@ export const updateSentryIssueFn = createServerFn({ method: "POST" })
 
     const result = await updateSentryIssue(db, data.projectId, data.issueId, {
       status: data.status,
+      assignedToUserId: data.assignedToUserId,
+      snoozedUntil: data.snoozedUntil,
+      ignoredUntil: data.ignoredUntil,
+      resolvedInRelease: data.resolvedInRelease,
     });
     if (!result) throw new Error("Issue not found");
     return { ok: true, issue: result };

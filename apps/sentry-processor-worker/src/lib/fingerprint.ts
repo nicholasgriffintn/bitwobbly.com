@@ -41,6 +41,24 @@ function normaliseTransaction(value: string): string {
     .trim();
 }
 
+function normaliseFrameSignature(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "unknown";
+
+  const withoutHash = trimmed.split("#")[0] ?? trimmed;
+  const withoutQuery = withoutHash.split("?")[0] ?? withoutHash;
+
+  return withoutQuery
+    .replace(/^webpack:\/{2,3}/i, "")
+    .replace(/^app:\/{2,3}/i, "")
+    .replace(/^file:\/{2,3}/i, "")
+    .replace(/\\/g, "/")
+    .replace(/^\.\//, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim();
+}
+
 function getPrimaryException(event: EventData): ExceptionValue | null {
   if (!event.exception?.values?.length) return null;
   return event.exception.values[0] || null;
@@ -87,8 +105,9 @@ export function computeFingerprint(event: EventData): string {
 
   const frame = getPrimaryFrame(event);
   if (frame) {
-    const frameSignature =
-      frame.module || frame.function || frame.filename || "unknown";
+    const frameSignature = normaliseFrameSignature(
+      frame.module || frame.function || frame.filename || "unknown"
+    );
     parts.push(`frame:${frameSignature}`);
   }
 

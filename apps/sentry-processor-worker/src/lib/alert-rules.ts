@@ -4,7 +4,8 @@ import type {
   AlertConditions,
   IssueAlertJob,
 } from "@bitwobbly/shared";
-import type { schema } from "@bitwobbly/shared";
+import { schema } from "@bitwobbly/shared";
+import { eq } from "drizzle-orm";
 import type { DB } from "./db";
 import type { Env } from "../types/env";
 import {
@@ -44,6 +45,9 @@ export async function evaluateAlertRules(
   db: DB,
   context: EventContext
 ): Promise<void> {
+  const muted = await isIssueMuted(db, context.issueId);
+  if (muted) return;
+
   const rules = await getActiveRulesForProject(
     db,
     context.projectId,
@@ -92,6 +96,37 @@ export async function evaluateAlertRules(
       threshold?.critical
     );
   }
+}
+
+async function isIssueMuted(db: DB, issueId: string): Promise<boolean> {
+  const rows = await db
+    .select({
+      status: schema.sentryIssues.status,
+      snoozedUntil: schema.sentryIssues.snoozedUntil,
+      ignoredUntil: schema.sentryIssues.ignoredUntil,
+    })
+    .from(schema.sentryIssues)
+    .where(eq(schema.sentryIssues.id, issueId))
+    .limit(1);
+
+  const issue = rows[0];
+  if (!issue) return false;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof issue.snoozedUntil === "number" && issue.snoozedUntil > now) {
+    return true;
+  }
+
+  if (issue.status === "ignored") {
+    if (issue.ignoredUntil === null || issue.ignoredUntil === undefined) {
+      return true;
+    }
+    if (typeof issue.ignoredUntil === "number" && issue.ignoredUntil > now) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function triggerMatches(

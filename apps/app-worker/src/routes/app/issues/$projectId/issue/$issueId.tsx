@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
-import { PageHeader } from "@/components/layout";
+import { Card, CardTitle, PageHeader } from "@/components/layout";
+import { ListContainer, ListRow } from "@/components/list";
+import { Badge, StatusBadge, isStatusType } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
 import { formatRelativeTime } from "@/utils/time";
 import {
   listSentryEventsFn,
   getSentryEventPayloadFn,
   getSentryIssueFn,
+  updateSentryIssueFn,
 } from "@/server/functions/sentry";
+import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
 
 const supportsResolution = (level: string) =>
@@ -54,9 +58,26 @@ type Issue = {
   title: string;
   level: string;
   status: string;
+  culprit: string | null;
+  assignedToUserId: string | null;
+  assignedAt: number | null;
+  snoozedUntil: number | null;
+  ignoredUntil: number | null;
+  resolvedInRelease: string | null;
+  regressedAt: number | null;
+  regressedCount: number;
   eventCount: number;
   firstSeenAt: number;
   lastSeenAt: number;
+  lastSeenRelease: string | null;
+  lastSeenEnvironment: string | null;
+};
+
+type TeamMember = {
+  userId: string;
+  email: string;
+  role: string;
+  joinedAt: string;
 };
 
 function buildIssueSummary(issue: Issue) {
@@ -134,7 +155,7 @@ Output:
 export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
   component: IssueDetail,
   loader: async ({ params }) => {
-    const [eventsRes, issueRes] = await Promise.all([
+    const [eventsRes, issueRes, membersRes] = await Promise.all([
       listSentryEventsFn({
         data: {
           projectId: params.projectId,
@@ -145,26 +166,48 @@ export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
       getSentryIssueFn({
         data: { projectId: params.projectId, issueId: params.issueId },
       }),
+      listTeamMembersFn(),
     ]);
 
-    return { events: eventsRes.events, issue: issueRes.issue };
+    return {
+      events: eventsRes.events,
+      issue: issueRes.issue,
+      members: membersRes.members,
+    };
   },
 });
 
 function IssueDetail() {
   const { projectId } = Route.useParams();
-  const { events, issue } = Route.useLoaderData();
-  const issueSupportsResolution = supportsResolution(issue.level);
+  const { events, issue, members: membersRaw } = Route.useLoaderData();
+  const members = membersRaw as TeamMember[];
+  const [issueState, setIssueState] = useState<Issue>(issue);
+  const issueSupportsResolution = supportsResolution(issueState.level);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [eventPayload, setEventPayload] = useState<string | null>(null);
   const [isLoadingPayload, setIsLoadingPayload] = useState(false);
+  const [assigneeUserId, setAssigneeUserId] = useState<string>(
+    issue.assignedToUserId || ""
+  );
+  const [isUpdatingIssue, setIsUpdatingIssue] = useState(false);
 
   const getEventPayload = useServerFn(getSentryEventPayloadFn);
+  const updateIssue = useServerFn(updateSentryIssueFn);
+  const getIssue = useServerFn(getSentryIssueFn);
   const selectedEvent = events.find(
     (event: Event) => event.id === selectedEventId
   );
-  const investigatePrompt = buildInvestigatePrompt(issue, selectedEvent);
-  const fixPrompt = buildFixPrompt(issue, selectedEvent, eventPayload);
+  const investigatePrompt = buildInvestigatePrompt(issueState, selectedEvent);
+  const fixPrompt = buildFixPrompt(issueState, selectedEvent, eventPayload);
+  const now = Math.floor(Date.now() / 1000);
+
+  const memberEmailById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const member of members) {
+      map.set(member.userId, member.email);
+    }
+    return map;
+  }, [members]);
 
   const handleViewPayload = async (eventId: string) => {
     setSelectedEventId(eventId);
@@ -187,6 +230,31 @@ function IssueDetail() {
     setEventPayload(null);
   };
 
+  const applyIssueUpdate = async (patch: {
+    status?: "unresolved" | "resolved" | "ignored";
+    assignedToUserId?: string | null;
+    snoozedUntil?: number | null;
+    ignoredUntil?: number | null;
+    resolvedInRelease?: string | null;
+  }) => {
+    setIsUpdatingIssue(true);
+    try {
+      await updateIssue({
+        data: { projectId, issueId: issueState.id, ...patch },
+      });
+      const res = await getIssue({
+        data: { projectId, issueId: issueState.id },
+      });
+      setIssueState(res.issue);
+    } finally {
+      setIsUpdatingIssue(false);
+    }
+  };
+
+  useEffect(() => {
+    setAssigneeUserId(issueState.assignedToUserId || "");
+  }, [issueState.assignedToUserId]);
+
   return (
     <div className="page">
       <PageHeader
@@ -199,131 +267,304 @@ function IssueDetail() {
         className="mb-6"
       />
 
-      <div className="card mb-4">
-        <div className="card-title">Issue Details</div>
-        <div className="p-4">
-          {issueSupportsResolution && (
-            <div className="mb-2">
-              <strong>Status:</strong>{" "}
-              <span className="pill small">{toTitleCase(issue.status)}</span>
+      {/* Two-column grid: Overview + Actions */}
+      <div className="grid two mb-4">
+        <Card>
+          <CardTitle>Overview</CardTitle>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {isStatusType(issueState.level) ? (
+                <StatusBadge status={issueState.level}>
+                  {toTitleCase(issueState.level)}
+                </StatusBadge>
+              ) : (
+                <Badge size="small">{toTitleCase(issueState.level)}</Badge>
+              )}
+              {issueSupportsResolution && (
+                <Badge
+                  size="small"
+                  variant={
+                    issueState.status === "resolved"
+                      ? "success"
+                      : issueState.status === "ignored"
+                        ? "muted"
+                        : "danger"
+                  }
+                >
+                  {toTitleCase(issueState.status)}
+                </Badge>
+              )}
             </div>
-          )}
-          <div className="mb-2">
-            <strong>Level:</strong>{" "}
-            <span className={`status ${issue.level}`}>
-              {toTitleCase(issue.level)}
-            </span>
-          </div>
-          <div className="mb-2">
-            <strong>Event Count:</strong> {issue.eventCount}
-          </div>
-          <div className="mb-2">
-            <strong>First Seen:</strong> {formatRelativeTime(issue.firstSeenAt)}
-          </div>
-          <div>
-            <strong>Last Seen:</strong> {formatRelativeTime(issue.lastSeenAt)}
-          </div>
-          <div className="button-row mt-3">
-            <CopyButton
-              text={buildIssueSummary(issue)}
-              label="Copy issue JSON"
-            />
-            <CopyButton
-              text={investigatePrompt}
-              label="Copy AI investigate prompt"
-            />
-            <CopyButton text={fixPrompt} label="Copy AI fix prompt" />
-          </div>
-          <div className="muted mt-2">
-            Load an event payload for richer AI fix prompts.
-          </div>
-        </div>
-      </div>
 
-      <div className="card">
-        <div className="card-title">Events ({events.length})</div>
-        <div className="list">
-          {events.length ? (
-            events.map((event: Event) => (
-              <div key={event.id}>
-                <div className="list-item-expanded">
-                  <div className="list-row">
-                    <div className="flex-1">
-                      <div className="list-title">
-                        {event.message || `${event.type} event`}
-                      </div>
-                      <div className="muted mt-1">
-                        {event.level && (
-                          <>
-                            <span className={`status ${event.level}`}>
-                              {event.level}
-                            </span>
-                            {" · "}
-                          </>
-                        )}
-                        {formatRelativeTime(event.receivedAt)}
-                        {event.user?.email && (
-                          <>
-                            {" · "}
-                            User: {event.user.email}
-                          </>
-                        )}
-                        {event.request?.url && (
-                          <>
-                            {" · "}
-                            {event.request.method} {event.request.url}
-                          </>
-                        )}
-                      </div>
-                      {event.tags && Object.keys(event.tags).length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {Object.entries(event.tags).map(([key, value]) => (
-                            <span key={key} className="pill small">
-                              {key}: {value}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {event.contexts && (
-                        <div className="muted mt-2 text-sm">
-                          {event.contexts.browser && (
-                            <div>
-                              Browser: {JSON.stringify(event.contexts.browser)}
-                            </div>
-                          )}
-                          {event.contexts.os && (
-                            <div>OS: {JSON.stringify(event.contexts.os)}</div>
-                          )}
-                          {event.contexts.device && (
-                            <div>
-                              Device: {JSON.stringify(event.contexts.device)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {event.breadcrumbs && event.breadcrumbs.length > 0 && (
-                        <div className="mt-3">
-                          <strong className="text-sm">Breadcrumbs:</strong>
-                          <div className="mt-1">
-                            {event.breadcrumbs.slice(-5).map((crumb, idx) => (
-                              <div key={idx} className="muted mt-0.5 text-sm">
-                                [{crumb.category}] {crumb.message}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+            <div className="grid gap-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[color:var(--muted)]">Events</span>
+                <span className="font-medium">
+                  {issueState.eventCount.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[color:var(--muted)]">First seen</span>
+                <span>{formatRelativeTime(issueState.firstSeenAt)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[color:var(--muted)]">Last seen</span>
+                <span>{formatRelativeTime(issueState.lastSeenAt)}</span>
+              </div>
+              {issueState.culprit && (
+                <div className="flex justify-between gap-4">
+                  <span className="flex-shrink-0 text-[color:var(--muted)]">
+                    Culprit
+                  </span>
+                  <span className="truncate font-mono text-xs">
+                    {issueState.culprit}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {(issueState.lastSeenRelease || issueState.lastSeenEnvironment) && (
+              <div className="flex flex-wrap gap-2">
+                {issueState.lastSeenRelease && (
+                  <Badge size="small">{issueState.lastSeenRelease}</Badge>
+                )}
+                {issueState.lastSeenEnvironment && (
+                  <Badge size="small" variant="muted">
+                    {toTitleCase(issueState.lastSeenEnvironment)}
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {issueState.resolvedInRelease && (
+              <div className="text-sm">
+                <span className="text-[color:var(--muted)]">Resolved in: </span>
+                <Badge size="small" variant="success">
+                  {issueState.resolvedInRelease}
+                </Badge>
+              </div>
+            )}
+
+            {issueState.regressedCount > 0 && (
+              <div className="text-sm">
+                <Badge size="small" variant="warning">
+                  Regressed ×{issueState.regressedCount}
+                </Badge>
+                {issueState.regressedAt && (
+                  <span className="ml-2 text-[color:var(--muted)]">
+                    {formatRelativeTime(issueState.regressedAt)}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <CardTitle>Actions</CardTitle>
+          <div className="space-y-4">
+            {/* Status actions */}
+            <div className="button-row">
+              {issueSupportsResolution ? (
+                issueState.status === "unresolved" ? (
+                  <>
                     <button
                       type="button"
-                      onClick={() => handleViewPayload(event.id)}
-                      className="outline text-sm"
+                      className="outline button-success"
+                      disabled={isUpdatingIssue}
+                      onClick={() =>
+                        applyIssueUpdate({
+                          status: "resolved",
+                          resolvedInRelease: issueState.lastSeenRelease ?? null,
+                        })
+                      }
                     >
-                      View Payload
+                      Resolve
                     </button>
+                    <button
+                      type="button"
+                      className="outline button-warning"
+                      disabled={isUpdatingIssue}
+                      onClick={() =>
+                        applyIssueUpdate({
+                          status: "ignored",
+                          ignoredUntil: now + 7 * 24 * 60 * 60,
+                        })
+                      }
+                    >
+                      Ignore 7d
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="outline"
+                    disabled={isUpdatingIssue}
+                    onClick={() =>
+                      applyIssueUpdate({
+                        status: "unresolved",
+                        ignoredUntil: null,
+                        resolvedInRelease: null,
+                      })
+                    }
+                  >
+                    Reopen
+                  </button>
+                )
+              ) : null}
+              {issueState.snoozedUntil && issueState.snoozedUntil > now ? (
+                <button
+                  type="button"
+                  className="outline"
+                  disabled={isUpdatingIssue}
+                  onClick={() => applyIssueUpdate({ snoozedUntil: null })}
+                >
+                  Unsnooze
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="outline"
+                  disabled={isUpdatingIssue}
+                  onClick={() =>
+                    applyIssueUpdate({ snoozedUntil: now + 60 * 60 })
+                  }
+                >
+                  Snooze 1h
+                </button>
+              )}
+            </div>
+
+            {/* Assignee */}
+            <div className="border-t border-[color:var(--stroke)] pt-4">
+              <div className="mb-2 text-sm text-[color:var(--muted)]">
+                Assignee:{" "}
+                <span className="text-[color:var(--ink)]">
+                  {issueState.assignedToUserId
+                    ? (memberEmailById.get(issueState.assignedToUserId) ??
+                      "Assigned")
+                    : "Unassigned"}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={assigneeUserId}
+                  onChange={(e) => setAssigneeUserId(e.target.value)}
+                  className="flex-1"
+                  disabled={isUpdatingIssue}
+                >
+                  <option value="">Unassigned</option>
+                  {members.map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.email}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="outline"
+                  disabled={isUpdatingIssue}
+                  onClick={() =>
+                    applyIssueUpdate({
+                      assignedToUserId: assigneeUserId || null,
+                    })
+                  }
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* AI Prompts */}
+      <Card className="mb-4">
+        <CardTitle>AI Prompts</CardTitle>
+        <div className="button-row">
+          <CopyButton
+            text={buildIssueSummary(issueState)}
+            label="Copy issue JSON"
+          />
+          <CopyButton
+            text={investigatePrompt}
+            label="Copy AI investigate prompt"
+          />
+          <CopyButton text={fixPrompt} label="Copy AI fix prompt" />
+        </div>
+        <div className="muted mt-2">
+          Load an event payload for richer AI fix prompts.
+        </div>
+      </Card>
+
+      {/* Events */}
+      <Card>
+        <CardTitle>Events ({events.length})</CardTitle>
+        <ListContainer
+          isEmpty={!events.length}
+          emptyMessage="No events found for this issue."
+        >
+          {events.map((event: Event) => (
+            <ListRow
+              key={event.id}
+              className="list-item-expanded"
+              title={event.message || `${event.type} event`}
+              badges={
+                event.level && isStatusType(event.level) ? (
+                  <StatusBadge status={event.level}>{event.level}</StatusBadge>
+                ) : event.level ? (
+                  <Badge size="small">{event.level}</Badge>
+                ) : null
+              }
+              subtitle={
+                <div className="space-y-2">
+                  <div>
+                    {formatRelativeTime(event.receivedAt)}
+                    {event.user?.email && <> · User: {event.user.email}</>}
+                    {event.request?.url && (
+                      <>
+                        {" · "}
+                        {event.request.method} {event.request.url}
+                      </>
+                    )}
                   </div>
+                  {event.tags && Object.keys(event.tags).length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(event.tags).map(([key, value]) => (
+                        <Badge key={key} size="small" variant="muted">
+                          {key}: {value}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {event.breadcrumbs && event.breadcrumbs.length > 0 && (
+                    <div className="mt-2 text-xs">
+                      <strong>Breadcrumbs:</strong>
+                      {event.breadcrumbs.slice(-3).map((crumb, idx) => (
+                        <div
+                          key={idx}
+                          className="mt-0.5 text-[color:var(--muted)]"
+                        >
+                          [{crumb.category}] {crumb.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {selectedEventId === event.id && (
+              }
+              subtitleClassName="muted mt-1"
+              actions={
+                <button
+                  type="button"
+                  onClick={() => handleViewPayload(event.id)}
+                  className="outline text-sm"
+                >
+                  View Payload
+                </button>
+              }
+              expanded={selectedEventId === event.id}
+              expandedContent={
+                selectedEventId === event.id && (
                   <div className="border-t border-[color:var(--stroke)] bg-[color:var(--surface-1)] p-4">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <strong>Event Payload</strong>
@@ -360,14 +601,12 @@ function IssueDetail() {
                       </pre>
                     )}
                   </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="muted">No events found for this issue.</div>
-          )}
-        </div>
-      </div>
+                )
+              }
+            />
+          ))}
+        </ListContainer>
+      </Card>
     </div>
   );
 }

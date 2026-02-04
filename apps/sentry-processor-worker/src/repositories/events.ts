@@ -1,5 +1,5 @@
 import { schema, nowIso, randomId } from "@bitwobbly/shared";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import type { DB } from "../lib/db";
 
 export interface UpsertIssueResult {
@@ -25,6 +25,8 @@ export async function upsertIssue(
     title: string;
     level: string;
     culprit?: string | null;
+    release?: string | null;
+    environment?: string | null;
   }
 ): Promise<UpsertIssueResult> {
   const existing = await db
@@ -39,18 +41,30 @@ export async function upsertIssue(
     .limit(1);
 
   if (existing[0]) {
-    const wasResolved =
-      existing[0].status === "resolved" || existing[0].status === "ignored";
     const now = Math.floor(Date.now() / 1000);
+    const ignoredUntil =
+      typeof existing[0].ignoredUntil === "number"
+        ? existing[0].ignoredUntil
+        : null;
+    const ignoredExpired =
+      existing[0].status === "ignored" &&
+      ignoredUntil !== null &&
+      ignoredUntil <= now;
+    const reopenable = existing[0].status === "resolved" || ignoredExpired;
 
     const updates: Record<string, unknown> = {
       lastSeenAt: now,
       eventCount: existing[0].eventCount + 1,
+      lastSeenRelease: data.release ?? existing[0].lastSeenRelease ?? null,
+      lastSeenEnvironment:
+        data.environment ?? existing[0].lastSeenEnvironment ?? null,
     };
 
-    if (wasResolved) {
+    if (reopenable) {
       updates.status = "unresolved";
       updates.resolvedAt = null;
+      updates.regressedAt = now;
+      updates.regressedCount = (existing[0].regressedCount ?? 0) + 1;
     }
 
     await db
@@ -61,28 +75,58 @@ export async function upsertIssue(
     return {
       issueId: existing[0].id,
       isNewIssue: false,
-      wasResolved,
+      wasResolved: reopenable,
     };
   }
 
   const id = randomId("iss");
   const now = Math.floor(Date.now() / 1000);
 
-  await db.insert(schema.sentryIssues).values({
-    id,
-    projectId,
-    fingerprint: data.fingerprint,
-    title: data.title,
-    culprit: data.culprit || null,
-    level: data.level,
-    status: "unresolved",
-    eventCount: 1,
-    userCount: 0,
-    firstSeenAt: now,
-    lastSeenAt: now,
-    resolvedAt: null,
-    createdAt: nowIso(),
-  });
+  const insertResult = await db
+    .insert(schema.sentryIssues)
+    .values({
+      id,
+      projectId,
+      fingerprint: data.fingerprint,
+      title: data.title,
+      culprit: data.culprit || null,
+      level: data.level,
+      status: "unresolved",
+      eventCount: 1,
+      userCount: 0,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      lastSeenRelease: data.release || null,
+      lastSeenEnvironment: data.environment || null,
+      resolvedAt: null,
+      createdAt: nowIso(),
+    })
+    .onConflictDoNothing()
+    .run();
+
+  if (!insertResult.meta.changes) {
+    const raced = await db
+      .select({
+        id: schema.sentryIssues.id,
+        status: schema.sentryIssues.status,
+      })
+      .from(schema.sentryIssues)
+      .where(
+        and(
+          eq(schema.sentryIssues.projectId, projectId),
+          eq(schema.sentryIssues.fingerprint, data.fingerprint)
+        )
+      )
+      .limit(1);
+
+    if (raced[0]) {
+      return {
+        issueId: raced[0].id,
+        isNewIssue: false,
+        wasResolved: false,
+      };
+    }
+  }
 
   return {
     issueId: id,
@@ -100,6 +144,7 @@ export async function insertEvent(
     type: string;
     level: string | null;
     message: string | null;
+    transaction?: string | null;
     fingerprint: string;
     release: string | null;
     environment: string | null;
@@ -206,4 +251,18 @@ export async function insertClientReport(
     receivedAt: data.receivedAt,
     createdAt: nowIso(),
   });
+}
+
+export async function listIssueGroupingRules(db: DB, projectId: string) {
+  return db
+    .select()
+    .from(schema.sentryIssueGroupingRules)
+    .where(
+      and(
+        eq(schema.sentryIssueGroupingRules.projectId, projectId),
+        eq(schema.sentryIssueGroupingRules.enabled, 1)
+      )
+    )
+    .orderBy(desc(schema.sentryIssueGroupingRules.createdAt))
+    .limit(100);
 }

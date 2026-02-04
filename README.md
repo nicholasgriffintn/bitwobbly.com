@@ -4,37 +4,6 @@ Open-source website monitoring and public status pages, built entirely on Cloudf
 
 > Please Note: This project is in early development and not yet production-ready. Use at your own risk. The plan to get this into production can be seen below.
 
-## Plan of Completion
-
-#### Monitoring
-
-- [ ] Potentially add Ping (ICMP) checks if not too complex to implement in Workers.
-- [ ] Implement browser checks with https://developers.cloudflare.com/browser-rendering/, potentially even https://developers.cloudflare.com/browser-rendering/stagehand/.
-
-#### Issues
-
-- [ ] Persist and query sessions/client reports; expose crash-free session and release health views.
-- [ ] Improve grouping with stacktrace-based fingerprinting rules, frame normalisation, and configurable overrides.
-- [ ] Track issue ownership and workflow (`assigned`, `snoozed`, `ignored until`, `resolved in release`, `regressed`).
-- [ ] Add source maps and symbolication pipeline with secure upload endpoints and retention controls.
-- [ ] Add search and faceting over tags, release, environment, user, transaction, and time windows.
-- [ ] Add performance primitives: transaction summaries, Apdex-style score, and slow span hotspots.
-- [ ] Add incident lifecycle controls: templates, severity, impact scope, timeline editing, postmortems, and RCA links.
-
-### Potential expansions
-
-- Integrate with Cloudflare tail workers or just using OTEL, decide on the best option. Ingest into issues.
-- Add channels: Slack, PagerDuty, Opsgenie, Teams, SMS, voice, and generic webhook signatures.
-- Add advanced alert conditions: anomaly bands, error budget burn, crash-free drop, composite multi-signal rules.
-- Add rule simulation and preview against historical data before enabling.
-- Add on-call routing, escalation policies, and acknowledgement workflows.
-- Add automation hooks for incident creation, enrichment, and post-incident follow-up tasks.
-- Add retention policies and tiered storage lifecycle (hot D1, warm R2, archival exports).
-- Add indexing and query optimisation for large issue/event volumes; benchmark queue and storage throughput.
-- Add backups and disaster recovery drills for D1, KV, and R2.
-- Add compliance controls (PII scrubbing, data residency options, audit event stream).
-- Add billing and quota controls (event volume limits, monitor limits, alert overage handling) which will make it available for SaaS applications.
-
 ## Architecture
 
 Multiple Workers collaborate via Cloudflare Queues, Durable Objects, and Pipelines:

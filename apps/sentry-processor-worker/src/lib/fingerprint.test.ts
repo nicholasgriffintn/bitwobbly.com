@@ -69,6 +69,48 @@ test("includes top in-app frame in fingerprint and culprit", () => {
   assert.equal(culprit, "checkout.flow");
 });
 
+test("normalises frame filenames to avoid querystring churn", () => {
+  const fingerprintA = computeFingerprint({
+    exception: {
+      values: [
+        {
+          type: "Error",
+          value: "Unhandled",
+          stacktrace: {
+            frames: [
+              {
+                filename: "webpack:///src/routes/app.tsx?b=abc123",
+                in_app: true,
+              },
+            ],
+          },
+        },
+      ],
+    },
+  });
+
+  const fingerprintB = computeFingerprint({
+    exception: {
+      values: [
+        {
+          type: "Error",
+          value: "Unhandled",
+          stacktrace: {
+            frames: [
+              {
+                filename: "webpack:///src/routes/app.tsx?b=def456",
+                in_app: true,
+              },
+            ],
+          },
+        },
+      ],
+    },
+  });
+
+  assert.equal(fingerprintA, fingerprintB);
+});
+
 test("builds readable title from exception", () => {
   const title = generateTitle({
     exception: {
