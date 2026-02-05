@@ -67,9 +67,21 @@ function IssueTracking() {
   const [dsn, setDsn] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [secretKey, setSecretKey] = useState<string | null>(null);
+  const [otlpTracesEndpoint, setOtlpTracesEndpoint] = useState<string | null>(
+    null
+  );
+  const [otlpLogsEndpoint, setOtlpLogsEndpoint] = useState<string | null>(null);
+  const [otlpAuthHeader, setOtlpAuthHeader] = useState<string | null>(null);
 
   const listProjects = useServerFn(listSentryProjectsFn);
   const getProjectDsn = useServerFn(getSentryProjectDsnFn);
+
+  const ingestHost = "ingest.bitwobbly.com";
+  const getOtlpTracesEndpoint = (sentryProjectId: number) =>
+    `https://${ingestHost}/api/${sentryProjectId}/integration/otlp/v1/traces`;
+  const getOtlpLogsEndpoint = (sentryProjectId: number) =>
+    `https://${ingestHost}/api/${sentryProjectId}/integration/otlp/v1/logs`;
+  const getOtlpAuthHeader = (key: string) => `sentry sentry_key=${key}`;
 
   const refreshProjects = async () => {
     try {
@@ -97,6 +109,13 @@ function IssueTracking() {
       setDsn(result.dsn);
       setPublicKey(result.key.publicKey);
       setSecretKey(result.key.secretKey || null);
+      setOtlpTracesEndpoint(
+        getOtlpTracesEndpoint(result.project.sentryProjectId)
+      );
+      setOtlpLogsEndpoint(
+        getOtlpLogsEndpoint(result.project.sentryProjectId)
+      );
+      setOtlpAuthHeader(getOtlpAuthHeader(result.key.publicKey));
       setIsDsnModalOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -196,6 +215,9 @@ function IssueTracking() {
     setDsn(null);
     setPublicKey(null);
     setSecretKey(null);
+    setOtlpTracesEndpoint(null);
+    setOtlpLogsEndpoint(null);
+    setOtlpAuthHeader(null);
   };
 
   const closeDeleteModal = () => {
@@ -321,10 +343,20 @@ function IssueTracking() {
         isCreateOpen={isCreateModalOpen}
         onCloseCreate={() => setIsCreateModalOpen(false)}
         onCreateSuccess={refreshProjects}
-        onCreated={({ dsn, publicKey, secretKey }) => {
+        onCreated={({
+          dsn,
+          publicKey,
+          secretKey,
+          otlpTracesEndpoint,
+          otlpLogsEndpoint,
+          otlpAuthHeader,
+        }) => {
           setDsn(dsn);
           setPublicKey(publicKey);
           setSecretKey(secretKey);
+          setOtlpTracesEndpoint(otlpTracesEndpoint);
+          setOtlpLogsEndpoint(otlpLogsEndpoint);
+          setOtlpAuthHeader(otlpAuthHeader);
           setIsDsnModalOpen(true);
         }}
         components={components}
@@ -340,6 +372,9 @@ function IssueTracking() {
         dsn={dsn}
         publicKey={publicKey}
         secretKey={secretKey}
+        otlpTracesEndpoint={otlpTracesEndpoint}
+        otlpLogsEndpoint={otlpLogsEndpoint}
+        otlpAuthHeader={otlpAuthHeader}
         isDeleteOpen={isDeleteModalOpen}
         onCloseDelete={closeDeleteModal}
         onDeleteSuccess={refreshProjects}

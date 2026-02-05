@@ -20,6 +20,9 @@ interface IssuesModalsProps {
   dsn: ComponentProps<typeof ProjectDsnModal>["dsn"];
   publicKey: ComponentProps<typeof ProjectDsnModal>["publicKey"];
   secretKey: ComponentProps<typeof ProjectDsnModal>["secretKey"];
+  otlpTracesEndpoint: ComponentProps<typeof ProjectDsnModal>["otlpTracesEndpoint"];
+  otlpLogsEndpoint: ComponentProps<typeof ProjectDsnModal>["otlpLogsEndpoint"];
+  otlpAuthHeader: ComponentProps<typeof ProjectDsnModal>["otlpAuthHeader"];
   isDeleteOpen: boolean;
   onCloseDelete: () => void;
   onDeleteSuccess: () => Promise<void>;
@@ -41,6 +44,9 @@ export function IssuesModals({
   dsn,
   publicKey,
   secretKey,
+  otlpTracesEndpoint,
+  otlpLogsEndpoint,
+  otlpAuthHeader,
   isDeleteOpen,
   onCloseDelete,
   onDeleteSuccess,
@@ -68,6 +74,9 @@ export function IssuesModals({
         dsn={dsn}
         publicKey={publicKey}
         secretKey={secretKey}
+        otlpTracesEndpoint={otlpTracesEndpoint}
+        otlpLogsEndpoint={otlpLogsEndpoint}
+        otlpAuthHeader={otlpAuthHeader}
       />
       <DeleteProjectModal
         isOpen={isDeleteOpen}

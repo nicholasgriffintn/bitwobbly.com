@@ -17,7 +17,9 @@ import {
   parseClientReportPayload,
   parseSentryEvent,
   parseSessionPayload,
+  type SentryEvent,
 } from "./lib/sentry-payloads";
+import { parseOtlpLogs, parseOtlpTraces } from "./lib/otlp";
 import { createGroupingRulesResolver } from "./lib/grouping-rules";
 import {
   upsertIssue,
@@ -65,10 +67,15 @@ const handler = {
         }
 
         const envelopeBytes = await r2Object.arrayBuffer();
+        const contentType = r2Object.httpMetadata?.contentType || null;
         const rawBytes = new Uint8Array(envelopeBytes);
 
         if (job.item_type === "event" || job.item_type === "transaction") {
           await processEvent(job, rawBytes, env, db);
+        } else if (job.item_type === "otlp_trace") {
+          await processOtlpTrace(job, rawBytes, contentType, env, db);
+        } else if (job.item_type === "otlp_log") {
+          await processOtlpLog(job, rawBytes, contentType, env, db);
         } else if (
           job.item_type === "session" ||
           job.item_type === "sessions"
@@ -134,82 +141,23 @@ async function processEvent(
     }
   }
 
-  const fingerprint = computeFingerprint(event);
-  const culprit = extractCulprit(event);
   const isTransaction = job.item_type === "transaction";
   const level =
     isTransaction ? "info" : event.level || "error";
 
-  const groupingRules = await groupingRulesResolver.getCachedRules(
-    db,
-    job.project_id
-  );
-  const overrideFingerprint = groupingRulesResolver.pickOverrideFingerprint(
-    groupingRules,
-    event,
-    culprit
-  );
-  const effectiveFingerprint = overrideFingerprint ?? fingerprint;
-
-  let issueId: string | null = null;
-  let isNewIssue = false;
-  let wasResolved = false;
-
-  if (!isTransaction) {
-    const title = generateTitle(event);
-    const result = await upsertIssue(db, job.project_id, {
-      fingerprint: effectiveFingerprint,
-      title,
-      level,
-      culprit,
-      release: event.release || null,
-      environment: event.environment || null,
-    });
-    issueId = result.issueId;
-    isNewIssue = result.isNewIssue;
-    wasResolved = result.wasResolved;
-  }
-
   const eventId = stableEventId || crypto.randomUUID();
 
-  await insertEvent(db, {
-    id: eventId,
-    projectId: job.project_id,
-    issueId,
-    type: job.item_type,
+  await insertDerivedEvent({
+    job,
+    env,
+    db,
+    event,
+    eventType: job.item_type,
     level,
-    message: event.message || null,
-    transaction: event.transaction || null,
-    fingerprint: effectiveFingerprint,
-    release: event.release || null,
-    environment: event.environment || null,
-    r2Key: job.r2_raw_key,
+    eventId,
     receivedAt: job.received_at,
-    user: event.user || null,
-    tags: event.tags || null,
-    contexts: event.contexts || null,
-    request: event.request || null,
-    exception: event.exception || null,
-    breadcrumbs: event.breadcrumbs || null,
+    shouldCreateIssue: !isTransaction,
   });
-
-  const projectTeamId = await getProjectTeamId(db, job.project_id);
-
-  if (projectTeamId && issueId) {
-    await evaluateAlertRules(env, db, {
-      eventId,
-      issueId,
-      projectId: job.project_id,
-      teamId: projectTeamId,
-      level,
-      environment: event.environment,
-      release: event.release,
-      tags: event.tags,
-      eventType: job.item_type,
-      isNewIssue,
-      wasResolved,
-    });
-  }
 }
 
 async function processSession(
@@ -319,5 +267,193 @@ async function processClientReport(
     timestamp: toUnixSeconds(reportData.timestamp, job.received_at),
     discardedEvents,
     receivedAt: job.received_at,
+  });
+}
+
+async function processOtlpTrace(
+  job: ProcessJob,
+  rawBytes: Uint8Array,
+  contentType: string | null,
+  env: Env,
+  db: ReturnType<typeof getDb>
+) {
+  const mapped = await parseOtlpTraces(rawBytes);
+  if (!mapped.length) {
+    logger.warn("could not parse OTLP traces payload", {
+      projectId: job.project_id,
+      r2Key: job.r2_raw_key,
+      contentType,
+    });
+    return;
+  }
+
+  for (const item of mapped) {
+    if (!item.shouldCreateIssue && item.eventType !== "transaction") {
+      continue;
+    }
+
+    const eventId = item.eventId || crypto.randomUUID();
+    await insertDerivedEvent({
+      job,
+      env,
+      db,
+      event: item.event,
+      eventType: item.eventType,
+      level: item.level || (item.eventType === "transaction" ? "info" : "error"),
+      eventId,
+      receivedAt: item.timestamp ?? job.received_at,
+      shouldCreateIssue: item.shouldCreateIssue,
+    });
+  }
+}
+
+async function processOtlpLog(
+  job: ProcessJob,
+  rawBytes: Uint8Array,
+  contentType: string | null,
+  env: Env,
+  db: ReturnType<typeof getDb>
+) {
+  const mapped = await parseOtlpLogs(rawBytes);
+  if (!mapped.length) {
+    logger.warn("could not parse OTLP logs payload", {
+      projectId: job.project_id,
+      r2Key: job.r2_raw_key,
+      contentType,
+    });
+    return;
+  }
+
+  for (const item of mapped) {
+    if (!item.shouldCreateIssue && item.eventType !== "log") {
+      continue;
+    }
+
+    const eventId = item.eventId || crypto.randomUUID();
+    await insertDerivedEvent({
+      job,
+      env,
+      db,
+      event: item.event,
+      eventType: item.eventType,
+      level: item.level || "info",
+      eventId,
+      receivedAt: item.timestamp ?? job.received_at,
+      shouldCreateIssue: item.shouldCreateIssue,
+    });
+  }
+}
+
+type InsertDerivedEventInput = {
+  job: ProcessJob;
+  env: Env;
+  db: ReturnType<typeof getDb>;
+  event: SentryEvent;
+  eventType: string;
+  level: string;
+  eventId: string;
+  receivedAt: number;
+  shouldCreateIssue?: boolean;
+  issueId?: string | null;
+  isNewIssue?: boolean;
+  wasResolved?: boolean;
+  fingerprint?: string;
+};
+
+async function insertDerivedEvent({
+  job,
+  env,
+  db,
+  event,
+  eventType,
+  level,
+  eventId,
+  receivedAt,
+  shouldCreateIssue,
+  issueId: presetIssueId,
+  isNewIssue: presetIsNewIssue,
+  wasResolved: presetWasResolved,
+  fingerprint: presetFingerprint,
+}: InsertDerivedEventInput) {
+  if (!event) return;
+
+  const isTransaction = eventType === "transaction";
+  const allowIssueCreation =
+    shouldCreateIssue !== undefined ? shouldCreateIssue : !isTransaction;
+
+  const baseFingerprint = presetFingerprint ?? computeFingerprint(event);
+  const culprit = extractCulprit(event);
+
+  let effectiveFingerprint = baseFingerprint;
+  if (allowIssueCreation) {
+    const groupingRules = await groupingRulesResolver.getCachedRules(
+      db,
+      job.project_id
+    );
+    const overrideFingerprint = groupingRulesResolver.pickOverrideFingerprint(
+      groupingRules,
+      event,
+      culprit
+    );
+    effectiveFingerprint = overrideFingerprint ?? baseFingerprint;
+  }
+
+  let issueId = presetIssueId ?? null;
+  let isNewIssue = presetIsNewIssue ?? false;
+  let wasResolved = presetWasResolved ?? false;
+
+  if (allowIssueCreation && !issueId) {
+    const title = generateTitle(event);
+    const result = await upsertIssue(db, job.project_id, {
+      fingerprint: effectiveFingerprint,
+      title,
+      level,
+      culprit,
+      release: event.release || null,
+      environment: event.environment || null,
+    });
+    issueId = result.issueId;
+    isNewIssue = result.isNewIssue;
+    wasResolved = result.wasResolved;
+  }
+
+  await insertEvent(db, {
+    id: eventId,
+    projectId: job.project_id,
+    issueId,
+    type: eventType,
+    level,
+    message: event.message || null,
+    transaction: event.transaction || null,
+    fingerprint: effectiveFingerprint,
+    release: event.release || null,
+    environment: event.environment || null,
+    r2Key: job.r2_raw_key,
+    receivedAt,
+    user: event.user || null,
+    tags: event.tags || null,
+    contexts: event.contexts || null,
+    request: event.request || null,
+    exception: event.exception || null,
+    breadcrumbs: event.breadcrumbs || null,
+  });
+
+  if (!issueId) return;
+
+  const projectTeamId = await getProjectTeamId(db, job.project_id);
+  if (!projectTeamId) return;
+
+  await evaluateAlertRules(env, db, {
+    eventId,
+    issueId,
+    projectId: job.project_id,
+    teamId: projectTeamId,
+    level,
+    environment: event.environment,
+    release: event.release,
+    tags: event.tags,
+    eventType,
+    isNewIssue,
+    wasResolved,
   });
 }

@@ -16,6 +16,9 @@ interface CreateProjectModalProps {
     dsn: string;
     publicKey: string;
     secretKey: string | null;
+    otlpTracesEndpoint: string;
+    otlpLogsEndpoint: string;
+    otlpAuthHeader: string;
   }) => void;
   components: Component[];
 }
@@ -57,10 +60,18 @@ export function CreateProjectModal({
         },
       });
 
+      const ingestHost = "ingest.bitwobbly.com";
+      const otlpTracesEndpoint = `https://${ingestHost}/api/${result.sentryProjectId}/integration/otlp/v1/traces`;
+      const otlpLogsEndpoint = `https://${ingestHost}/api/${result.sentryProjectId}/integration/otlp/v1/logs`;
+      const otlpAuthHeader = `sentry sentry_key=${result.publicKey}`;
+
       onCreated({
         publicKey: result.publicKey,
         secretKey: result.secretKey,
-        dsn: `https://${result.publicKey}@ingest.bitwobbly.com/${result.sentryProjectId}`,
+        dsn: `https://${result.publicKey}@${ingestHost}/${result.sentryProjectId}`,
+        otlpTracesEndpoint,
+        otlpLogsEndpoint,
+        otlpAuthHeader,
       });
 
       await onSuccess();

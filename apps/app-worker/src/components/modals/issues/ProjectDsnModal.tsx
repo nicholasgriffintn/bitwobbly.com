@@ -7,6 +7,9 @@ interface ProjectDsnModalProps {
   dsn: string | null;
   publicKey: string | null;
   secretKey: string | null;
+  otlpTracesEndpoint: string | null;
+  otlpLogsEndpoint: string | null;
+  otlpAuthHeader: string | null;
 }
 
 export function ProjectDsnModal({
@@ -15,6 +18,9 @@ export function ProjectDsnModal({
   dsn,
   publicKey,
   secretKey,
+  otlpTracesEndpoint,
+  otlpLogsEndpoint,
+  otlpAuthHeader,
 }: ProjectDsnModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Project DSN">
@@ -65,6 +71,51 @@ export function ProjectDsnModal({
               />
             </div>
           )}
+        </div>
+        <div className="dsn-config">
+          <div className="dsn-config-header">
+            <span>✓</span>
+            OTLP
+          </div>
+
+          <div className="dsn-field">
+            <div className="flex items-center justify-between">
+              <label>Traces Endpoint</label>
+              <CopyButton text={otlpTracesEndpoint || ""} />
+            </div>
+            <input
+              readOnly
+              value={otlpTracesEndpoint || ""}
+              onClick={(e) => e.currentTarget.select()}
+              className="dsn-input"
+            />
+          </div>
+
+          <div className="dsn-field">
+            <div className="flex items-center justify-between">
+              <label>Logs Endpoint</label>
+              <CopyButton text={otlpLogsEndpoint || ""} />
+            </div>
+            <input
+              readOnly
+              value={otlpLogsEndpoint || ""}
+              onClick={(e) => e.currentTarget.select()}
+              className="dsn-input"
+            />
+          </div>
+
+          <div className="dsn-field">
+            <div className="flex items-center justify-between">
+              <label>X-Sentry-Auth Header</label>
+              <CopyButton text={otlpAuthHeader || ""} />
+            </div>
+            <input
+              readOnly
+              value={otlpAuthHeader || ""}
+              onClick={(e) => e.currentTarget.select()}
+              className="dsn-input"
+            />
+          </div>
         </div>
         <div className="button-row">
           <button type="button" onClick={onClose}>
