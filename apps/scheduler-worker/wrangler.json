@@ -19,7 +19,9 @@
     "port": 8788,
     "inspector_port": 9230
   },
-  "vars": {},
+  "vars": {
+    "SENTRY_DSN": "https://a2ada73c0a154eb5b035f850d8e0d505@ingest.bitwobbly.com/4"
+  },
   "triggers": {
     "crons": ["* * * * *"]
   },

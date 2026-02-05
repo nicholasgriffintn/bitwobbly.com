@@ -19,7 +19,9 @@
     "port": 8787,
     "inspector_port": 9231
   },
-  "vars": {},
+  "vars": {
+    "SENTRY_DSN": "https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2"
+  },
   "d1_databases": [
     {
       "binding": "DB",

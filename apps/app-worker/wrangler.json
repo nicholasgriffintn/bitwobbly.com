@@ -22,7 +22,8 @@
     }
   },
   "vars": {
-    "AUTH_PROVIDER": "custom"
+    "AUTH_PROVIDER": "custom",
+    "SENTRY_DSN": "https://ff9b8d6c174c4aaa90ddaa53a5fe178d@ingest.bitwobbly.com/1"
   },
   "d1_databases": [
     {
