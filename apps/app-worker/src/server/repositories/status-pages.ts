@@ -249,3 +249,22 @@ export async function listComponentsForStatusPage(
     .orderBy(schema.statusPageComponents.sortOrder);
   return rows || [];
 }
+
+export async function statusPageHasComponent(
+  db: DB,
+  statusPageId: string,
+  componentId: string
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.statusPageComponents.componentId })
+    .from(schema.statusPageComponents)
+    .where(
+      and(
+        eq(schema.statusPageComponents.statusPageId, statusPageId),
+        eq(schema.statusPageComponents.componentId, componentId)
+      )
+    )
+    .limit(1);
+
+  return rows.length > 0;
+}

@@ -14,7 +14,10 @@ import {
   listRecentResolvedIncidents,
 } from "../repositories/incidents";
 import {
-  getComponentHistoricalData,
+  buildEmptyHistory,
+  computeHistoryFromBuckets,
+  getHistoricalBucketsForMonitors,
+  type DayBucketCounts,
   type DayStatus,
 } from "../lib/status-history";
 import {
@@ -62,6 +65,8 @@ export type StatusSnapshot = {
   incidents: Incident[];
 };
 
+const inFlightRebuilds = new Map<string, Promise<StatusSnapshot | null>>();
+
 function computeOverallUptime(
   days: DayStatus[] | undefined
 ): number | undefined {
@@ -88,32 +93,63 @@ export async function rebuildStatusSnapshot(
 
   if (!page) return null;
 
+  const cacheKey = options?.teamId
+    ? getTeamStatusSnapshotCacheKey(options.teamId, slug)
+    : getPublicStatusSnapshotCacheKey(slug);
+
+  const existing = inFlightRebuilds.get(cacheKey);
+  if (existing) return await existing;
+
+  const promise = (async () => {
   const components = await listComponentsForStatusPage(db, page.id);
   const nowSec = Math.floor(Date.now() / 1000);
 
   const componentIds = components.map((c) => c.id);
-  const componentMonitorLinks = componentIds.length
-    ? await db
-        .select({
-          componentId: schema.componentMonitors.componentId,
-          monitorId: schema.componentMonitors.monitorId,
-        })
-        .from(schema.componentMonitors)
-        .where(inArray(schema.componentMonitors.componentId, componentIds))
-    : [];
+  const [componentMonitorLinks, dependencyRows] = await Promise.all([
+    componentIds.length
+      ? db
+          .select({
+            componentId: schema.componentMonitors.componentId,
+            monitorId: schema.componentMonitors.monitorId,
+          })
+          .from(schema.componentMonitors)
+          .where(inArray(schema.componentMonitors.componentId, componentIds))
+      : Promise.resolve([]),
+    componentIds.length
+      ? db
+          .select({
+            componentId: schema.componentDependencies.componentId,
+            dependsOnComponentId:
+              schema.componentDependencies.dependsOnComponentId,
+          })
+          .from(schema.componentDependencies)
+          .where(inArray(schema.componentDependencies.componentId, componentIds))
+      : Promise.resolve([]),
+  ]);
 
   const monitorIds = Array.from(
     new Set(componentMonitorLinks.map((l) => l.monitorId))
   );
-  const monitors = monitorIds.length
-    ? await db
-        .select({
-          id: schema.monitors.id,
-          groupId: schema.monitors.groupId,
-        })
-        .from(schema.monitors)
-        .where(inArray(schema.monitors.id, monitorIds))
-    : [];
+  const [monitors, monitorStates] = await Promise.all([
+    monitorIds.length
+      ? db
+          .select({
+            id: schema.monitors.id,
+            groupId: schema.monitors.groupId,
+          })
+          .from(schema.monitors)
+          .where(inArray(schema.monitors.id, monitorIds))
+      : Promise.resolve([]),
+    monitorIds.length
+      ? db
+          .select({
+            monitorId: schema.monitorState.monitorId,
+            lastStatus: schema.monitorState.lastStatus,
+          })
+          .from(schema.monitorState)
+          .where(inArray(schema.monitorState.monitorId, monitorIds))
+      : Promise.resolve([]),
+  ]);
 
   const monitorGroupIds = Array.from(
     new Set(monitors.map((m) => m.groupId).filter((id): id is string => !!id))
@@ -154,29 +190,9 @@ export async function rebuildStatusSnapshot(
     componentIdToMonitorIds.set(link.componentId, arr);
   }
 
-  const monitorStates = monitorIds.length
-    ? await db
-        .select({
-          monitorId: schema.monitorState.monitorId,
-          lastStatus: schema.monitorState.lastStatus,
-        })
-        .from(schema.monitorState)
-        .where(inArray(schema.monitorState.monitorId, monitorIds))
-    : [];
   const monitorIdToStatus = new Map(
     monitorStates.map((s) => [s.monitorId, s.lastStatus])
   );
-
-  const dependencyRows = componentIds.length
-    ? await db
-        .select({
-          componentId: schema.componentDependencies.componentId,
-          dependsOnComponentId:
-            schema.componentDependencies.dependsOnComponentId,
-        })
-        .from(schema.componentDependencies)
-        .where(inArray(schema.componentDependencies.componentId, componentIds))
-    : [];
 
   const componentIdToDependencyIds = new Map<string, string[]>();
   for (const row of dependencyRows) {
@@ -184,6 +200,18 @@ export async function rebuildStatusSnapshot(
     arr.push(row.dependsOnComponentId);
     componentIdToDependencyIds.set(row.componentId, arr);
   }
+
+  const incidentPromises = Promise.all([
+    listOpenIncidents(db, page.teamId, page.id),
+    listRecentResolvedIncidents(db, page.teamId, page.id, 30),
+  ]);
+
+  const historicalBucketsPromise: Promise<
+    Map<string, Map<string, DayBucketCounts>> | null
+  > =
+    accountId && apiToken && monitorIds.length
+      ? getHistoricalBucketsForMonitors(accountId, apiToken, monitorIds, 90)
+      : Promise.resolve(new Map<string, Map<string, DayBucketCounts>>());
 
   const compsWithStatus: ComponentStatus[] = [];
 
@@ -217,25 +245,50 @@ export async function rebuildStatusSnapshot(
       }
     }
 
-    let historicalData: DayStatus[] | undefined;
-    if (accountId && apiToken) {
-      const ids = componentIdToMonitorIds.get(component.id) || [];
-      historicalData = await getComponentHistoricalData(
-        accountId,
-        apiToken,
-        ids,
-        90
-      );
-    }
-
     compsWithStatus.push({
       id: component.id,
       name: component.name,
       description: component.description,
       status,
-      historical_data: historicalData,
-      overall_uptime: computeOverallUptime(historicalData),
+      historical_data: undefined,
+      overall_uptime: undefined,
     });
+  }
+
+  const [historicalBuckets, [openIncidents, pastIncidents]] = await Promise.all([
+    historicalBucketsPromise,
+    incidentPromises,
+  ]);
+
+  if (accountId && apiToken) {
+    for (const c of compsWithStatus) {
+      const ids = componentIdToMonitorIds.get(c.id) || [];
+      if (!ids.length) {
+        c.historical_data = buildEmptyHistory(90, "operational");
+        c.overall_uptime = computeOverallUptime(c.historical_data);
+        continue;
+      }
+
+      if (!historicalBuckets) {
+        c.historical_data = buildEmptyHistory(90, "unknown");
+        c.overall_uptime = computeOverallUptime(c.historical_data);
+        continue;
+      }
+
+      const combined = new Map<string, DayBucketCounts>();
+      for (const monitorId of ids) {
+        const buckets = historicalBuckets.get(monitorId);
+        if (!buckets) continue;
+        for (const [dayKey, counts] of buckets.entries()) {
+          const existing = combined.get(dayKey) || { upCount: 0, downCount: 0 };
+          existing.upCount += counts.upCount;
+          existing.downCount += counts.downCount;
+          combined.set(dayKey, existing);
+        }
+      }
+      c.historical_data = computeHistoryFromBuckets(combined, 90);
+      c.overall_uptime = computeOverallUptime(c.historical_data);
+    }
   }
 
   const severity: Record<ComponentStatus["status"], number> = {
@@ -272,13 +325,6 @@ export async function rebuildStatusSnapshot(
     c.status = statusById.get(c.id) || c.status;
   }
 
-  const openIncidents = await listOpenIncidents(db, page.teamId, page.id);
-  const pastIncidents = await listRecentResolvedIncidents(
-    db,
-    page.teamId,
-    page.id,
-    30
-  );
   const allIncidents = [...openIncidents, ...pastIncidents];
 
   const snapshot: StatusSnapshot = {
@@ -307,12 +353,16 @@ export async function rebuildStatusSnapshot(
     })),
   };
 
-  const cacheKey = options?.teamId
-    ? getTeamStatusSnapshotCacheKey(options.teamId, slug)
-    : getPublicStatusSnapshotCacheKey(slug);
-
   await kv.put(cacheKey, JSON.stringify(snapshot), { expirationTtl: 60 });
   return snapshot;
+  })();
+
+  inFlightRebuilds.set(cacheKey, promise);
+  try {
+    return await promise;
+  } finally {
+    inFlightRebuilds.delete(cacheKey);
+  }
 }
 
 export async function clearStatusPageCache(

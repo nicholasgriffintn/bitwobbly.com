@@ -14,7 +14,7 @@ import {
 import { getEffectiveSloTarget } from "../repositories/slo-targets";
 import {
   getExternalStatusPageBySlug,
-  listComponentsForStatusPage,
+  statusPageHasComponent,
 } from "../repositories/status-pages";
 
 function clampRange(fromSec: number, toSec: number) {
@@ -57,25 +57,16 @@ export async function getAvailabilityForScope(
     scope.scope.id
   );
 
-  const downtimeIntervals = await listIncidentIntervalsForMonitors(
-    db,
-    teamId,
-    scope.monitorIds,
-    from,
-    to
-  );
-
-  const maintenanceIntervals = await listMaintenanceIntervalsForScope(
-    db,
-    teamId,
-    {
+  const [downtimeIntervals, maintenanceIntervals] = await Promise.all([
+    listIncidentIntervalsForMonitors(db, teamId, scope.monitorIds, from, to),
+    listMaintenanceIntervalsForScope(db, teamId, {
       componentIds: scope.componentIds,
       monitorIds: scope.monitorIds,
       monitorGroupIds: scope.monitorGroupIds,
       fromSec: from,
       toSec: to,
-    }
-  );
+    }),
+  ]);
 
   const { summary, downtimeOutsideMaintenance, maintenance } =
     computeAvailability({
@@ -130,24 +121,22 @@ export async function getMonthlyAvailabilityReport(
     scope.scope.id
   );
 
-  const downtimeIntervals = await listIncidentIntervalsForMonitors(
-    db,
-    teamId,
-    scope.monitorIds,
-    fromSec,
-    toSec
-  );
-  const maintenanceIntervals = await listMaintenanceIntervalsForScope(
-    db,
-    teamId,
-    {
+  const [downtimeIntervals, maintenanceIntervals] = await Promise.all([
+    listIncidentIntervalsForMonitors(
+      db,
+      teamId,
+      scope.monitorIds,
+      fromSec,
+      toSec
+    ),
+    listMaintenanceIntervalsForScope(db, teamId, {
       componentIds: scope.componentIds,
       monitorIds: scope.monitorIds,
       monitorGroupIds: scope.monitorGroupIds,
       fromSec,
       toSec,
-    }
-  );
+    }),
+  ]);
 
   const { summary, downtimeOutsideMaintenance, maintenance } =
     computeAvailability({
@@ -219,24 +208,22 @@ export async function getPublicAvailabilityForStatusPage(
       includeDependencies: true,
     });
 
-    const downtimeIntervals = await listIncidentIntervalsForMonitors(
-      db,
-      externalPage.teamId,
-      scope.monitorIds,
-      fromClamped,
-      toClamped
-    );
-    const maintenanceIntervals = await listMaintenanceIntervalsForScope(
-      db,
-      externalPage.teamId,
-      {
+    const [downtimeIntervals, maintenanceIntervals] = await Promise.all([
+      listIncidentIntervalsForMonitors(
+        db,
+        externalPage.teamId,
+        scope.monitorIds,
+        fromClamped,
+        toClamped
+      ),
+      listMaintenanceIntervalsForScope(db, externalPage.teamId, {
         componentIds: scope.componentIds,
         monitorIds: scope.monitorIds,
         monitorGroupIds: scope.monitorGroupIds,
         fromSec: fromClamped,
         toSec: toClamped,
-      }
-    );
+      }),
+    ]);
 
     const { summary, downtimeOutsideMaintenance, maintenance } =
       computeAvailability({
@@ -259,8 +246,11 @@ export async function getPublicAvailabilityForStatusPage(
     return { kind: "ok", scope: scope.scope, summary, buckets };
   }
 
-  const comps = await listComponentsForStatusPage(db, externalPage.id);
-  const allowed = comps.some((c) => c.id === input.componentId);
+  const allowed = await statusPageHasComponent(
+    db,
+    externalPage.id,
+    input.componentId
+  );
   if (!allowed) return { kind: "not_found" };
 
   const scope = await resolveAvailabilityScope(db, externalPage.teamId, {
@@ -269,24 +259,22 @@ export async function getPublicAvailabilityForStatusPage(
     includeDependencies: true,
   });
 
-  const downtimeIntervals = await listIncidentIntervalsForMonitors(
-    db,
-    externalPage.teamId,
-    scope.monitorIds,
-    fromClamped,
-    toClamped
-  );
-  const maintenanceIntervals = await listMaintenanceIntervalsForScope(
-    db,
-    externalPage.teamId,
-    {
+  const [downtimeIntervals, maintenanceIntervals] = await Promise.all([
+    listIncidentIntervalsForMonitors(
+      db,
+      externalPage.teamId,
+      scope.monitorIds,
+      fromClamped,
+      toClamped
+    ),
+    listMaintenanceIntervalsForScope(db, externalPage.teamId, {
       componentIds: scope.componentIds,
       monitorIds: scope.monitorIds,
       monitorGroupIds: scope.monitorGroupIds,
       fromSec: fromClamped,
       toSec: toClamped,
-    }
-  );
+    }),
+  ]);
 
   const { summary, downtimeOutsideMaintenance, maintenance } =
     computeAvailability({

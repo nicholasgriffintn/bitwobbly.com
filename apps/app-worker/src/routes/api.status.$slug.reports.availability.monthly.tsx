@@ -5,7 +5,7 @@ import { getDb } from "@bitwobbly/shared";
 
 import {
   getExternalStatusPageBySlug,
-  listComponentsForStatusPage,
+  statusPageHasComponent,
 } from "@/server/repositories/status-pages";
 import {
   isStatusPageUnlocked,
@@ -72,8 +72,11 @@ export const Route = createFileRoute(
           let scopeId = page.id;
 
           if (data.component_id) {
-            const comps = await listComponentsForStatusPage(db, page.id);
-            const allowed = comps.some((c) => c.id === data.component_id);
+            const allowed = await statusPageHasComponent(
+              db,
+              page.id,
+              data.component_id
+            );
             if (!allowed) {
               return Response.json(
                 { ok: false, error: "Not found" },
