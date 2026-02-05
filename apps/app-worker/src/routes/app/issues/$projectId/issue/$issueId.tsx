@@ -267,7 +267,6 @@ function IssueDetail() {
         className="mb-6"
       />
 
-      {/* Two-column grid: Overview + Actions */}
       <div className="grid two mb-4">
         <Card>
           <CardTitle>Overview</CardTitle>
@@ -363,7 +362,6 @@ function IssueDetail() {
         <Card>
           <CardTitle>Actions</CardTitle>
           <div className="space-y-4">
-            {/* Status actions */}
             <div className="button-row">
               {issueSupportsResolution ? (
                 issueState.status === "unresolved" ? (
@@ -435,7 +433,6 @@ function IssueDetail() {
               )}
             </div>
 
-            {/* Assignee */}
             <div className="border-t border-[color:var(--stroke)] pt-4">
               <div className="mb-2 text-sm text-[color:var(--muted)]">
                 Assignee:{" "}
@@ -478,7 +475,6 @@ function IssueDetail() {
         </Card>
       </div>
 
-      {/* AI Prompts */}
       <Card className="mb-4">
         <CardTitle>AI Prompts</CardTitle>
         <div className="button-row">
@@ -497,7 +493,6 @@ function IssueDetail() {
         </div>
       </Card>
 
-      {/* Events */}
       <Card>
         <CardTitle>Events ({events.length})</CardTitle>
         <ListContainer
@@ -565,7 +560,7 @@ function IssueDetail() {
               expanded={selectedEventId === event.id}
               expandedContent={
                 selectedEventId === event.id && (
-                  <div className="border-t border-[color:var(--stroke)] bg-[color:var(--surface-1)] p-4">
+                  <div className="min-w-0 border-t border-[color:var(--stroke)] bg-[color:var(--surface-1)] p-4">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <strong>Event Payload</strong>
                       <div className="button-row">
@@ -596,7 +591,7 @@ function IssueDetail() {
                     {isLoadingPayload ? (
                       <div>Loading payload...</div>
                     ) : (
-                      <pre className="max-h-[400px] overflow-auto whitespace-pre-wrap break-words rounded bg-white p-4 text-sm">
+                      <pre className="max-h-[400px] w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded bg-white p-4 text-sm">
                         {eventPayload}
                       </pre>
                     )}
