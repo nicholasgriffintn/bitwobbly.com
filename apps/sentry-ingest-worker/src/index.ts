@@ -10,10 +10,13 @@ import { parseEnvelope } from "./lib/envelope";
 import { buildManifests } from "./lib/manifest";
 import { isProjectCache } from "./lib/guards";
 import { validateDsn } from "./repositories/auth";
+import { PayloadTooLargeError, readBodyWithLimit } from "./lib/request-utils";
 import type { Env } from "./types/env";
 import { assertEnv } from "./types/env";
 
 const logger = createLogger({ service: "sentry-ingest-worker" });
+
+const MAX_ENVELOPE_BYTES = 5 * 1024 * 1024;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -85,7 +88,18 @@ const handler = {
         });
       }
 
-      const body = new Uint8Array(await request.arrayBuffer());
+      let body: Uint8Array;
+      try {
+        body = await readBodyWithLimit(request, MAX_ENVELOPE_BYTES);
+      } catch (error) {
+        if (error instanceof PayloadTooLargeError) {
+          return new Response("Payload too large", {
+            status: 413,
+            headers: CORS_HEADERS,
+          });
+        }
+        throw error;
+      }
 
       const now = new Date();
       const r2Key = `raw/${sentryProjectId}/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${String(now.getUTCDate()).padStart(2, "0")}/${crypto.randomUUID()}.envelope`;

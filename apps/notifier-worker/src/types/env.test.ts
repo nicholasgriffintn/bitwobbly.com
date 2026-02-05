@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assertEnv, type Env } from "./env";
+import { assertEnv, type Env } from "./env.ts";
 
 test("assertEnv returns env when required fields are present", () => {
   const env: Env = {

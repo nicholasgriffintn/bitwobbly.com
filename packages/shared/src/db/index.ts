@@ -18,9 +18,10 @@ export function getDb(
 
   if (options.withSentry) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional peer dependency for Sentry-enabled workers
       const { instrumentD1WithSentry } = require("@sentry/cloudflare");
       database = instrumentD1WithSentry(d1);
-    } catch (error) {
+    } catch {
       // @sentry/cloudflare not available, use unwrapped database
     }
   }

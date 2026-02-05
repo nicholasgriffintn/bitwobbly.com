@@ -135,10 +135,10 @@ async function processEvent(
   }
 
   const fingerprint = computeFingerprint(event);
-  const title = generateTitle(event);
   const culprit = extractCulprit(event);
+  const isTransaction = job.item_type === "transaction";
   const level =
-    job.item_type === "transaction" ? "info" : event.level || "error";
+    isTransaction ? "info" : event.level || "error";
 
   const groupingRules = await groupingRulesResolver.getCachedRules(
     db,
@@ -151,18 +151,24 @@ async function processEvent(
   );
   const effectiveFingerprint = overrideFingerprint ?? fingerprint;
 
-  const { issueId, isNewIssue, wasResolved } = await upsertIssue(
-    db,
-    job.project_id,
-    {
+  let issueId: string | null = null;
+  let isNewIssue = false;
+  let wasResolved = false;
+
+  if (!isTransaction) {
+    const title = generateTitle(event);
+    const result = await upsertIssue(db, job.project_id, {
       fingerprint: effectiveFingerprint,
       title,
       level,
       culprit,
       release: event.release || null,
       environment: event.environment || null,
-    }
-  );
+    });
+    issueId = result.issueId;
+    isNewIssue = result.isNewIssue;
+    wasResolved = result.wasResolved;
+  }
 
   const eventId = stableEventId || crypto.randomUUID();
 
@@ -189,7 +195,7 @@ async function processEvent(
 
   const projectTeamId = await getProjectTeamId(db, job.project_id);
 
-  if (projectTeamId) {
+  if (projectTeamId && issueId) {
     await evaluateAlertRules(env, db, {
       eventId,
       issueId,

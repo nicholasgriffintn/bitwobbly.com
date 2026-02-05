@@ -128,6 +128,14 @@ export async function listSentryIssues(
       sql`(lower(${schema.sentryIssues.title}) like ${q} OR lower(coalesce(${schema.sentryIssues.culprit}, '')) like ${q})`
     );
   }
+  conditions.push(sql`
+    exists (
+      select 1
+      from sentry_events se
+      where se.issue_id = ${schema.sentryIssues.id}
+        and se.type != 'transaction'
+    )
+  `);
 
   return db
     .select()

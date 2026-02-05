@@ -19,6 +19,7 @@ import {
   randomId,
   createLogger,
 } from "@bitwobbly/shared";
+import { isHttpUrl } from "../lib/url-utils";
 
 const logger = createLogger({ service: "app-worker" });
 
@@ -58,10 +59,11 @@ const CreateMonitorSchema = z
     const requiresTarget = type === "tls" || type === "dns" || type === "tcp";
 
     if (requiresUrl) {
-      if (!data.url || !z.string().url().safeParse(data.url).success) {
+      if (!data.url || !isHttpUrl(data.url)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "URL is required and must be valid for this monitor type",
+          message:
+            "URL is required and must be a valid http(s) URL for this monitor type",
           path: ["url"],
         });
       }
@@ -211,9 +213,9 @@ export const updateMonitorFn = createServerFn({ method: "POST" })
       const requiresTarget =
         nextType === "tls" || nextType === "dns" || nextType === "tcp";
 
-      if (requiresUrl && !z.string().url().safeParse(nextUrl).success) {
+      if (requiresUrl && !isHttpUrl(nextUrl)) {
         throw new Error(
-          "URL is required and must be valid for this monitor type"
+          "URL is required and must be a valid http(s) URL for this monitor type"
         );
       }
 

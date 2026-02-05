@@ -10,6 +10,7 @@ import {
   listNotificationChannels,
 } from "../repositories/notification-channels";
 import { requireTeam } from "../lib/auth-middleware";
+import { isHttpUrl } from "../lib/url-utils";
 
 const CreateChannelSchema = z
   .object({
@@ -23,11 +24,12 @@ const CreateChannelSchema = z
   })
   .refine(
     (data) => {
-      if (data.type === "webhook" && !data.url) return false;
+      if (data.type === "webhook" && (!data.url || !isHttpUrl(data.url)))
+        return false;
       if (data.type === "email" && !data.to) return false;
       return true;
     },
-    { message: "Missing required fields for selected type" }
+    { message: "Missing or invalid fields for selected type" }
   );
 
 export const listChannelsFn = createServerFn({ method: "GET" }).handler(

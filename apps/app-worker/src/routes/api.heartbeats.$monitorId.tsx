@@ -4,6 +4,12 @@ import { env } from "cloudflare:workers";
 import { getDb, hashWebhookToken, randomId } from "@bitwobbly/shared";
 
 import { getMonitorByWebhookToken } from "@/server/repositories/monitors";
+import {
+  readJsonWithLimit,
+  PayloadTooLargeError,
+} from "@/server/lib/request-utils";
+
+const MAX_HEARTBEAT_BODY_BYTES = 128 * 1024;
 
 const HeartbeatPayloadSchema = z.object({
   token: z.string(),
@@ -31,7 +37,10 @@ export const Route = createFileRoute("/api/heartbeats/$monitorId")({
             );
           }
 
-          const body = await request.json();
+          const body = await readJsonWithLimit(
+            request,
+            MAX_HEARTBEAT_BODY_BYTES
+          );
           const data = HeartbeatPayloadSchema.parse(body);
           const db = getDb(vars.DB);
 
@@ -72,7 +81,14 @@ export const Route = createFileRoute("/api/heartbeats/$monitorId")({
 
           return Response.json({ ok: true });
         } catch (error) {
-          if (error instanceof z.ZodError) {
+          if (error instanceof PayloadTooLargeError) {
+            return Response.json(
+              { ok: false, error: "Payload too large" },
+              { status: 413 }
+            );
+          }
+
+          if (error instanceof z.ZodError || error instanceof SyntaxError) {
             return Response.json(
               { ok: false, error: "Invalid request body" },
               { status: 400 }

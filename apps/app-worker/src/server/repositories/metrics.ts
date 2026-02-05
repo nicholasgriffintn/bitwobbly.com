@@ -2,6 +2,7 @@ import type { UptimeMetrics, ComponentMetrics } from "@bitwobbly/shared";
 import { createLogger } from "@bitwobbly/shared";
 
 const logger = createLogger({ service: "metrics-repository" });
+const ANALYTICS_TIMEOUT_MS = 8000;
 
 export type MetricsRow = {
   monitor_id: string;
@@ -59,13 +60,19 @@ export async function getMonitorMetrics(
   `;
 
   const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort("timeout"),
+    ANALYTICS_TIMEOUT_MS
+  );
   const response = await fetch(API, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiToken}`,
     },
     body: query,
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -192,13 +199,19 @@ export async function getComponentUptimeMetrics(
   `;
 
   const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort("timeout"),
+    ANALYTICS_TIMEOUT_MS
+  );
   const response = await fetch(API, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiToken}`,
     },
     body: query,
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -347,13 +360,19 @@ export async function getComponentMetrics(
   `;
 
   const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort("timeout"),
+    ANALYTICS_TIMEOUT_MS
+  );
   const response = await fetch(API, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiToken}`,
     },
     body: query,
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     const errorText = await response.text();

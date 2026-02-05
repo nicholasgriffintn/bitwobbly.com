@@ -140,7 +140,7 @@ export async function insertEvent(
   data: {
     id: string;
     projectId: string;
-    issueId: string;
+    issueId: string | null;
     type: string;
     level: string | null;
     message: string | null;

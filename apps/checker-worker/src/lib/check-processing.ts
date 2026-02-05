@@ -14,6 +14,7 @@ import { isRecord } from "./guards";
 import { computeHeartbeatStatus, parseTargetHostPort } from "./monitor-utils";
 import { readResponseTextUpTo } from "./http-utils";
 import { checkTlsExpiry } from "./checks/tls";
+import { isHttpUrl } from "./url-utils";
 
 const logger = createLogger({ service: "checker-worker" });
 
@@ -532,7 +533,8 @@ async function checkExternalService(
     }
 
     const serviceType = config?.serviceType;
-    const statusUrl = config?.statusUrl || job.url;
+    const statusUrl =
+      typeof config?.statusUrl === "string" ? config.statusUrl : job.url;
 
     if (serviceType && serviceType.startsWith("cloudflare-")) {
       const cfStatusUrl = "https://www.cloudflarestatus.com/api/v2/status.json";
@@ -568,6 +570,14 @@ async function checkExternalService(
       return {
         status: "down",
         reason: `Cloudflare status: ${indicator || "unknown"}`,
+        latency_ms: Date.now() - started,
+      };
+    }
+
+    if (!statusUrl || !isHttpUrl(statusUrl)) {
+      return {
+        status: "down",
+        reason: "Invalid external status URL",
         latency_ms: Date.now() - started,
       };
     }
