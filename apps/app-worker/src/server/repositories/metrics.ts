@@ -1,4 +1,7 @@
 import type { UptimeMetrics, ComponentMetrics } from "@bitwobbly/shared";
+import { createLogger } from "@bitwobbly/shared";
+
+const logger = createLogger({ service: "metrics-repository" });
 
 export type MetricsRow = {
   monitor_id: string;
@@ -66,11 +69,10 @@ export async function getMonitorMetrics(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(
-      `Analytics Engine query failed (${response.status}):`,
-      errorText
-    );
-    console.error("Query was:", query);
+    logger.error(`Analytics Engine query failed (${response.status}):`, {
+      errorText,
+      query,
+    });
     throw new Error(`Analytics Engine query failed: ${errorText}`);
   }
 
@@ -200,10 +202,9 @@ export async function getComponentUptimeMetrics(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(
-      `Analytics Engine query failed (${response.status}):`,
-      errorText
-    );
+    logger.error(`Analytics Engine query failed (${response.status}):`, {
+      errorText,
+    });
     throw new Error(`Analytics Engine query failed: ${errorText}`);
   }
 

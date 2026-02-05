@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, memo, lazy, Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { TIME_CONSTANTS, createLogger } from "@bitwobbly/shared";
 
 import { Card, CardTitle, PageHeader } from "@/components/layout";
 import { ListContainer, ListRow } from "@/components/list";
@@ -11,33 +12,63 @@ import {
   listSentryIssuesFn,
   listSentryEventsFn,
   updateSentryIssueFn,
-  deleteSentryIssueGroupingRuleFn,
   listSentryIssueGroupingRulesFn,
-  updateSentryIssueGroupingRuleFn,
-  getSentryReleaseHealthFn,
-  listSentryClientReportsFn,
 } from "@/server/functions/sentry";
 import { listTeamMembersFn } from "@/server/functions/teams";
-import {
-  getEventVolumeStatsFn,
-  getEventVolumeTimeseriesBreakdownFn,
-  getTopErrorMessagesFn,
-  getErrorRateByReleaseFn,
-  getSDKDistributionFn,
-} from "@/server/functions/sentry-analytics";
-import { EventMetrics } from "@/components/EventMetrics";
-import { EventVolumeChart } from "@/components/EventVolumeChart";
-import { SDKDistributionChart } from "@/components/SDKDistributionChart";
-import { GroupingRuleModal } from "@/components/modals/issues";
 import { toTitleCase } from "@/utils/format";
-import type {
-  TeamMember,
-  Issue,
-  Event,
-  IssueGroupingRule,
-} from "@/types/issues";
+import type { TeamMember, Issue, Event } from "@/types/issues";
 import { supportsResolution } from "@/types/issues";
-import { TIME_CONSTANTS } from "@bitwobbly/shared";
+
+const logger = createLogger({ service: "app-worker" });
+
+const AnalyticsTab = lazy(() =>
+  import("@/components/issues/AnalyticsTab").then((m) => ({
+    default: m.AnalyticsTab,
+  }))
+);
+
+const GroupingTab = lazy(() =>
+  import("@/components/issues/GroupingTab").then((m) => ({
+    default: m.GroupingTab,
+  }))
+);
+
+const EventItem = memo(function EventItem({
+  event,
+  projectId,
+}: {
+  event: Event;
+  projectId: string;
+}) {
+  return (
+    <div className="list-item">
+      <div className="flex-1">
+        <div className="list-title">
+          {event.message || `${event.type} event`}
+        </div>
+        <div className="muted mt-1">
+          {event.level && (
+            <>
+              <span className={`status ${event.level}`}>{event.level}</span>
+              {" · "}
+            </>
+          )}
+          {formatRelativeTime(event.receivedAt)}
+        </div>
+      </div>
+      {event.issueId && (
+        <Link
+          to="/app/issues/$projectId/issue/$issueId"
+          params={{ projectId, issueId: event.issueId }}
+        >
+          <button type="button" className="outline">
+            Open issue
+          </button>
+        </Link>
+      )}
+    </div>
+  );
+});
 
 export const Route = createFileRoute("/app/issues/$projectId/")({
   component: ProjectIssues,
@@ -60,6 +91,14 @@ export const Route = createFileRoute("/app/issues/$projectId/")({
   },
 });
 
+function TabLoadingFallback() {
+  return (
+    <div className="p-8">
+      <div className="skeleton h-48 w-full" />
+    </div>
+  );
+}
+
 function ProjectIssues() {
   const { projectId } = Route.useParams();
   const {
@@ -75,8 +114,6 @@ function ProjectIssues() {
   const [issues, setIssues] = useState<Issue[]>(initialIssues);
   const [events] = useState<Event[]>(initialEvents);
   const [members] = useState<TeamMember[]>(initialMembers);
-  const [groupingRules, setGroupingRules] =
-    useState<IssueGroupingRule[]>(initialGroupingRules);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [levelFilter, setLevelFilter] = useState<string>("all");
@@ -89,83 +126,6 @@ function ProjectIssues() {
 
   const updateIssue = useServerFn(updateSentryIssueFn);
   const listIssues = useServerFn(listSentryIssuesFn);
-  const getStats = useServerFn(getEventVolumeStatsFn);
-  const getTimeseriesBreakdown = useServerFn(
-    getEventVolumeTimeseriesBreakdownFn
-  );
-  const getTopErrors = useServerFn(getTopErrorMessagesFn);
-  const getReleaseStats = useServerFn(getErrorRateByReleaseFn);
-  const getSDKDist = useServerFn(getSDKDistributionFn);
-  const listGroupingRules = useServerFn(listSentryIssueGroupingRulesFn);
-  const updateGroupingRule = useServerFn(updateSentryIssueGroupingRuleFn);
-  const deleteGroupingRule = useServerFn(deleteSentryIssueGroupingRuleFn);
-  const getReleaseHealth = useServerFn(getSentryReleaseHealthFn);
-  const listClientReports = useServerFn(listSentryClientReportsFn);
-
-  const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
-  const [volumeStats, setVolumeStats] = useState<{
-    data: {
-      total_events: number;
-      accepted_events: number;
-      filtered_events: number;
-      dropped_events: number;
-    } | null;
-    loading: boolean;
-  }>({ data: null, loading: false });
-  const [timeseriesBreakdown, setTimeseriesBreakdown] = useState<{
-    data: Array<{
-      timestamp: string;
-      accepted: number;
-      filtered: number;
-      dropped: number;
-    }>;
-    loading: boolean;
-  }>({ data: [], loading: false });
-  const [sdkDistribution, setSdkDistribution] = useState<{
-    data: Array<{ sdk_name: string; event_count: number; percentage: number }>;
-    loading: boolean;
-  }>({ data: [], loading: false });
-  const [topErrors, setTopErrors] = useState<{
-    data: Array<{
-      message: string;
-      event_count: number;
-      first_seen: string;
-      last_seen: string;
-    }>;
-    loading: boolean;
-  }>({ data: [], loading: false });
-  const [releaseStats, setReleaseStats] = useState<{
-    data: Array<{
-      release: string;
-      environment: string;
-      error_count: number;
-      user_count: number;
-    }>;
-    loading: boolean;
-  }>({ data: [], loading: false });
-  const [releaseHealth, setReleaseHealth] = useState<{
-    data: Array<{
-      release: string | null;
-      environment: string | null;
-      total_sessions: number;
-      crashed_sessions: number;
-      errored_sessions: number;
-      crash_free_rate: number;
-    }>;
-    loading: boolean;
-  }>({ data: [], loading: false });
-  const [clientReports, setClientReports] = useState<{
-    data: Array<{
-      id: string;
-      timestamp: number;
-      discardedEvents: Array<{
-        reason: string;
-        category: string;
-        quantity: number;
-      }> | null;
-    }>;
-    loading: boolean;
-  }>({ data: [], loading: false });
 
   const memberEmailById = useMemo(() => {
     const map = new Map<string, string>();
@@ -174,65 +134,6 @@ function ProjectIssues() {
     }
     return map;
   }, [members]);
-
-  const [isGroupingRuleModalOpen, setIsGroupingRuleModalOpen] = useState(false);
-  const [editingGroupingRule, setEditingGroupingRule] =
-    useState<IssueGroupingRule | null>(null);
-
-  const loadAnalytics = () => {
-    setAnalyticsLoaded(true);
-
-    const endDate = new Date().toISOString();
-    const startDate = new Date(
-      Date.now() - 14 * 24 * 60 * 60 * 1000
-    ).toISOString();
-
-    setVolumeStats((s) => ({ ...s, loading: true }));
-    getStats({ data: { projectId, startDate, endDate } })
-      .then((data) => setVolumeStats({ data, loading: false }))
-      .catch(() => setVolumeStats({ data: null, loading: false }));
-
-    setTimeseriesBreakdown((s) => ({ ...s, loading: true }));
-    getTimeseriesBreakdown({
-      data: { projectId, startDate, endDate, interval: "hour" },
-    })
-      .then((data) => setTimeseriesBreakdown({ data, loading: false }))
-      .catch(() => setTimeseriesBreakdown({ data: [], loading: false }));
-
-    setSdkDistribution((s) => ({ ...s, loading: true }));
-    getSDKDist({ data: { projectId, startDate, endDate } })
-      .then((data) => setSdkDistribution({ data, loading: false }))
-      .catch(() => setSdkDistribution({ data: [], loading: false }));
-
-    setTopErrors((s) => ({ ...s, loading: true }));
-    getTopErrors({ data: { projectId, limit: 10 } })
-      .then((data) => setTopErrors({ data, loading: false }))
-      .catch(() => setTopErrors({ data: [], loading: false }));
-
-    setReleaseStats((s) => ({ ...s, loading: true }));
-    getReleaseStats({ data: { projectId, startDate, endDate } })
-      .then((data) => setReleaseStats({ data, loading: false }))
-      .catch(() => setReleaseStats({ data: [], loading: false }));
-
-    const since = Math.floor(Date.now() / 1000) - 14 * 24 * 60 * 60;
-    const until = Math.floor(Date.now() / 1000);
-
-    setReleaseHealth((s) => ({ ...s, loading: true }));
-    getReleaseHealth({ data: { projectId, since, until } })
-      .then((res) => setReleaseHealth({ data: res.health, loading: false }))
-      .catch(() => setReleaseHealth({ data: [], loading: false }));
-
-    setClientReports((s) => ({ ...s, loading: true }));
-    listClientReports({ data: { projectId, since, until, limit: 50 } })
-      .then((res) => setClientReports({ data: res.reports, loading: false }))
-      .catch(() => setClientReports({ data: [], loading: false }));
-  };
-
-  useEffect(() => {
-    if (activeTab === "analytics" && !analyticsLoaded) {
-      loadAnalytics();
-    }
-  }, [activeTab, analyticsLoaded]);
 
   const refreshIssues = async () => {
     setIsRefreshingIssues(true);
@@ -282,7 +183,7 @@ function ProjectIssues() {
       });
       await refreshIssues();
     } catch (err) {
-      console.error("Failed to update issue:", err);
+      logger.error("Failed to update issue:", { err });
     }
   };
 
@@ -333,37 +234,6 @@ function ProjectIssues() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [issues]);
 
-  const refreshGroupingRules = async () => {
-    const res = await listGroupingRules({ data: { projectId } });
-    setGroupingRules(res.rules);
-  };
-
-  const openCreateGroupingRule = () => {
-    setEditingGroupingRule(null);
-    setIsGroupingRuleModalOpen(true);
-  };
-
-  const openEditGroupingRule = (rule: IssueGroupingRule) => {
-    setEditingGroupingRule(rule);
-    setIsGroupingRuleModalOpen(true);
-  };
-
-  const closeGroupingRuleModal = () => {
-    setIsGroupingRuleModalOpen(false);
-    setEditingGroupingRule(null);
-  };
-
-  const handleToggleGroupingRule = async (ruleId: string, enabled: boolean) => {
-    await updateGroupingRule({ data: { projectId, ruleId, enabled } });
-    await refreshGroupingRules();
-  };
-
-  const handleDeleteGroupingRule = async (ruleId: string) => {
-    if (!confirm("Delete this grouping rule?")) return;
-    await deleteGroupingRule({ data: { projectId, ruleId } });
-    await refreshGroupingRules();
-  };
-
   return (
     <div className="page">
       <PageHeader
@@ -386,7 +256,7 @@ function ProjectIssues() {
               {
                 id: "grouping",
                 label: "Grouping",
-                count: groupingRules.length,
+                count: initialGroupingRules.length,
               },
             ]}
             activeTab={activeTab}
@@ -400,7 +270,6 @@ function ProjectIssues() {
 
         {activeTab === "issues" && (
           <div className="mb-4 space-y-3 border-b border-[color:var(--stroke)] pb-4">
-            {/* Status summary */}
             <div className="flex flex-wrap gap-2">
               <Badge
                 size="small"
@@ -422,7 +291,6 @@ function ProjectIssues() {
               </Badge>
             </div>
 
-            {/* Search */}
             <input
               type="text"
               placeholder="Search issues..."
@@ -431,7 +299,6 @@ function ProjectIssues() {
               className="w-full rounded-lg border border-[color:var(--stroke)] bg-white px-3 py-2"
             />
 
-            {/* Primary filters */}
             <div className="flex flex-wrap gap-2">
               <select
                 value={statusFilter}
@@ -467,7 +334,6 @@ function ProjectIssues() {
               </select>
             </div>
 
-            {/* Secondary filters */}
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={releaseFilter}
@@ -525,6 +391,7 @@ function ProjectIssues() {
             </div>
           </div>
         )}
+
         <div className="list">
           {activeTab === "issues" ? (
             <ListContainer
@@ -652,300 +519,25 @@ function ProjectIssues() {
           ) : activeTab === "events" ? (
             events.length ? (
               events.map((event) => (
-                <div key={event.id} className="list-item">
-                  <div className="flex-1">
-                    <div className="list-title">
-                      {event.message || `${event.type} event`}
-                    </div>
-                    <div className="muted mt-1">
-                      {event.level && (
-                        <>
-                          <span className={`status ${event.level}`}>
-                            {event.level}
-                          </span>
-                          {" · "}
-                        </>
-                      )}
-                      {formatRelativeTime(event.receivedAt)}
-                    </div>
-                  </div>
-                  {event.issueId && (
-                    <Link
-                      to="/app/issues/$projectId/issue/$issueId"
-                      params={{ projectId, issueId: event.issueId }}
-                    >
-                      <button type="button" className="outline">
-                        Open issue
-                      </button>
-                    </Link>
-                  )}
-                </div>
+                <EventItem key={event.id} event={event} projectId={projectId} />
               ))
             ) : (
               <div className="muted">No events found.</div>
             )
           ) : activeTab === "analytics" ? (
-            <div className="rounded-2xl border border-[color:var(--stroke)] bg-[color:var(--bg)] p-4">
-              <div>
-                {volumeStats.loading ? (
-                  <div className="grid metrics mb-1.5">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="card skeleton h-20" />
-                    ))}
-                  </div>
-                ) : volumeStats.data ? (
-                  <EventMetrics stats={volumeStats.data} />
-                ) : null}
-
-                <div className="card mb-1.5">
-                  <div className="card-title">Event Volume (Last 14 Days)</div>
-                  {timeseriesBreakdown.loading ? (
-                    <div className="skeleton h-[400px]" />
-                  ) : timeseriesBreakdown.data.length > 0 ? (
-                    <EventVolumeChart data={timeseriesBreakdown.data} />
-                  ) : (
-                    <div className="muted p-8">No event data available</div>
-                  )}
-                </div>
-
-                <div className="grid two mb-1.5">
-                  <div className="card">
-                    <div className="card-title">SDK Distribution</div>
-                    {sdkDistribution.loading ? (
-                      <div className="skeleton h-[200px]" />
-                    ) : sdkDistribution.data.length > 0 ? (
-                      <SDKDistributionChart data={sdkDistribution.data} />
-                    ) : (
-                      <div className="muted p-8">No SDK data available</div>
-                    )}
-                  </div>
-
-                  <div className="card">
-                    <div className="card-title">Top Error Messages</div>
-                    {topErrors.loading ? (
-                      <div className="list">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="list-item skeleton h-12" />
-                        ))}
-                      </div>
-                    ) : topErrors.data.length > 0 ? (
-                      <div className="list">
-                        {topErrors.data.slice(0, 5).map((error, idx) => (
-                          <div key={idx} className="list-item">
-                            <div className="flex-1">
-                              <div className="list-title">{error.message}</div>
-                              <div className="muted mt-1">
-                                {error.event_count} occurrences
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="muted p-8">No error data available</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="card">
-                  <div className="card-title">Error Rate by Release</div>
-                  {releaseStats.loading ? (
-                    <div className="list">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="list-item skeleton h-12" />
-                      ))}
-                    </div>
-                  ) : releaseStats.data.length > 0 ? (
-                    <div className="list">
-                      {releaseStats.data.slice(0, 10).map((stat, idx) => (
-                        <div key={idx} className="list-item">
-                          <div className="flex-1">
-                            <div className="list-title">
-                              {stat.release || "Unknown Release"}
-                              {stat.environment && (
-                                <span className="pill small ml-2">
-                                  {toTitleCase(stat.environment)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="muted mt-1">
-                              {stat.error_count} errors · {stat.user_count}{" "}
-                              users affected
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="muted p-8">No release data available</div>
-                  )}
-                </div>
-
-                <div className="grid two mt-1.5">
-                  <div className="card">
-                    <div className="card-title">
-                      Release Health (Crash-free Sessions)
-                    </div>
-                    {releaseHealth.loading ? (
-                      <div className="list">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="list-item skeleton h-12" />
-                        ))}
-                      </div>
-                    ) : releaseHealth.data.length > 0 ? (
-                      <div className="list">
-                        {releaseHealth.data.slice(0, 10).map((row, idx) => (
-                          <div key={idx} className="list-item">
-                            <div className="flex-1">
-                              <div className="list-title">
-                                {row.release || "Unknown Release"}
-                                {row.environment ? (
-                                  <span className="pill small ml-2">
-                                    {toTitleCase(row.environment)}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <div className="muted mt-1">
-                                {(row.crash_free_rate * 100).toFixed(2)}%
-                                crash-free · {row.total_sessions} sessions ·{" "}
-                                {row.crashed_sessions} crashed
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="muted p-8">No session data available</div>
-                    )}
-                  </div>
-
-                  <div className="card">
-                    <div className="card-title">Client Reports</div>
-                    {clientReports.loading ? (
-                      <div className="list">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="list-item skeleton h-12" />
-                        ))}
-                      </div>
-                    ) : clientReports.data.length > 0 ? (
-                      <div className="list">
-                        {clientReports.data.slice(0, 10).map((report) => (
-                          <div key={report.id} className="list-item">
-                            <div className="flex-1">
-                              <div className="list-title">
-                                {formatRelativeTime(report.timestamp)}
-                              </div>
-                              <div className="muted mt-1">
-                                {report.discardedEvents?.length
-                                  ? report.discardedEvents
-                                      .slice(0, 3)
-                                      .map(
-                                        (e) =>
-                                          `${e.category}:${e.reason} (${e.quantity})`
-                                      )
-                                      .join(", ")
-                                  : "No discarded event details"}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="muted p-8">
-                        No client report data available
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Suspense fallback={<TabLoadingFallback />}>
+              <AnalyticsTab projectId={projectId} />
+            </Suspense>
           ) : activeTab === "grouping" ? (
-            <div className="p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-semibold">Grouping Rules</div>
-                  <div className="muted">
-                    Override grouping per project without deploying code.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="outline"
-                  onClick={openCreateGroupingRule}
-                >
-                  New rule
-                </button>
-              </div>
-              <div className="list">
-                {groupingRules.length ? (
-                  groupingRules.map((rule) => (
-                    <div key={rule.id} className="list-item-expanded">
-                      <div className="list-row">
-                        <div className="flex-1">
-                          <div className="list-title">
-                            {rule.name}
-                            <span className="pill small ml-2">
-                              {rule.enabled ? "Enabled" : "Disabled"}
-                            </span>
-                          </div>
-                          <div className="muted mt-1">
-                            Fingerprint: <code>{rule.fingerprint}</code>
-                            {rule.matchers ? (
-                              <>
-                                {" · "}
-                                Matchers:{" "}
-                                <code>{JSON.stringify(rule.matchers)}</code>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="button-row">
-                          <button
-                            type="button"
-                            className="outline"
-                            onClick={() =>
-                              handleToggleGroupingRule(
-                                rule.id,
-                                !(rule.enabled === 1)
-                              )
-                            }
-                          >
-                            {rule.enabled ? "Disable" : "Enable"}
-                          </button>
-                          <button
-                            type="button"
-                            className="outline"
-                            onClick={() => openEditGroupingRule(rule)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="outline button-danger"
-                            onClick={() => handleDeleteGroupingRule(rule.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="muted">No grouping rules yet.</div>
-                )}
-              </div>
-            </div>
+            <Suspense fallback={<TabLoadingFallback />}>
+              <GroupingTab
+                projectId={projectId}
+                initialRules={initialGroupingRules}
+              />
+            </Suspense>
           ) : null}
         </div>
       </Card>
-
-      <GroupingRuleModal
-        isOpen={isGroupingRuleModalOpen}
-        onClose={closeGroupingRuleModal}
-        onSuccess={refreshGroupingRules}
-        projectId={projectId}
-        rule={editingGroupingRule}
-      />
     </div>
   );
 }

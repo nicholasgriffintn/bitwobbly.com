@@ -17,7 +17,10 @@ import {
   generateWebhookToken,
   hashWebhookToken,
   randomId,
+  createLogger,
 } from "@bitwobbly/shared";
+
+const logger = createLogger({ service: "app-worker" });
 
 const MonitorTypeSchema = z.enum([
   "http",
@@ -167,7 +170,7 @@ export const getMonitorMetricsFn = createServerFn({ method: "GET" })
       );
       return result;
     } catch (error) {
-      console.error("Failed to fetch metrics", error);
+      logger.error("Failed to fetch metrics", { error });
       throw new Error("Failed to fetch metrics");
     }
   });
@@ -258,7 +261,7 @@ export const triggerSchedulerFn = createServerFn({ method: "POST" }).handler(
       }
       return { ok: true, message: "Scheduler triggered successfully" };
     } catch (error) {
-      console.error("[APP] Failed to trigger scheduler:", error);
+      logger.error("Failed to trigger scheduler:", { error });
       throw new Error(
         "Failed to trigger scheduler. Make sure dev server is running."
       );

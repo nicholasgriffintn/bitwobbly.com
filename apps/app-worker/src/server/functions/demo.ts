@@ -1,11 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
-
 import { requireOwner } from "@bitwobbly/auth/server";
 import { hashWebhookToken, schema } from "@bitwobbly/shared";
+import { getDb, createLogger } from "@bitwobbly/shared";
 
-import { getDb } from "@bitwobbly/shared";
 import { hashPassword } from "../lib/auth";
 import { requireTeam } from "../lib/auth-middleware";
 import { DEFAULT_TEAM_SLO_TARGET_PPM } from "../lib/availability";
@@ -13,6 +12,8 @@ import {
   getPublicStatusSnapshotCacheKey,
   getTeamStatusSnapshotCacheKey,
 } from "../lib/status-snapshot-cache";
+
+const logger = createLogger({ service: "app-worker" });
 
 const DAY_SECONDS = 24 * 60 * 60;
 
@@ -211,7 +212,7 @@ export const seedDemoDataFn = createServerFn({ method: "POST" }).handler(
         })
         .onConflictDoNothing();
     } catch (e) {
-      console.warn("Skipping demo SLO targets (missing migrations?)", e);
+      logger.warn("Skipping demo SLO targets (missing migrations?)", { e });
     }
 
     await db.insert(schema.users).values([
@@ -595,7 +596,7 @@ export const seedDemoDataFn = createServerFn({ method: "POST" }).handler(
       try {
         await db.insert(schema.monitors).values(monitor);
       } catch (e) {
-        console.error("Error inserting monitor:", e);
+        logger.error("Error inserting monitor:", { e });
       }
     }
 
@@ -716,7 +717,7 @@ export const seedDemoDataFn = createServerFn({ method: "POST" }).handler(
       try {
         await db.insert(schema.monitorState).values(state);
       } catch (e) {
-        console.error("Error inserting monitor state:", e);
+        logger.error("Error inserting monitor state:", { e });
       }
     }
 
@@ -778,7 +779,7 @@ export const seedDemoDataFn = createServerFn({ method: "POST" }).handler(
       try {
         await db.insert(schema.components).values(component);
       } catch (e) {
-        console.error("Error inserting component:", e);
+        logger.error("Error inserting component:", { e });
       }
     }
 
@@ -816,7 +817,7 @@ export const seedDemoDataFn = createServerFn({ method: "POST" }).handler(
         ])
         .onConflictDoNothing();
     } catch (e) {
-      console.warn("Skipping demo SLO targets for components", e);
+      logger.warn("Skipping demo SLO targets for components", { e });
     }
 
     await db.insert(schema.componentDependencies).values([
@@ -901,7 +902,7 @@ export const seedDemoDataFn = createServerFn({ method: "POST" }).handler(
         ])
         .onConflictDoNothing();
     } catch (e) {
-      console.warn("Skipping demo SLO targets for status pages", e);
+      logger.warn("Skipping demo SLO targets for status pages", { e });
     }
 
     await db.insert(schema.statusPageComponents).values([

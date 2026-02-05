@@ -1,3 +1,87 @@
+export type MonitorType =
+  | "http"
+  | "http_assert"
+  | "http_keyword"
+  | "tls"
+  | "dns"
+  | "tcp"
+  | "webhook"
+  | "heartbeat"
+  | "external"
+  | "manual";
+
+interface MonitorTypeConfig {
+  label: string;
+  requiresUrl: boolean;
+  urlLabel?: string;
+  urlPlaceholder?: string;
+  description?: string;
+  hasExternalServiceField?: boolean;
+}
+
+export const MONITOR_TYPE_CONFIG: Record<MonitorType, MonitorTypeConfig> = {
+  http: {
+    label: "HTTP",
+    requiresUrl: true,
+    urlLabel: "URL",
+    urlPlaceholder: "https://example.com/health",
+  },
+  http_assert: {
+    label: "HTTP Assert",
+    requiresUrl: true,
+    urlLabel: "URL",
+    urlPlaceholder: "https://example.com/health",
+  },
+  http_keyword: {
+    label: "HTTP Keyword",
+    requiresUrl: true,
+    urlLabel: "URL",
+    urlPlaceholder: "https://example.com/health",
+  },
+  tls: {
+    label: "TLS Certificate",
+    requiresUrl: true,
+    urlLabel: "Target",
+    urlPlaceholder: "example.com:443",
+  },
+  dns: {
+    label: "DNS",
+    requiresUrl: true,
+    urlLabel: "Target",
+    urlPlaceholder: "example.com",
+  },
+  tcp: {
+    label: "TCP",
+    requiresUrl: true,
+    urlLabel: "Target",
+    urlPlaceholder: "example.com:443",
+  },
+  webhook: {
+    label: "Webhook",
+    requiresUrl: false,
+    description:
+      "A webhook token will be generated. External services will push status updates to your webhook endpoint.",
+  },
+  heartbeat: {
+    label: "Heartbeat",
+    requiresUrl: false,
+    description:
+      "A token will be generated. Your cron will POST check-ins to your heartbeat endpoint. Missing check-ins will mark the monitor down.",
+  },
+  external: {
+    label: "External",
+    requiresUrl: true,
+    urlLabel: "Status URL",
+    urlPlaceholder: "https://status.example.com/api",
+    hasExternalServiceField: true,
+  },
+  manual: {
+    label: "Manual",
+    requiresUrl: false,
+    description: "Status is set manually via the dashboard or API.",
+  },
+};
+
 export function validateJsonConfig(value: string) {
   if (!value.trim()) return null;
   try {

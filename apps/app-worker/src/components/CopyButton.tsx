@@ -1,4 +1,7 @@
 import { useState, type CSSProperties } from "react";
+import { createLogger } from "@bitwobbly/shared";
+
+const logger = createLogger({ service: "app-worker" });
 
 interface CopyButtonProps {
   text: string;
@@ -26,7 +29,7 @@ export function CopyButton({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to copy:", err);
+      logger.error("Failed to copy:", { err });
     }
   };
 

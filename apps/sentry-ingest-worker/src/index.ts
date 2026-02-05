@@ -1,12 +1,13 @@
 import { withSentry } from "@sentry/cloudflare";
-import { CACHE_TTL } from "@bitwobbly/shared";
+import { CACHE_TTL, getDb, createLogger } from "@bitwobbly/shared";
 
-import { getDb } from "@bitwobbly/shared";
 import { parseEnvelope } from "./lib/envelope";
 import { buildManifests } from "./lib/manifest";
 import { isProjectCache } from "./lib/guards";
 import { validateDsn } from "./repositories/auth";
 import type { Env } from "./types/env";
+
+const logger = createLogger({ service: "sentry-ingest-worker" });
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -120,7 +121,7 @@ const handler = {
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     } catch (error) {
-      console.error("[SENTRY-INGEST] Error:", error);
+      logger.error("Error:", { error });
       return new Response("Internal Error", {
         status: 500,
         headers: CORS_HEADERS,

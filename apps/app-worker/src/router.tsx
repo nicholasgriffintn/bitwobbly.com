@@ -1,8 +1,9 @@
-import * as Sentry from "@sentry/react";
 import { createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "@/routeTree.gen";
 import { ErrorComponent } from "@/components/ErrorComponent";
+
+let sentryInitPromise: Promise<void> | null = null;
 
 export const getRouter = () => {
   const router = createRouter({
@@ -15,14 +16,18 @@ export const getRouter = () => {
     },
   });
 
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    environment: import.meta.env.MODE,
-    release: import.meta.env.VITE_BUILD_ID,
-    integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
-    enableLogs: true,
-    tracesSampleRate: 0.2,
-  });
+  if (!import.meta.env.SSR && !sentryInitPromise) {
+    sentryInitPromise = import("@sentry/react").then((Sentry) => {
+      Sentry.init({
+        dsn: import.meta.env.VITE_SENTRY_DSN,
+        environment: import.meta.env.MODE,
+        release: import.meta.env.VITE_BUILD_ID,
+        integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+        enableLogs: true,
+        tracesSampleRate: 0.2,
+      });
+    });
+  }
 
   return router;
 };

@@ -3,20 +3,19 @@ import {
   instrumentDurableObjectWithSentry,
   withSentry,
 } from "@sentry/cloudflare";
+import { getDb, createLogger } from "@bitwobbly/shared";
 
 import {
   rebuildAllSnapshots,
   openIncident,
   resolveIncident,
 } from "./repositories/snapshot";
-import { getDb } from "@bitwobbly/shared";
 import type { Env } from "./types/env";
 import { jsonResponse } from "./lib/responses";
-import {
-  parseTransitionRequest,
-  type TransitionRequest,
-} from "./lib/transition-request";
+import { parseTransitionRequest } from "./lib/transition-request";
 import { handleCheck } from "./lib/check-processing";
+
+const logger = createLogger({ service: "checker-worker" });
 
 type DOState = {
   open_incident_id?: string;
@@ -107,7 +106,7 @@ const handler = {
         msg.ack();
       } catch (e: unknown) {
         const error = e instanceof Error ? e : null;
-        console.error("[CHECKER] check failed", error?.message || e);
+        logger.error("[CHECKER] check failed", { error });
       }
     }
   },

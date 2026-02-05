@@ -1,6 +1,8 @@
 import type { AlertJob, CheckJob } from "@bitwobbly/shared";
 import { randomId } from "@bitwobbly/shared";
 import { connect } from "cloudflare:sockets";
+import type { DB } from "@bitwobbly/shared";
+import { createLogger } from "@bitwobbly/shared";
 
 import {
   getMonitorState,
@@ -9,10 +11,11 @@ import {
 import { getMonitorSuppressionState } from "../repositories/suppressions";
 import type { Env } from "../types/env";
 import { isRecord } from "./guards";
-import type { DB } from "@bitwobbly/shared";
 import { computeHeartbeatStatus, parseTargetHostPort } from "./monitor-utils";
 import { readResponseTextUpTo } from "./http-utils";
 import { checkTlsExpiry } from "./checks/tls";
+
+const logger = createLogger({ service: "checker-worker" });
 
 export async function handleCheck(
   job: CheckJob,
@@ -311,9 +314,7 @@ export async function handleCheck(
         error?.name === "AbortError"
           ? "Timeout"
           : error?.message || "Fetch error";
-      console.error(
-        `[CHECKER] Check failed: ${status} (${latency_ms}ms) - ${reason}`
-      );
+      logger.error(`Check failed: ${status} (${latency_ms}ms) - ${reason}`);
     } finally {
       clearTimeout(t);
     }
@@ -442,10 +443,9 @@ async function handleReportedStatus(
 ) {
   const mapped = mapReportedStatus(job.reported_status);
   if (!mapped) {
-    console.warn(
-      "[CHECKER] webhook/manual job missing reported_status",
-      job.monitor_id
-    );
+    logger.warn("webhook/manual job missing reported_status", {
+      job_id: job.job_id,
+    });
     return;
   }
 

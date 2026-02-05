@@ -3,7 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { Modal } from "@/components/Modal";
 import { updateMonitorFn } from "@/server/functions/monitors";
-import { configHelp, validateJsonConfig } from "./monitorConfig";
+import { validateJsonConfig, type MonitorType } from "./monitorConfig";
+import { MonitorForm, type MonitorFormValues } from "./MonitorForm";
 
 type Monitor = {
   id: string;
@@ -26,6 +27,19 @@ interface EditMonitorModalProps {
   groups: Array<{ id: string; name: string }>;
 }
 
+const DEFAULT_FORM_VALUES: MonitorFormValues = {
+  name: "",
+  url: "",
+  groupId: null,
+  interval: "60",
+  timeout: "8000",
+  threshold: "3",
+  monitorType: "http",
+  externalServiceType: "",
+  checkConfig: "",
+  checkConfigError: null,
+};
+
 export function EditMonitorModal({
   isOpen,
   onClose,
@@ -34,18 +48,8 @@ export function EditMonitorModal({
   groups,
 }: EditMonitorModalProps) {
   const [error, setError] = useState<string | null>(null);
-  const [editingMonitorType, setEditingMonitorType] = useState("http");
-  const [editName, setEditName] = useState("");
-  const [editUrl, setEditUrl] = useState("");
-  const [editGroupId, setEditGroupId] = useState<string | null>(null);
-  const [editInterval, setEditInterval] = useState("");
-  const [editTimeout, setEditTimeout] = useState("");
-  const [editThreshold, setEditThreshold] = useState("");
-  const [editExternalServiceType, setEditExternalServiceType] = useState("");
-  const [editCheckConfig, setEditCheckConfig] = useState("");
-  const [editCheckConfigError, setEditCheckConfigError] = useState<
-    string | null
-  >(null);
+  const [formValues, setFormValues] =
+    useState<MonitorFormValues>(DEFAULT_FORM_VALUES);
 
   const updateMonitor = useServerFn(updateMonitorFn);
 
@@ -53,34 +57,37 @@ export function EditMonitorModal({
     if (!isOpen || !monitor) return;
 
     setError(null);
-    setEditingMonitorType(monitor.type);
-    setEditName(monitor.name);
-    setEditUrl(monitor.url || "");
-    setEditGroupId(monitor.groupId || null);
-    setEditInterval(String(monitor.intervalSeconds));
-    setEditTimeout(String(monitor.timeoutMs));
-    setEditThreshold(String(monitor.failureThreshold));
-    setEditCheckConfigError(null);
+
+    let externalServiceType = "";
+    let checkConfig = "";
+    let checkConfigError: string | null = null;
 
     if (monitor.externalConfig) {
       if (monitor.type === "external") {
         try {
           const config = JSON.parse(monitor.externalConfig);
-          setEditExternalServiceType(config.serviceType || "");
-          setEditCheckConfig("");
+          externalServiceType = config.serviceType || "";
         } catch {
-          setEditExternalServiceType("");
-          setEditCheckConfig("");
+          externalServiceType = "";
         }
       } else {
-        setEditCheckConfig(monitor.externalConfig);
-        setEditCheckConfigError(validateJsonConfig(monitor.externalConfig));
-        setEditExternalServiceType("");
+        checkConfig = monitor.externalConfig;
+        checkConfigError = validateJsonConfig(monitor.externalConfig);
       }
-    } else {
-      setEditExternalServiceType("");
-      setEditCheckConfig("");
     }
+
+    setFormValues({
+      name: monitor.name,
+      url: monitor.url || "",
+      groupId: monitor.groupId || null,
+      interval: String(monitor.intervalSeconds),
+      timeout: String(monitor.timeoutMs),
+      threshold: String(monitor.failureThreshold),
+      monitorType: monitor.type as MonitorType,
+      externalServiceType,
+      checkConfig,
+      checkConfigError,
+    });
   }, [isOpen, monitor]);
 
   const handleClose = () => {
@@ -94,32 +101,30 @@ export function EditMonitorModal({
 
     setError(null);
     try {
-      if (editCheckConfigError) {
+      if (formValues.checkConfigError) {
         throw new Error("Config JSON is invalid");
       }
 
       const externalConfig =
-        editingMonitorType === "external" && editExternalServiceType
-          ? JSON.stringify({ serviceType: editExternalServiceType })
-          : editCheckConfig.trim()
-            ? editCheckConfig.trim()
+        formValues.monitorType === "external" && formValues.externalServiceType
+          ? JSON.stringify({ serviceType: formValues.externalServiceType })
+          : formValues.checkConfig.trim()
+            ? formValues.checkConfig.trim()
             : undefined;
 
+      const noUrlTypes = ["webhook", "manual", "heartbeat"];
       await updateMonitor({
         data: {
           id: monitor.id,
-          name: editName,
-          group_id: editGroupId,
-          url:
-            editingMonitorType === "webhook" ||
-            editingMonitorType === "manual" ||
-            editingMonitorType === "heartbeat"
-              ? undefined
-              : editUrl || undefined,
-          interval_seconds: Number(editInterval),
-          timeout_ms: Number(editTimeout),
-          failure_threshold: Number(editThreshold),
-          type: editingMonitorType,
+          name: formValues.name,
+          group_id: formValues.groupId,
+          url: noUrlTypes.includes(formValues.monitorType)
+            ? undefined
+            : formValues.url || undefined,
+          interval_seconds: Number(formValues.interval),
+          timeout_ms: Number(formValues.timeout),
+          failure_threshold: Number(formValues.threshold),
+          type: formValues.monitorType,
           external_config: externalConfig,
         },
       });
@@ -136,154 +141,13 @@ export function EditMonitorModal({
       {error ? <div className="form-error">{error}</div> : null}
 
       <form className="form" onSubmit={onUpdate}>
-        <label htmlFor="edit-name">Name</label>
-        <input
-          id="edit-name"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          required
+        <MonitorForm
+          values={formValues}
+          onChange={setFormValues}
+          groups={groups}
+          showTypeSelector={false}
+          idPrefix="edit"
         />
-
-        <label htmlFor="edit-group">Monitor group</label>
-        <select
-          id="edit-group"
-          value={editGroupId || ""}
-          onChange={(e) => setEditGroupId(e.target.value || null)}
-        >
-          <option value="">No group</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-
-        {editingMonitorType !== "webhook" &&
-          editingMonitorType !== "manual" &&
-          editingMonitorType !== "heartbeat" && (
-            <>
-              <label htmlFor="edit-url">
-                {editingMonitorType === "dns" ||
-                editingMonitorType === "tcp" ||
-                editingMonitorType === "ping" ||
-                editingMonitorType === "tls"
-                  ? "Target"
-                  : "URL"}
-              </label>
-              <input
-                id="edit-url"
-                value={editUrl}
-                onChange={(e) => setEditUrl(e.target.value)}
-                required
-              />
-            </>
-          )}
-
-        {editingMonitorType === "external" && (
-          <>
-            <label htmlFor="edit-external-service">Service Type</label>
-            <select
-              id="edit-external-service"
-              value={editExternalServiceType}
-              onChange={(e) => setEditExternalServiceType(e.target.value)}
-            >
-              <option value="">Select a service...</option>
-              <option value="cloudflare-workers">Cloudflare Workers</option>
-              <option value="cloudflare-d1">Cloudflare D1</option>
-              <option value="cloudflare-r2">Cloudflare R2</option>
-              <option value="cloudflare-kv">Cloudflare KV</option>
-              <option value="custom">Custom Status Page</option>
-            </select>
-          </>
-        )}
-
-        {editingMonitorType !== "http" &&
-          editingMonitorType !== "webhook" &&
-          editingMonitorType !== "external" &&
-          editingMonitorType !== "manual" && (
-            <>
-              <label htmlFor="edit-config">Config (JSON)</label>
-              <p className="muted -mt-1">
-                Optional. Leave blank to use defaults.
-              </p>
-              <textarea
-                id="edit-config"
-                value={editCheckConfig}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setEditCheckConfig(value);
-                  setEditCheckConfigError(validateJsonConfig(value));
-                }}
-                rows={4}
-              />
-              {editCheckConfigError ? (
-                <p className="text-red-600">{editCheckConfigError}</p>
-              ) : null}
-              {(() => {
-                const help = configHelp(editingMonitorType);
-                if (!help) return null;
-                return (
-                  <details className="mt-2">
-                    <summary className="muted cursor-pointer select-none">
-                      {help.title} config help
-                    </summary>
-                    <p className="muted mt-2">{help.description}</p>
-                    <div className="mt-2">
-                      <div className="muted mb-1">Example</div>
-                      <pre className="m-0 whitespace-pre-wrap">
-                        {help.example}
-                      </pre>
-                    </div>
-                    <div className="mt-2">
-                      <div className="muted mb-1">Schema</div>
-                      <pre className="m-0 whitespace-pre-wrap">
-                        {help.schema}
-                      </pre>
-                    </div>
-                  </details>
-                );
-              })()}
-            </>
-          )}
-
-        {editingMonitorType !== "webhook" &&
-          editingMonitorType !== "manual" && (
-            <div className="grid three">
-              <div>
-                <label htmlFor="edit-interval">Interval (sec)</label>
-                <input
-                  id="edit-interval"
-                  type="number"
-                  min="30"
-                  max="3600"
-                  value={editInterval}
-                  onChange={(e) => setEditInterval(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="edit-timeout">Timeout (ms)</label>
-                <input
-                  id="edit-timeout"
-                  type="number"
-                  min="1000"
-                  max="30000"
-                  value={editTimeout}
-                  onChange={(e) => setEditTimeout(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="edit-threshold">Failure threshold</label>
-                <input
-                  id="edit-threshold"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={editThreshold}
-                  onChange={(e) => setEditThreshold(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
 
         <div className="button-row mt-4">
           <button type="submit">Save Changes</button>

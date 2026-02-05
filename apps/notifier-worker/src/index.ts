@@ -3,7 +3,7 @@ import type {
   MonitorAlertJob,
   IssueAlertJob,
 } from "@bitwobbly/shared";
-import { isAlertJob, isError } from "@bitwobbly/shared";
+import { isAlertJob, isError, createLogger } from "@bitwobbly/shared";
 import { withSentry } from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
@@ -22,6 +22,8 @@ import {
   getAlertRulesForMonitor,
 } from "./repositories/alert-rules";
 import { acquireQueueDedupe } from "./repositories/queue-dedupe";
+
+const logger = createLogger({ service: "notifier-worker" });
 
 const handler = {
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
@@ -62,7 +64,7 @@ const handler = {
         msg.ack();
       } catch (e: unknown) {
         const errorMessage = isError(e) ? e.message : String(e);
-        console.error("job delivery failed", errorMessage);
+        logger.error("job delivery failed", { error: errorMessage });
       }
     }
   },
@@ -96,7 +98,7 @@ async function handleMonitorAlert(
     try {
       cfg = JSON.parse(channel.configJson);
     } catch {
-      console.warn("invalid channel config", channel.type);
+      logger.warn("invalid channel config", { channelType: channel.type });
       continue;
     }
 
@@ -140,19 +142,21 @@ async function handleIssueAlert(
 ) {
   const rule = await getAlertRuleById(db, job.rule_id);
   if (!rule) {
-    console.warn("Alert rule not found:", job.rule_id);
+    logger.warn("alert rule not found", { ruleId: job.rule_id });
     return;
   }
 
   const channel = await getChannelById(db, rule.channelId);
   if (!channel) {
-    console.warn("Notification channel not found or disabled:", rule.channelId);
+    logger.warn("notification channel not found or disabled", {
+      channelId: rule.channelId,
+    });
     return;
   }
 
   const issue = await getIssueById(db, job.issue_id);
   if (!issue) {
-    console.warn("Issue not found:", job.issue_id);
+    logger.warn("issue not found", { issueId: job.issue_id });
     return;
   }
 
@@ -163,7 +167,7 @@ async function handleIssueAlert(
   try {
     cfg = JSON.parse(channel.configJson);
   } catch {
-    console.warn("invalid channel config", channel.type);
+    logger.warn("invalid channel config", { channelType: channel.type });
     return;
   }
 

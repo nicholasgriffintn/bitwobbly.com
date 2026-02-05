@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { TIME_CONSTANTS, createLogger } from "@bitwobbly/shared";
 
 import { Card, CardTitle, PageHeader } from "@/components/layout";
 import { ListContainer, ListRow } from "@/components/list";
@@ -17,7 +18,8 @@ import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
 import type { Event, Issue, TeamMember } from "@/types/issues";
 import { supportsResolution } from "@/types/issues";
-import { TIME_CONSTANTS } from "@bitwobbly/shared";
+
+const logger = createLogger({ service: "app-worker" });
 
 function buildIssueSummary(issue: Issue) {
   return JSON.stringify(
@@ -157,7 +159,7 @@ function IssueDetail() {
       });
       setEventPayload(result.payload);
     } catch (err) {
-      console.error("Failed to load payload:", err);
+      logger.error("Failed to load payload:", { err });
       setEventPayload("Failed to load event payload");
     } finally {
       setIsLoadingPayload(false);

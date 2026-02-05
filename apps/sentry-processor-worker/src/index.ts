@@ -1,7 +1,5 @@
 import { withSentry } from "@sentry/cloudflare";
-import { CACHE_TTL } from "@bitwobbly/shared";
-
-import { getDb } from "@bitwobbly/shared";
+import { CACHE_TTL, createLogger, getDb } from "@bitwobbly/shared";
 import { extractJsonFromEnvelope } from "./lib/envelope";
 import {
   computeFingerprint,
@@ -32,6 +30,8 @@ import {
   toUnixSeconds,
 } from "./lib/session-utils";
 
+const logger = createLogger({ service: "sentry-processor-worker" });
+
 const groupingRulesResolver = createGroupingRulesResolver({
   ttlMs: CACHE_TTL.GROUPING_RULES,
   listRules: listIssueGroupingRules,
@@ -45,20 +45,14 @@ const handler = {
       try {
         const job = parseProcessJob(msg.body);
         if (!job) {
-          console.error(
-            "[SENTRY-PROCESSOR] Invalid job payload, skipping",
-            msg.body
-          );
+          logger.error("invalid job payload, skipping", { body: msg.body });
           msg.ack();
           continue;
         }
 
         const r2Object = await env.SENTRY_RAW.get(job.r2_raw_key);
         if (!r2Object) {
-          console.error(
-            "[SENTRY-PROCESSOR] R2 object not found:",
-            job.r2_raw_key
-          );
+          logger.error("R2 object not found", { key: job.r2_raw_key });
           msg.ack();
           continue;
         }
@@ -76,14 +70,14 @@ const handler = {
         } else if (job.item_type === "client_report") {
           await processClientReport(job, rawBytes, db);
         } else {
-          console.error(
-            `[SENTRY-PROCESSOR] Skipping unsupported type: ${job.item_type}`
-          );
+          logger.warn("skipping unsupported item type", {
+            itemType: job.item_type,
+          });
         }
 
         msg.ack();
       } catch (error) {
-        console.error("[SENTRY-PROCESSOR] Processing failed", error);
+        logger.error("processing failed", { error });
       }
     }
   },
@@ -114,7 +108,10 @@ async function processEvent(
 
   const event = parseSentryEvent(raw);
   if (!event) {
-    console.error("[SENTRY-PROCESSOR] Could not extract event from envelope");
+    logger.error("could not extract event from envelope", {
+      projectId: job.project_id,
+      itemIndex: job.item_index,
+    });
     return;
   }
 
@@ -211,7 +208,10 @@ async function processSession(
 
   const sessionData = parseSessionPayload(raw);
   if (!sessionData) {
-    console.error("[SENTRY-PROCESSOR] Could not extract session from envelope");
+    logger.error("could not extract session from envelope", {
+      projectId: job.project_id,
+      itemIndex: job.item_index,
+    });
     return;
   }
 
@@ -277,9 +277,10 @@ async function processClientReport(
 
   const reportData = parseClientReportPayload(raw);
   if (!reportData) {
-    console.error(
-      "[SENTRY-PROCESSOR] Could not extract client report from envelope"
-    );
+    logger.error("could not extract client report from envelope", {
+      projectId: job.project_id,
+      itemIndex: job.item_index,
+    });
     return;
   }
 

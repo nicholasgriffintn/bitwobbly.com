@@ -1,5 +1,5 @@
 import type { CheckJob, MonitorType } from "@bitwobbly/shared";
-import { MonitorTypeValues, randomId } from "@bitwobbly/shared";
+import { MonitorTypeValues, randomId, createLogger } from "@bitwobbly/shared";
 import * as Sentry from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
@@ -12,6 +12,8 @@ import {
   unlockMonitor,
 } from "./repositories/monitors";
 import { cleanupExpiredSessions } from "./repositories/sessions";
+
+const logger = createLogger({ service: "scheduler-worker" });
 
 const monitorTypeSet: ReadonlySet<string> = new Set(MonitorTypeValues);
 function isMonitorType(value: string): value is MonitorType {
@@ -35,18 +37,16 @@ const handler = {
         try {
           const cleanedSessions = await cleanupExpiredSessions(db, nowSec);
           if (cleanedSessions > 0) {
-            console.log(
-              `[SCHEDULER] cleaned ${cleanedSessions} expired session(s)`
-            );
+            logger.info("cleaned expired sessions", { count: cleanedSessions });
           }
         } catch (error) {
-          console.error("[SCHEDULER] session cleanup failed", error);
+          logger.error("session cleanup failed", { error });
         }
 
         try {
           await runStatusPageDigests(db, env, ctx);
         } catch (error) {
-          console.error("[SCHEDULER] status page digest failed", error);
+          logger.error("status page digest failed", { error });
         }
 
         for (let batchIndex = 0; batchIndex < maxBatches; batchIndex += 1) {
@@ -88,7 +88,7 @@ const handler = {
                 Math.max(30, Math.min(3600, Number(m.intervalSeconds) || 60));
               ctx.waitUntil(updateMonitorNextRun(db, m.id, next, lockUntil));
             } catch (err) {
-              console.error("scheduler enqueue failed", err);
+              logger.error("scheduler enqueue failed", { error: err });
               ctx.waitUntil(unlockMonitor(db, m.id, lockUntil));
             }
           }

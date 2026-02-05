@@ -1,4 +1,8 @@
+import { createLogger } from "@bitwobbly/shared";
+
 import { isRecord } from "./type-guards";
+
+const logger = createLogger({ service: "status-history-repository" });
 
 export type DayStatus = {
   date: string;
@@ -60,10 +64,9 @@ export async function getComponentHistoricalData(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(
-      `Analytics Engine query failed (${response.status}):`,
-      errorText
-    );
+    logger.error(`Analytics Engine query failed (${response.status}):`, {
+      errorText,
+    });
     const result: DayStatus[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date();
