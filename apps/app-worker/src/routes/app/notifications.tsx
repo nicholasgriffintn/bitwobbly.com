@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
+import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
@@ -77,36 +77,51 @@ const TRIGGER_TYPES = [
 export const Route = createFileRoute("/app/notifications")({
   component: Notifications,
   loader: async () => {
-    const [channelsRes, monitorsRes, projectsRes, rulesRes] = await Promise.all(
-      [
-        listChannelsFn(),
-        listMonitorsFn(),
-        listSentryProjectsFn(),
-        listAlertRulesFn(),
-      ]
-    );
+    const channelsPromise = listChannelsFn();
+    const monitorsPromise = listMonitorsFn();
+    const projectsPromise = listSentryProjectsFn();
+    const rulesPromise = listAlertRulesFn().then((r) => r.rules);
+
+    const [channelsRes, monitorsRes, projectsRes] = await Promise.all([
+      channelsPromise,
+      monitorsPromise,
+      projectsPromise,
+    ]);
     return {
       channels: channelsRes.channels,
       monitors: monitorsRes.monitors,
       projects: projectsRes.projects,
-      rules: rulesRes.rules,
+      rulesPromise: defer(rulesPromise),
     };
   },
 });
+
+function RulesHydrator({
+  rules,
+  onLoaded,
+}: {
+  rules: AlertRule[];
+  onLoaded: (rules: AlertRule[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(rules);
+  }, [onLoaded, rules]);
+  return null;
+}
 
 export default function Notifications() {
   const {
     channels: initialChannels,
     monitors: initialMonitors,
     projects: initialProjects,
-    rules: initialRules,
+    rulesPromise,
   } = Route.useLoaderData();
 
   const [activeTab, setActiveTab] = useState<Tab>("channels");
   const [channels, setChannels] = useState<Channel[]>(initialChannels);
   const [monitors] = useState<Monitor[]>(initialMonitors);
   const [projects] = useState<Project[]>(initialProjects);
-  const [rules, setRules] = useState<AlertRule[]>(initialRules);
+  const [rules, setRules] = useState<AlertRule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
@@ -142,7 +157,9 @@ export default function Notifications() {
     try {
       await deleteChannel({ data: { id } });
       setChannels((prev) => prev.filter((c) => c.id !== id));
-      setRules((prev) => prev.filter((r) => r.channelId !== id));
+      setRules((prev) =>
+        prev ? prev.filter((r) => r.channelId !== id) : prev
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -152,7 +169,7 @@ export default function Notifications() {
     setError(null);
     try {
       await deleteRule({ data: { id } });
-      setRules((prev) => prev.filter((r) => r.id !== id));
+      setRules((prev) => (prev ? prev.filter((r) => r.id !== id) : prev));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -163,7 +180,11 @@ export default function Notifications() {
     try {
       await toggleRule({ data: { id, enabled } });
       setRules((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, enabled: enabled ? 1 : 0 } : r))
+        prev
+          ? prev.map((r) =>
+              r.id === id ? { ...r, enabled: enabled ? 1 : 0 } : r
+            )
+          : prev
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -223,10 +244,10 @@ export default function Notifications() {
       <TabNav
         tabs={[
           { id: "channels", label: "Channels", count: channels.length },
-          { id: "rules", label: "Rules", count: rules.length },
+          { id: "rules", label: "Rules", count: rules?.length },
         ]}
         activeTab={activeTab}
-        onTabChange={(tabId) => setActiveTab(tabId as Tab)}
+        onTabChange={(tabId: Tab) => setActiveTab(tabId)}
       />
 
       {activeTab === "channels" && (
@@ -275,81 +296,146 @@ export default function Notifications() {
             Alert rules trigger notifications based on issue events, thresholds,
             and conditions.
           </p>
-          <ListContainer
-            isEmpty={!rules.length}
-            emptyMessage="No alert rules yet."
-          >
-            {rules.map((rule) => {
-              const config = JSON.parse(rule.channelConfig);
-              const channelLabel =
-                config.label || config.url || config.to || "Channel";
-              return (
-                <ListRow
-                  key={rule.id}
-                  title={
-                    <>
-                      <span
-                        className={`pill small ${rule.enabled ? "success" : "muted"}`}
-                      >
-                        {rule.enabled ? "Active" : "Disabled"}
-                      </span>{" "}
-                      {rule.name}
-                    </>
-                  }
-                  subtitle={
-                    <>
-                      <div>
-                        <span className="pill small">
-                          {getTriggerLabel(rule.triggerType)}
+          {rules ? (
+            <ListContainer
+              isEmpty={!rules.length}
+              emptyMessage="No alert rules yet."
+            >
+              {rules.map((rule) => {
+                const config = JSON.parse(rule.channelConfig);
+                const channelLabel =
+                  config.label || config.url || config.to || "Channel";
+                return (
+                  <ListRow
+                    key={rule.id}
+                    title={
+                      <>
+                        <span
+                          className={`pill small ${rule.enabled ? "success" : "muted"}`}
+                        >
+                          {rule.enabled ? "Active" : "Disabled"}
                         </span>{" "}
-                        ·{" "}
-                        {rule.sourceType === "monitor"
-                          ? `Monitor: ${rule.monitorName || "Unknown"}`
-                          : `${getProjectName(rule.projectId)}${
-                              rule.environment ? ` (${rule.environment})` : ""
-                            }`}{" "}
-                        · [{toTitleCase(rule.channelType)}] {channelLabel}
-                      </div>
-                      <div className="text-[0.8rem]">
-                        Last triggered:{" "}
-                        {formatLastTriggered(rule.lastTriggeredAt)}
-                      </div>
-                    </>
-                  }
-                  actions={
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingRule(rule);
-                          setIsRuleModalOpen(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        color={rule.enabled ? "warning" : "success"}
-                        onClick={() => onToggleRule(rule.id, !rule.enabled)}
-                      >
-                        {rule.enabled ? "Disable" : "Enable"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        color="danger"
-                        onClick={() => onDeleteRule(rule.id)}
-                      >
-                        Delete
-                      </Button>
-                    </>
-                  }
-                />
-              );
-            })}
-          </ListContainer>
+                        {rule.name}
+                      </>
+                    }
+                    subtitle={
+                      <>
+                        <div>
+                          <span className="pill small">
+                            {getTriggerLabel(rule.triggerType)}
+                          </span>{" "}
+                          ·{" "}
+                          {rule.sourceType === "monitor"
+                            ? `Monitor: ${rule.monitorName || "Unknown"}`
+                            : `${getProjectName(rule.projectId)}${
+                                rule.environment ? ` (${rule.environment})` : ""
+                              }`}{" "}
+                          · [{toTitleCase(rule.channelType)}] {channelLabel}
+                        </div>
+                        <div className="text-[0.8rem]">
+                          Last triggered:{" "}
+                          {formatLastTriggered(rule.lastTriggeredAt)}
+                        </div>
+                      </>
+                    }
+                    actions={
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingRule(rule);
+                            setIsRuleModalOpen(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          color={rule.enabled ? "warning" : "success"}
+                          onClick={() => onToggleRule(rule.id, !rule.enabled)}
+                        >
+                          {rule.enabled ? "Disable" : "Enable"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          color="danger"
+                          onClick={() => onDeleteRule(rule.id)}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    }
+                  />
+                );
+              })}
+            </ListContainer>
+          ) : (
+            <Suspense
+              fallback={<div className="muted p-4">Loading rules…</div>}
+            >
+              <Await promise={rulesPromise}>
+                {(loadedRules: AlertRule[]) => (
+                  <>
+                    <RulesHydrator rules={loadedRules} onLoaded={setRules} />
+                    <ListContainer
+                      isEmpty={!loadedRules.length}
+                      emptyMessage="No alert rules yet."
+                    >
+                      {loadedRules.map((rule) => {
+                        const config = JSON.parse(rule.channelConfig);
+                        const channelLabel =
+                          config.label || config.url || config.to || "Channel";
+                        return (
+                          <ListRow
+                            key={rule.id}
+                            title={
+                              <>
+                                <span
+                                  className={`pill small ${rule.enabled ? "success" : "muted"}`}
+                                >
+                                  {rule.enabled ? "Active" : "Disabled"}
+                                </span>{" "}
+                                {rule.name}
+                              </>
+                            }
+                            subtitle={
+                              <>
+                                <div>
+                                  <span className="pill small">
+                                    {getTriggerLabel(rule.triggerType)}
+                                  </span>{" "}
+                                  ·{" "}
+                                  {rule.sourceType === "monitor"
+                                    ? `Monitor: ${rule.monitorName || "Unknown"}`
+                                    : `${getProjectName(rule.projectId)}${
+                                        rule.environment
+                                          ? ` (${rule.environment})`
+                                          : ""
+                                      }`}{" "}
+                                  · [{toTitleCase(rule.channelType)}]{" "}
+                                  {channelLabel}
+                                </div>
+                                <div className="text-[0.8rem]">
+                                  Last triggered:{" "}
+                                  {formatLastTriggered(rule.lastTriggeredAt)}
+                                </div>
+                              </>
+                            }
+                            actions={
+                              <div className="muted text-sm">Loading…</div>
+                            }
+                          />
+                        );
+                      })}
+                    </ListContainer>
+                  </>
+                )}
+              </Await>
+            </Suspense>
+          )}
         </Card>
       )}
 

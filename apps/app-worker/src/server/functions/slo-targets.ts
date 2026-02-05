@@ -11,7 +11,6 @@ import {
 } from "../repositories/slo-targets";
 import {
   resolveAvailabilityScope,
-  type AvailabilityScopeType,
 } from "../repositories/availability";
 
 const ScopeTypeSchema = z.enum(["monitor", "component", "status_page"]);
@@ -29,7 +28,7 @@ export const getSloTargetFn = createServerFn({ method: "GET" })
     const db = getDb(vars.DB);
 
     const scope = await resolveAvailabilityScope(db, teamId, {
-      type: data.scope_type as AvailabilityScopeType,
+      type: data.scope_type,
       id: data.scope_id,
       includeDependencies: false,
     });
@@ -67,7 +66,7 @@ export const upsertSloTargetFn = createServerFn({ method: "POST" })
     const db = getDb(vars.DB);
 
     const scope = await resolveAvailabilityScope(db, teamId, {
-      type: data.scope_type as AvailabilityScopeType,
+      type: data.scope_type,
       id: data.scope_id,
       includeDependencies: false,
     });

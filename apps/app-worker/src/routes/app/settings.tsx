@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute, useRouteContext } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
+import { Await, createFileRoute, defer, useRouteContext } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
@@ -37,30 +37,43 @@ type TeamInvite = {
 export const Route = createFileRoute("/app/settings")({
   component: Settings,
   loader: async () => {
-    const [currentTeam, membersResponse, invitesResponse] = await Promise.all([
+    const invitesPromise = listTeamInvitesFn().then((r) => r.invites);
+    const [currentTeam, membersResponse] = await Promise.all([
       getCurrentTeamFn(),
       listTeamMembersFn(),
-      listTeamInvitesFn(),
     ]);
 
     return {
       currentTeam,
       members: membersResponse.members,
-      invites: invitesResponse.invites,
+      invitesPromise: defer(invitesPromise),
     };
   },
 });
+
+function InvitesHydrator({
+  invites,
+  onLoaded,
+}: {
+  invites: TeamInvite[];
+  onLoaded: (invites: TeamInvite[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(invites);
+  }, [invites, onLoaded]);
+  return null;
+}
 
 export default function Settings() {
   const {
     currentTeam: initialTeam,
     members: initialMembers,
-    invites: initialInvites,
+    invitesPromise,
   } = Route.useLoaderData();
   const { user, teams } = useRouteContext({ from: "/app" });
 
   const [members, setMembers] = useState<TeamMember[]>(initialMembers);
-  const [invites, setInvites] = useState<TeamInvite[]>(initialInvites);
+  const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [currentTeam, setCurrentTeam] = useState(initialTeam);
   const [error, setError] = useState<string | null>(null);
 
@@ -378,6 +391,14 @@ export default function Settings() {
         isDeleteTeamOpen={isDeleteTeamModalOpen}
         onCloseDeleteTeam={() => setIsDeleteTeamModalOpen(false)}
       />
+
+      <Suspense fallback={null}>
+        <Await promise={invitesPromise}>
+          {(loaded: TeamInvite[]) => (
+            <InvitesHydrator invites={loaded} onLoaded={setInvites} />
+          )}
+        </Await>
+      </Suspense>
     </Page>
   );
 }

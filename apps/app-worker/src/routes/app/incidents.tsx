@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
+import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
@@ -45,26 +45,40 @@ type Incident = {
 export const Route = createFileRoute("/app/incidents")({
   component: Incidents,
   loader: async () => {
-    const [incidentsRes, pagesRes, componentsRes] = await Promise.all([
+    const componentsPromise = listComponentsFn().then((r) => r.components);
+    const [incidentsRes, pagesRes] = await Promise.all([
       listIncidentsFn(),
       listStatusPagesFn(),
-      listComponentsFn(),
     ]);
     return {
       incidents: incidentsRes.incidents,
       statusPages: pagesRes.status_pages,
-      components: componentsRes.components,
+      componentsPromise: defer(componentsPromise),
     };
   },
 });
+
+function ComponentsHydrator({
+  components,
+  onLoaded,
+}: {
+  components: Component[];
+  onLoaded: (components: Component[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(components);
+  }, [components, onLoaded]);
+  return null;
+}
 
 export default function Incidents() {
   const {
     incidents: initialIncidents,
     statusPages,
-    components,
+    componentsPromise,
   } = Route.useLoaderData();
   const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
+  const [components, setComponents] = useState<Component[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -213,9 +227,17 @@ export default function Incidents() {
         }}
         updatingIncident={updatingIncident}
         onSuccess={refreshIncidents}
-        statusPages={statusPages as StatusPage[]}
-        components={components as Component[]}
+        statusPages={statusPages}
+        components={components ?? []}
       />
+
+      <Suspense fallback={null}>
+        <Await promise={componentsPromise}>
+          {(loaded: Component[]) => (
+            <ComponentsHydrator components={loaded} onLoaded={setComponents} />
+          )}
+        </Await>
+      </Suspense>
     </Page>
   );
 }

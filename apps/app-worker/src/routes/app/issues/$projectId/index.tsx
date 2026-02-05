@@ -1,5 +1,5 @@
 import { useMemo, memo, lazy, Suspense, useReducer } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   TIME_CONSTANTS,
@@ -135,20 +135,28 @@ const EventItem = memo(function EventItem({
 export const Route = createFileRoute("/app/issues/$projectId/")({
   component: ProjectIssues,
   loader: async ({ params }) => {
-    const [issuesRes, eventsRes, membersRes, groupingRulesRes] =
-      await Promise.all([
-        listSentryIssuesFn({ data: { projectId: params.projectId } }),
-        listSentryEventsFn({ data: { projectId: params.projectId } }),
-        listTeamMembersFn(),
-        listSentryIssueGroupingRulesFn({
-          data: { projectId: params.projectId },
-        }),
-      ]);
+    const issuesPromise = listSentryIssuesFn({
+      data: { projectId: params.projectId },
+    });
+    const membersPromise = listTeamMembersFn();
+
+    const eventsPromise = listSentryEventsFn({
+      data: { projectId: params.projectId },
+    }).then((r) => r.events);
+
+    const groupingRulesPromise = listSentryIssueGroupingRulesFn({
+      data: { projectId: params.projectId },
+    }).then((r) => r.rules);
+
+    const [issuesRes, membersRes] = await Promise.all([
+      issuesPromise,
+      membersPromise,
+    ]);
     return {
       issues: issuesRes.issues,
-      events: eventsRes.events,
       members: membersRes.members,
-      groupingRules: groupingRulesRes.rules,
+      eventsPromise: defer(eventsPromise),
+      groupingRulesPromise: defer(groupingRulesPromise),
     };
   },
 });
@@ -165,9 +173,9 @@ function ProjectIssues() {
   const { projectId } = Route.useParams();
   const {
     issues: initialIssues,
-    events: initialEvents,
     members: initialMembers,
-    groupingRules: initialGroupingRules,
+    eventsPromise,
+    groupingRulesPromise,
   } = Route.useLoaderData();
 
   const [state, dispatch] = useReducer(issuesReducer, {
@@ -183,7 +191,6 @@ function ProjectIssues() {
     sortBy: "recent",
     isRefreshingIssues: false,
   });
-  const events = initialEvents;
   const members = initialMembers;
 
   const updateIssue = useServerFn(updateSentryIssueFn);
@@ -316,12 +323,11 @@ function ProjectIssues() {
                 label: "Issues",
                 count: filteredAndSortedIssues.length,
               },
-              { id: "events", label: "Events", count: events.length },
+              { id: "events", label: "Events" },
               { id: "analytics", label: "Analytics" },
               {
                 id: "grouping",
                 label: "Grouping",
-                count: initialGroupingRules.length,
               },
             ]}
             activeTab={state.activeTab}
@@ -609,23 +615,37 @@ function ProjectIssues() {
               ))}
             </ListContainer>
           ) : state.activeTab === "events" ? (
-            events.length ? (
-              events.map((event) => (
-                <EventItem key={event.id} event={event} projectId={projectId} />
-              ))
-            ) : (
-              <div className="muted">No events found.</div>
-            )
+            <Suspense fallback={<TabLoadingFallback />}>
+              <Await promise={eventsPromise}>
+                {(events) =>
+                  events.length ? (
+                    events.map((event) => (
+                      <EventItem
+                        key={event.id}
+                        event={event}
+                        projectId={projectId}
+                      />
+                    ))
+                  ) : (
+                    <div className="muted">No events found.</div>
+                  )
+                }
+              </Await>
+            </Suspense>
           ) : state.activeTab === "analytics" ? (
             <Suspense fallback={<TabLoadingFallback />}>
               <AnalyticsTab projectId={projectId} />
             </Suspense>
           ) : state.activeTab === "grouping" ? (
             <Suspense fallback={<TabLoadingFallback />}>
-              <GroupingTab
-                projectId={projectId}
-                initialRules={initialGroupingRules}
-              />
+              <Await promise={groupingRulesPromise}>
+                {(groupingRules) => (
+                  <GroupingTab
+                    projectId={projectId}
+                    initialRules={groupingRules}
+                  />
+                )}
+              </Await>
             </Suspense>
           ) : null}
         </div>

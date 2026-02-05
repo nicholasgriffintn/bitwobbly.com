@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
+import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { MetricsChart } from "@/components/MetricsChart";
@@ -8,6 +8,7 @@ import { ErrorCard } from "@/components/feedback";
 import { ListContainer, ListRow } from "@/components/list";
 import { Badge, Button, StatusBadge, isStatusType } from "@/components/ui";
 import { MonitorsModals } from "@/components/modals/monitors";
+import type { MonitorType } from "@/components/modals/monitors/monitorConfig";
 import { toTitleCase } from "@/utils/format";
 import {
   listMonitorsFn,
@@ -32,6 +33,25 @@ type Monitor = {
   state?: { lastStatus?: string; lastLatencyMs?: number | null } | null;
 };
 
+type EditableMonitor = Omit<Monitor, "type"> & { type: MonitorType };
+
+const MONITOR_TYPES: ReadonlySet<string> = new Set([
+  "http",
+  "http_assert",
+  "http_keyword",
+  "tls",
+  "dns",
+  "tcp",
+  "webhook",
+  "heartbeat",
+  "external",
+  "manual",
+]);
+
+function toMonitorType(value: string): MonitorType {
+  return MONITOR_TYPES.has(value) ? (value as MonitorType) : "http";
+}
+
 type MonitorGroup = {
   id: string;
   name: string;
@@ -41,27 +61,39 @@ type MonitorGroup = {
 export const Route = createFileRoute("/app/monitors")({
   component: Monitors,
   loader: async () => {
-    const [monitorsRes, groupsRes] = await Promise.all([
-      listMonitorsFn(),
-      listMonitorGroupsFn(),
-    ]);
-    return { monitors: monitorsRes.monitors, groups: groupsRes.groups };
+    const groupsPromise = listMonitorGroupsFn().then((r) => r.groups);
+    const monitorsRes = await listMonitorsFn();
+    return { monitors: monitorsRes.monitors, groupsPromise: defer(groupsPromise) };
   },
 });
 
+function GroupsHydrator({
+  groups,
+  onLoaded,
+}: {
+  groups: MonitorGroup[];
+  onLoaded: (groups: MonitorGroup[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(groups);
+  }, [groups, onLoaded]);
+  return null;
+}
+
 function Monitors() {
-  const { monitors: initialMonitors, groups: initialGroups } =
-    Route.useLoaderData();
+  const { monitors: initialMonitors, groupsPromise } = Route.useLoaderData();
 
   const [monitors, setMonitors] = useState<Monitor[]>(initialMonitors);
-  const [groups, setGroups] = useState<MonitorGroup[]>(initialGroups);
+  const [groups, setGroups] = useState<MonitorGroup[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [expandedMonitorId, setExpandedMonitorId] = useState<string | null>(
     null
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null);
+  const [editingMonitor, setEditingMonitor] = useState<EditableMonitor | null>(
+    null
+  );
   const [isManualStatusModalOpen, setIsManualStatusModalOpen] = useState(false);
   const [manualStatusMonitorId, setManualStatusMonitorId] = useState<
     string | null
@@ -107,7 +139,7 @@ function Monitors() {
   };
 
   const startEditing = (monitor: Monitor) => {
-    setEditingMonitor(monitor);
+    setEditingMonitor({ ...monitor, type: toMonitorType(monitor.type) });
     setIsEditModalOpen(true);
   };
 
@@ -211,19 +243,31 @@ function Monitors() {
             items: Monitor[];
           }> = [];
 
-          for (const g of groups) {
-            const items = byGroupId.get(g.id) || [];
-            if (!items.length) continue;
-            sections.push({ id: g.id, title: g.name, items });
-          }
+          if (groups.length) {
+            for (const g of groups) {
+              const items = byGroupId.get(g.id) || [];
+              if (!items.length) continue;
+              sections.push({ id: g.id, title: g.name, items });
+            }
 
-          const ungrouped = byGroupId.get(null) || [];
-          if (ungrouped.length) {
-            sections.push({
-              id: "__ungrouped__",
-              title: "Ungrouped",
-              items: ungrouped,
-            });
+            const ungrouped = byGroupId.get(null) || [];
+            if (ungrouped.length) {
+              sections.push({
+                id: "__ungrouped__",
+                title: "Ungrouped",
+                items: ungrouped,
+              });
+            }
+          } else {
+            for (const [gid, items] of byGroupId.entries()) {
+              if (!items.length) continue;
+              sections.push({
+                id: gid ?? "__ungrouped__",
+                title: gid ? `Group ${gid}` : "Ungrouped",
+                items,
+              });
+            }
+            sections.sort((a, b) => a.title.localeCompare(b.title));
           }
 
           const renderMonitorRow = (monitor: Monitor) => {
@@ -347,6 +391,14 @@ function Monitors() {
           );
         })()}
       </Card>
+
+      <Suspense fallback={null}>
+        <Await promise={groupsPromise}>
+          {(loaded: MonitorGroup[]) => (
+            <GroupsHydrator groups={loaded} onLoaded={setGroups} />
+          )}
+        </Await>
+      </Suspense>
       <MonitorsModals
         isCreateOpen={isCreateModalOpen}
         onCloseCreate={closeCreateModal}

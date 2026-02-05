@@ -15,7 +15,7 @@ type Monitor = {
   timeoutMs: number;
   failureThreshold: number;
   enabled: number;
-  type: string;
+  type: MonitorType;
   externalConfig?: string | null;
 };
 
@@ -83,7 +83,7 @@ export function EditMonitorModal({
       interval: String(monitor.intervalSeconds),
       timeout: String(monitor.timeoutMs),
       threshold: String(monitor.failureThreshold),
-      monitorType: monitor.type as MonitorType,
+      monitorType: monitor.type,
       externalServiceType,
       checkConfig,
       checkConfigError,

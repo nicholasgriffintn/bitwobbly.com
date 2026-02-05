@@ -43,7 +43,7 @@ export function CreateInviteModal({
       const result = await createTeamInvite({
         data: {
           email: email || undefined,
-          role: role as "owner" | "member",
+          role: role,
           expiresInDays: Number(expiry),
         },
       });

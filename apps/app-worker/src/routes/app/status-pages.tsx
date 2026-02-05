@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
+import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
@@ -43,22 +43,18 @@ type PageComponent = {
 export const Route = createFileRoute("/app/status-pages")({
   component: StatusPages,
   loader: async () => {
-    const [pagesRes, componentsRes] = await Promise.all([
-      listStatusPagesFn(),
-      listComponentsFn(),
-    ]);
+    const componentsPromise = listComponentsFn().then((r) => r.components);
+    const pagesRes = await listStatusPagesFn();
     return {
       status_pages: pagesRes.status_pages,
-      components: componentsRes.components,
+      componentsPromise: defer(componentsPromise),
     };
   },
 });
 
 export default function StatusPages() {
-  const { status_pages: initialPages, components: initialComponents } =
-    Route.useLoaderData();
+  const { status_pages: initialPages, componentsPromise } = Route.useLoaderData();
   const [pages, setPages] = useState<StatusPage[]>(initialPages);
-  const [components] = useState<Component[]>(initialComponents);
   const [error, setError] = useState<string | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -213,21 +209,35 @@ export default function StatusPages() {
                 expanded={isExpanded}
                 expandedContent={
                   <div className="nested-list">
-                    <div className="muted mb-2">
-                      Link components to display on this status page:
-                    </div>
-                    <CheckboxList
-                      items={components.map((component) => ({
-                        id: component.id,
-                        label: component.name,
-                        checked: linkedComponentIds.includes(component.id),
-                      }))}
-                      onChange={(componentId, checked) =>
-                        onToggleComponent(page.id, componentId, checked)
+                    <Suspense
+                      fallback={
+                        <div className="muted">Loading components…</div>
                       }
-                      emptyMessage="No components available. Create components first."
-                      className="!border-none !bg-transparent !p-0"
-                    />
+                    >
+                      <Await promise={componentsPromise}>
+                        {(components: Component[]) => (
+                          <>
+                            <div className="muted mb-2">
+                              Link components to display on this status page:
+                            </div>
+                            <CheckboxList
+                              items={components.map((component) => ({
+                                id: component.id,
+                                label: component.name,
+                                checked: linkedComponentIds.includes(
+                                  component.id
+                                ),
+                              }))}
+                              onChange={(componentId, checked) =>
+                                onToggleComponent(page.id, componentId, checked)
+                              }
+                              emptyMessage="No components available. Create components first."
+                              className="!border-none !bg-transparent !p-0"
+                            />
+                          </>
+                        )}
+                      </Await>
+                    </Suspense>
                   </div>
                 }
               />

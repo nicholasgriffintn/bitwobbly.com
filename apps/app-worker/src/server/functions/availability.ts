@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { getDb } from "@bitwobbly/shared";
 import { requireTeam } from "../lib/auth-middleware";
-import type { AvailabilityScopeType } from "../repositories/availability";
 import {
   getExternalStatusPageBySlug,
   listComponentsForStatusPage,
@@ -39,7 +38,7 @@ export const getAvailabilityFn = createServerFn({ method: "GET" })
     const db = getDb(vars.DB);
 
     return getAvailabilityForScope(db, teamId, {
-      scopeType: data.scope_type as AvailabilityScopeType,
+      scopeType: data.scope_type,
       scopeId: data.scope_id,
       fromSec: data.from,
       toSec: data.to,
@@ -64,7 +63,7 @@ export const getMonthlyAvailabilityReportFn = createServerFn({ method: "GET" })
     const db = getDb(vars.DB);
 
     const report = await getMonthlyAvailabilityReport(db, teamId, {
-      scopeType: data.scope_type as AvailabilityScopeType,
+      scopeType: data.scope_type,
       scopeId: data.scope_id,
       month: data.month,
       includeDependencies: data.include_dependencies,

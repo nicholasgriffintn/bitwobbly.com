@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Suspense } from "react";
+import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 
 import { listMonitorsFn } from "@/server/functions/monitors";
 import { listStatusPagesFn } from "@/server/functions/status-pages";
@@ -12,29 +13,30 @@ import { Badge, Button, StatusBadge, isStatusType } from "@/components/ui";
 export const Route = createFileRoute("/app/")({
   component: Overview,
   loader: async () => {
-    const [monitorsRes, pagesRes, incidentsRes, channelsRes] =
-      await Promise.all([
-        listMonitorsFn(),
-        listStatusPagesFn(),
-        listOpenIncidentsFn(),
-        listChannelsFn(),
-      ]);
+    const pagesPromise = listStatusPagesFn().then((r) => r.status_pages);
+    const channelsPromise = listChannelsFn().then((r) => r.channels);
+    const setupPromise = Promise.all([pagesPromise, channelsPromise]).then(
+      ([statusPages, channels]) => ({
+        statusPages,
+        channels,
+      })
+    );
+
+    const [monitorsRes, incidentsRes] = await Promise.all([
+      listMonitorsFn(),
+      listOpenIncidentsFn(),
+    ]);
     return {
       monitors: monitorsRes.monitors,
-      status_pages: pagesRes.status_pages,
       incidents: incidentsRes.incidents,
-      channels: channelsRes.channels,
+      pagesPromise: defer(pagesPromise),
+      setupPromise: defer(setupPromise),
     };
   },
 });
 
 function Overview() {
-  const {
-    monitors,
-    status_pages: pages,
-    incidents,
-    channels,
-  } = Route.useLoaderData();
+  const { monitors, incidents, pagesPromise, setupPromise } = Route.useLoaderData();
 
   const upCount = monitors.filter((m) => m.state?.lastStatus === "up").length;
   const downCount = monitors.filter(
@@ -43,9 +45,6 @@ function Overview() {
 
   const overallStatus =
     downCount > 0 ? "degraded" : upCount > 0 ? "operational" : "unknown";
-
-  const hasCompletedSetup =
-    monitors.length > 0 && channels.length > 0 && pages.length > 0;
 
   return (
     <Page className="page-stack">
@@ -121,95 +120,128 @@ function Overview() {
         </div>
         <div className="card">
           <div className="metric-label">Status pages</div>
-          <div className="metric-value">{pages.length}</div>
+          <Suspense fallback={<div className="metric-value">…</div>}>
+            <Await promise={pagesPromise}>
+              {(pages) => <div className="metric-value">{pages.length}</div>}
+            </Await>
+          </Suspense>
         </div>
       </div>
 
-      {!hasCompletedSetup && (
-        <div className="grid two">
-          <Card>
-            <CardTitle>Getting started</CardTitle>
-            <div className="list">
-              <div className="list-row">
-                <div className="muted">
-                  1. Create monitors to track your endpoints
-                </div>
-              </div>
-              <div className="list-row">
-                <div className="muted">2. Group monitors into components</div>
-              </div>
-              <div className="list-row">
-                <div className="muted">3. Set up notification channels</div>
-              </div>
-              <div className="list-row">
-                <div className="muted">4. Create a public status page</div>
-              </div>
-              <div className="list-row">
-                <div className="muted">
-                  5. Link components to your status page
-                </div>
-              </div>
-            </div>
-          </Card>
+      <Suspense fallback={null}>
+        <Await promise={setupPromise}>
+          {({ statusPages: pages, channels }) => {
+            const hasCompletedSetup =
+              monitors.length > 0 && channels.length > 0 && pages.length > 0;
 
-          <Card>
-            <CardTitle>Quick setup</CardTitle>
-            <ListContainer isEmpty={false}>
-              <ListRow
-                title="Monitors"
-                subtitle={`${monitors.length} configured`}
-                actions={
-                  monitors.length === 0 ? (
-                    <Link to="/app/monitors">
-                      <Button type="button" variant="outline" color="success">
-                        Add first
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Badge size="small" variant="success">
-                      Done
-                    </Badge>
-                  )
-                }
-              />
-              <ListRow
-                title="Notification channels"
-                subtitle={`${channels.length} configured`}
-                actions={
-                  channels.length === 0 ? (
-                    <Link to="/app/notifications">
-                      <Button type="button" variant="outline" color="success">
-                        Add first
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Badge size="small" variant="success">
-                      Done
-                    </Badge>
-                  )
-                }
-              />
-              <ListRow
-                title="Status pages"
-                subtitle={`${pages.length} configured`}
-                actions={
-                  pages.length === 0 ? (
-                    <Link to="/app/status-pages">
-                      <Button type="button" variant="outline" color="success">
-                        Add first
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Badge size="small" variant="success">
-                      Done
-                    </Badge>
-                  )
-                }
-              />
-            </ListContainer>
-          </Card>
-        </div>
-      )}
+            if (hasCompletedSetup) return null;
+
+            return (
+              <div className="grid two">
+                <Card>
+                  <CardTitle>Getting started</CardTitle>
+                  <div className="list">
+                    <div className="list-row">
+                      <div className="muted">
+                        1. Create monitors to track your endpoints
+                      </div>
+                    </div>
+                    <div className="list-row">
+                      <div className="muted">
+                        2. Group monitors into components
+                      </div>
+                    </div>
+                    <div className="list-row">
+                      <div className="muted">
+                        3. Set up notification channels
+                      </div>
+                    </div>
+                    <div className="list-row">
+                      <div className="muted">
+                        4. Create a public status page
+                      </div>
+                    </div>
+                    <div className="list-row">
+                      <div className="muted">
+                        5. Link components to your status page
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card>
+                  <CardTitle>Quick setup</CardTitle>
+                  <ListContainer isEmpty={false}>
+                    <ListRow
+                      title="Monitors"
+                      subtitle={`${monitors.length} configured`}
+                      actions={
+                        monitors.length === 0 ? (
+                          <Link to="/app/monitors">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              color="success"
+                            >
+                              Add first
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Badge size="small" variant="success">
+                            Done
+                          </Badge>
+                        )
+                      }
+                    />
+                    <ListRow
+                      title="Notification channels"
+                      subtitle={`${channels.length} configured`}
+                      actions={
+                        channels.length === 0 ? (
+                          <Link to="/app/notifications">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              color="success"
+                            >
+                              Add first
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Badge size="small" variant="success">
+                            Done
+                          </Badge>
+                        )
+                      }
+                    />
+                    <ListRow
+                      title="Status pages"
+                      subtitle={`${pages.length} configured`}
+                      actions={
+                        pages.length === 0 ? (
+                          <Link to="/app/status-pages">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              color="success"
+                            >
+                              Add first
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Badge size="small" variant="success">
+                            Done
+                          </Badge>
+                        )
+                      }
+                    />
+                  </ListContainer>
+                </Card>
+              </div>
+            );
+          }}
+        </Await>
+      </Suspense>
 
       {incidents.length > 0 && (
         <Card>
@@ -298,42 +330,54 @@ function Overview() {
           </ListContainer>
         </Card>
 
-        <Card>
-          <CardTitle
-            actions={
-              pages.length > 0 ? (
-                <Link className="card-title-link" to="/app/status-pages">
-                  View all
-                </Link>
-              ) : null
-            }
-          >
-            Status pages
-          </CardTitle>
-          <ListContainer
-            isEmpty={!pages.length}
-            emptyMessage="No status pages yet."
-          >
-            {pages.slice(0, 5).map((page) => (
-              <ListRow
-                key={page.id}
-                title={page.name}
-                subtitle={`/${page.slug}`}
-                actions={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      window.open(`/status/${page.slug}`, "_blank")
-                    }
-                  >
-                    View
-                  </Button>
-                }
-              />
-            ))}
-          </ListContainer>
-        </Card>
+        <Suspense
+          fallback={
+            <Card>
+              <div className="skeleton h-40 w-full" />
+            </Card>
+          }
+        >
+          <Await promise={pagesPromise}>
+            {(pages) => (
+              <Card>
+                <CardTitle
+                  actions={
+                    pages.length > 0 ? (
+                      <Link className="card-title-link" to="/app/status-pages">
+                        View all
+                      </Link>
+                    ) : null
+                  }
+                >
+                  Status pages
+                </CardTitle>
+                <ListContainer
+                  isEmpty={!pages.length}
+                  emptyMessage="No status pages yet."
+                >
+                  {pages.slice(0, 5).map((page) => (
+                    <ListRow
+                      key={page.id}
+                      title={page.name}
+                      subtitle={`/${page.slug}`}
+                      actions={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            window.open(`/status/${page.slug}`, "_blank")
+                          }
+                        >
+                          View
+                        </Button>
+                      }
+                    />
+                  ))}
+                </ListContainer>
+              </Card>
+            )}
+          </Await>
+        </Suspense>
       </div>
     </Page>
   );

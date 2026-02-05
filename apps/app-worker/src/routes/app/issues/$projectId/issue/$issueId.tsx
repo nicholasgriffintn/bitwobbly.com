@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
+import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   TIME_CONSTANTS,
@@ -100,32 +100,33 @@ Output:
 export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
   component: IssueDetail,
   loader: async ({ params }) => {
-    const [eventsRes, issueRes, membersRes] = await Promise.all([
-      listSentryEventsFn({
-        data: {
-          projectId: params.projectId,
-          issueId: params.issueId,
-          limit: 100,
-        },
-      }),
-      getSentryIssueFn({
-        data: { projectId: params.projectId, issueId: params.issueId },
-      }),
-      listTeamMembersFn(),
-    ]);
+    const issuePromise = getSentryIssueFn({
+      data: { projectId: params.projectId, issueId: params.issueId },
+    }).then((r) => r.issue);
+
+    const eventsPromise = listSentryEventsFn({
+      data: {
+        projectId: params.projectId,
+        issueId: params.issueId,
+        limit: 100,
+      },
+    }).then((r) => r.events);
+
+    const membersPromise = listTeamMembersFn().then((r) => r.members);
+
+    const [events, issue] = await Promise.all([eventsPromise, issuePromise]);
 
     return {
-      events: eventsRes.events,
-      issue: issueRes.issue,
-      members: membersRes.members,
+      events,
+      issue,
+      membersPromise: defer(membersPromise),
     };
   },
 });
 
 function IssueDetail() {
   const { projectId } = Route.useParams();
-  const { events, issue, members: membersRaw } = Route.useLoaderData();
-  const members = membersRaw as TeamMember[];
+  const { events, issue, membersPromise } = Route.useLoaderData();
   const [issueState, setIssueState] = useState<Issue>(issue);
   const issueSupportsResolution = supportsResolution(issueState.level);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -145,14 +146,6 @@ function IssueDetail() {
   const investigatePrompt = buildInvestigatePrompt(issueState, selectedEvent);
   const fixPrompt = buildFixPrompt(issueState, selectedEvent, eventPayload);
   const now = Math.floor(Date.now() / 1000);
-
-  const memberEmailById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const member of members) {
-      map.set(member.userId, member.email);
-    }
-    return map;
-  }, [members]);
 
   const handleViewPayload = async (eventId: string) => {
     setSelectedEventId(eventId);
@@ -379,42 +372,64 @@ function IssueDetail() {
             </div>
 
             <div className="border-t border-[color:var(--stroke)] pt-4">
-              <div className="mb-2 text-sm text-[color:var(--muted)]">
-                Assignee:{" "}
-                <span className="text-[color:var(--ink)]">
-                  {issueState.assignedToUserId
-                    ? (memberEmailById.get(issueState.assignedToUserId) ??
-                      "Assigned")
-                    : "Unassigned"}
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={assigneeUserId}
-                  onChange={(e) => setAssigneeUserId(e.target.value)}
-                  className="flex-1"
-                  disabled={isUpdatingIssue}
-                >
-                  <option value="">Unassigned</option>
-                  {members.map((member) => (
-                    <option key={member.userId} value={member.userId}>
-                      {member.email}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="outline"
-                  disabled={isUpdatingIssue}
-                  onClick={() =>
-                    applyIssueUpdate({
-                      assignedToUserId: assigneeUserId || null,
-                    })
-                  }
-                >
-                  Save
-                </button>
-              </div>
+              <Suspense
+                fallback={
+                  <div className="muted text-sm">Loading assignees…</div>
+                }
+              >
+                <Await promise={membersPromise}>
+                  {(members: TeamMember[]) => {
+                    const emailById = new Map(
+                      members.map((m) => [m.userId, m.email] as const)
+                    );
+                    return (
+                      <>
+                        <div className="mb-2 text-sm text-[color:var(--muted)]">
+                          Assignee:{" "}
+                          <span className="text-[color:var(--ink)]">
+                            {issueState.assignedToUserId
+                              ? (emailById.get(issueState.assignedToUserId) ??
+                                "Assigned")
+                              : "Unassigned"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <select
+                            value={assigneeUserId}
+                            onChange={(e) =>
+                              setAssigneeUserId(e.target.value)
+                            }
+                            className="flex-1"
+                            disabled={isUpdatingIssue}
+                          >
+                            <option value="">Unassigned</option>
+                            {members.map((member) => (
+                              <option
+                                key={member.userId}
+                                value={member.userId}
+                              >
+                                {member.email}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="outline"
+                            disabled={isUpdatingIssue}
+                            onClick={() =>
+                              applyIssueUpdate({
+                                assignedToUserId: assigneeUserId || null,
+                              })
+                            }
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </>
+                    );
+                  }}
+                </Await>
+              </Suspense>
             </div>
           </div>
         </Card>

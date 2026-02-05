@@ -10,6 +10,18 @@ import { and, eq, inArray } from "drizzle-orm";
 export type StatusPageDigestCadence = "immediate" | "daily" | "weekly";
 export type StatusPageSubscriberChannel = "email" | "webhook";
 
+function isStatusPageSubscriberChannel(
+  value: string
+): value is StatusPageSubscriberChannel {
+  return value === "email" || value === "webhook";
+}
+
+function isStatusPageDigestCadence(
+  value: string
+): value is StatusPageDigestCadence {
+  return value === "immediate" || value === "daily" || value === "weekly";
+}
+
 export async function getSubscriberByEndpoint(
   db: DB,
   statusPageId: string,
@@ -196,8 +208,16 @@ export async function listDeliverableSubscribersForStatusPage(
 
   return rows.map((r) => ({
     id: r.id,
-    channelType: r.channelType as StatusPageSubscriberChannel,
-    digestCadence: r.digestCadence as StatusPageDigestCadence,
+    channelType: isStatusPageSubscriberChannel(r.channelType)
+      ? r.channelType
+      : (() => {
+          throw new Error("Invalid status page subscriber channel.");
+        })(),
+    digestCadence: isStatusPageDigestCadence(r.digestCadence)
+      ? r.digestCadence
+      : (() => {
+          throw new Error("Invalid status page digest cadence.");
+        })(),
   }));
 }
 

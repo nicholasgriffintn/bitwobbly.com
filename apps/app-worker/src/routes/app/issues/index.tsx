@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Suspense, useEffect, useState } from "react";
+import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { PageHeader } from "@/components/layout";
@@ -30,17 +30,29 @@ export const Route = createFileRoute("/app/issues/")({
   component: IssueTracking,
   loader: async () => {
     const { projects } = await listSentryProjectsFn();
-    const { components } = await listComponentsFn();
-    return { projects, components };
+    const componentsPromise = listComponentsFn().then((r) => r.components);
+    return { projects, componentsPromise: defer(componentsPromise) };
   },
 });
 
+function ComponentsHydrator({
+  components,
+  onLoaded,
+}: {
+  components: Component[];
+  onLoaded: (components: Component[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(components);
+  }, [components, onLoaded]);
+  return null;
+}
+
 function IssueTracking() {
-  const { projects: initialProjects, components: initialComponents } =
-    Route.useLoaderData();
+  const { projects: initialProjects, componentsPromise } = Route.useLoaderData();
 
   const [projects, setProjects] = useState<SentryProject[]>(initialProjects);
-  const [components] = useState<Component[]>(initialComponents);
+  const [components, setComponents] = useState<Component[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -296,6 +308,14 @@ function IssueTracking() {
           <div className="muted">No projects configured.</div>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        <Await promise={componentsPromise}>
+          {(loaded: Component[]) => (
+            <ComponentsHydrator components={loaded} onLoaded={setComponents} />
+          )}
+        </Await>
+      </Suspense>
 
       <IssuesModals
         isCreateOpen={isCreateModalOpen}

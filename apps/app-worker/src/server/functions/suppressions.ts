@@ -8,8 +8,6 @@ import {
   createSuppression,
   deleteSuppression,
   listSuppressions,
-  type SuppressionKind,
-  type SuppressionScopeType,
 } from "../repositories/suppressions";
 import { clearAllStatusPageCaches } from "../services/status-snapshots";
 
@@ -69,13 +67,13 @@ export const createSuppressionFn = createServerFn({ method: "POST" })
     const db = getDb(vars.DB);
 
     const created = await createSuppression(db, teamId, {
-      kind: data.kind as SuppressionKind,
+      kind: data.kind,
       name: data.name,
       reason: data.reason,
       startsAt: data.starts_at,
       endsAt: data.ends_at ?? null,
       scopes: data.scopes.map((s) => ({
-        scopeType: s.scope_type as SuppressionScopeType,
+        scopeType: s.scope_type,
         scopeId: s.scope_id,
       })),
     });

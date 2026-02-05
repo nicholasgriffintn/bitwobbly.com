@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, useState } from "react";
+import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
@@ -38,22 +38,18 @@ type Component = {
 export const Route = createFileRoute("/app/components")({
   component: Components,
   loader: async () => {
-    const [componentsRes, monitorsRes] = await Promise.all([
-      listComponentsFn(),
-      listMonitorsFn(),
-    ]);
+    const monitorsPromise = listMonitorsFn().then((r) => r.monitors);
+    const componentsRes = await listComponentsFn();
     return {
       components: componentsRes.components,
-      monitors: monitorsRes.monitors,
+      monitorsPromise: defer(monitorsPromise),
     };
   },
 });
 
 export default function Components() {
-  const { components: initialComponents, monitors: initialMonitors } =
-    Route.useLoaderData();
+  const { components: initialComponents, monitorsPromise } = Route.useLoaderData();
   const [components, setComponents] = useState<Component[]>(initialComponents);
-  const [monitors] = useState<Monitor[]>(initialMonitors);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedMetricsId, setExpandedMetricsId] = useState<string | null>(
@@ -277,17 +273,31 @@ export default function Components() {
                       />
                     )}
                     {isLinkExpanded && (
-                      <CheckboxList
-                        items={monitors.map((monitor) => ({
-                          id: monitor.id,
-                          label: monitor.name,
-                          checked: component.monitorIds.includes(monitor.id),
-                        }))}
-                        onChange={(monitorId, checked) =>
-                          onToggleMonitor(component.id, monitorId, checked)
-                        }
-                        emptyMessage="No monitors available. Create monitors first."
-                      />
+                      <Suspense
+                        fallback={<div className="muted">Loading…</div>}
+                      >
+                        <Await promise={monitorsPromise}>
+                          {(monitors: Monitor[]) => (
+                            <CheckboxList
+                              items={monitors.map((monitor) => ({
+                                id: monitor.id,
+                                label: monitor.name,
+                                checked: component.monitorIds.includes(
+                                  monitor.id
+                                ),
+                              }))}
+                              onChange={(monitorId, checked) =>
+                                onToggleMonitor(
+                                  component.id,
+                                  monitorId,
+                                  checked
+                                )
+                              }
+                              emptyMessage="No monitors available. Create monitors first."
+                            />
+                          )}
+                        </Await>
+                      </Suspense>
                     )}
                   </>
                 }

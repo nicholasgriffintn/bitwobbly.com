@@ -359,17 +359,16 @@ function StatusPage() {
           }
 
           .subscribe-button-inline {
-            margin-top: 1rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
             background: ${brandColor};
             color: white;
-            border: none;
+            border: 1px solid rgba(17, 24, 39, 0.15);
             border-radius: 9999px;
             padding: 0.65rem 1rem;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
           }
 

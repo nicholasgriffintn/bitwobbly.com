@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
@@ -16,8 +16,6 @@ import {
   deleteSuppressionFn,
 } from "@/server/functions/suppressions";
 
-type Monitor = { id: string; name: string };
-type MonitorGroup = { id: string; name: string };
 type Component = { id: string; name: string };
 
 type Suppression = {
@@ -33,26 +31,40 @@ type Suppression = {
 export const Route = createFileRoute("/app/maintenance")({
   component: Maintenance,
   loader: async () => {
-    const [suppRes, monitorsRes, groupsRes, componentsRes] = await Promise.all([
+    const componentsPromise = listComponentsFn().then((r) => r.components);
+    const [suppRes, monitorsRes, groupsRes] = await Promise.all([
       listSuppressionsFn(),
       listMonitorsFn(),
       listMonitorGroupsFn(),
-      listComponentsFn(),
     ]);
     return {
       suppressions: suppRes.suppressions,
       monitors: monitorsRes.monitors,
       groups: groupsRes.groups,
-      components: componentsRes.components,
+      componentsPromise: defer(componentsPromise),
     };
   },
 });
+
+function ComponentsHydrator({
+  components,
+  onLoaded,
+}: {
+  components: Component[];
+  onLoaded: (components: Component[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(components);
+  }, [components, onLoaded]);
+  return null;
+}
 
 function Maintenance() {
   const data = Route.useLoaderData();
   const [suppressions, setSuppressions] = useState<Suppression[]>(
     data.suppressions
   );
+  const [components, setComponents] = useState<Component[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -61,27 +73,21 @@ function Maintenance() {
   const deleteSuppression = useServerFn(deleteSuppressionFn);
 
   const monitorById = useMemo(() => {
-    return new Map<string, string>(
-      (data.monitors as Monitor[]).map((m) => [m.id, m.name])
-    );
+    return new Map<string, string>(data.monitors.map((m) => [m.id, m.name]));
   }, [data.monitors]);
 
   const groupById = useMemo(() => {
-    return new Map<string, string>(
-      (data.groups as MonitorGroup[]).map((g) => [g.id, g.name])
-    );
+    return new Map<string, string>(data.groups.map((g) => [g.id, g.name]));
   }, [data.groups]);
 
   const componentById = useMemo(() => {
-    return new Map<string, string>(
-      (data.components as Component[]).map((c) => [c.id, c.name])
-    );
-  }, [data.components]);
+    return new Map<string, string>(components.map((c) => [c.id, c.name]));
+  }, [components]);
 
   const refresh = async () => {
     try {
       const res = await listSuppressions();
-      setSuppressions(res.suppressions as Suppression[]);
+      setSuppressions(res.suppressions);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -176,11 +182,19 @@ function Maintenance() {
       <CreateSuppressionModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        monitors={data.monitors as Monitor[]}
-        groups={data.groups as MonitorGroup[]}
-        components={data.components as Component[]}
+        monitors={data.monitors}
+        groups={data.groups}
+        components={components}
         onSuccess={refresh}
       />
+
+      <Suspense fallback={null}>
+        <Await promise={data.componentsPromise}>
+          {(loaded: Component[]) => (
+            <ComponentsHydrator components={loaded} onLoaded={setComponents} />
+          )}
+        </Await>
+      </Suspense>
     </Page>
   );
 }

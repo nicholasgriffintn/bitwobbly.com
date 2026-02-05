@@ -16,8 +16,6 @@ import {
   getSubscriberByEndpoint,
   insertSubscriptionAuditLog,
   unsubscribeById,
-  type StatusPageDigestCadence,
-  type StatusPageSubscriberChannel,
 } from "../repositories/status-page-subscribers";
 import {
   statusPageUnsubscribeSig,
@@ -100,9 +98,8 @@ export const subscribeToStatusPageFn = createServerFn({ method: "POST" })
       }
     }
 
-    const channelType = data.channel_type as StatusPageSubscriberChannel;
-    const digestCadence = (data.digest_cadence ||
-      "immediate") as StatusPageDigestCadence;
+    const channelType = data.channel_type;
+    const digestCadence = data.digest_cadence || "immediate";
 
     const endpoint =
       channelType === "email"
