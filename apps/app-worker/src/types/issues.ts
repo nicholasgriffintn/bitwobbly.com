@@ -7,6 +7,7 @@ export type TeamMember = {
 
 export type Issue = {
   id: string;
+  fingerprint: string;
   title: string;
   level: string;
   status: string;
@@ -24,6 +25,8 @@ export type Issue = {
   lastSeenAt: number;
   lastSeenRelease: string | null;
   lastSeenEnvironment: string | null;
+  resolvedAt: number | null;
+  createdAt: string;
 };
 
 export type Event = {
@@ -31,8 +34,11 @@ export type Event = {
   type: string;
   level: string | null;
   message: string | null;
+  transaction?: string | null;
   receivedAt: number;
   issueId: string | null;
+  release?: string | null;
+  environment?: string | null;
   user?: {
     id?: string;
     username?: string;
@@ -40,16 +46,31 @@ export type Event = {
     ip_address?: string;
   } | null;
   tags?: Record<string, string> | null;
-  contexts?: {
-    device?: { [key: string]: {} };
-    os?: { [key: string]: {} };
-    runtime?: { [key: string]: {} };
-    browser?: { [key: string]: {} };
-    app?: { [key: string]: {} };
-  } | null;
+  contexts?: Record<string, Record<string, unknown>> | null;
   request?: {
     url?: string;
     method?: string;
+    headers?: Record<string, string>;
+    data?: Record<string, unknown>;
+  } | null;
+  exception?: {
+    values?: Array<{
+      type?: string;
+      value?: string;
+      mechanism?: Record<string, unknown>;
+      stacktrace?: {
+        frames?: Array<{
+          filename?: string;
+          function?: string;
+          lineno?: number;
+          colno?: number;
+          in_app?: boolean;
+          context_line?: string;
+          pre_context?: string[];
+          post_context?: string[];
+        }>;
+      };
+    }>;
   } | null;
   breadcrumbs?: Array<{
     timestamp?: string;
@@ -57,6 +78,7 @@ export type Event = {
     category?: string;
     message?: string;
     level?: string;
+    data?: Record<string, unknown>;
   }> | null;
 };
 

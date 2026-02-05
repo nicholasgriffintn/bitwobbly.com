@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -13,6 +13,15 @@ import { Badge, StatusBadge, isStatusType } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
 import { formatRelativeTime } from "@/utils/time";
 import {
+  buildFixPrompt,
+  buildInvestigatePrompt,
+  buildIssueSummary,
+  formatIsoTimestamp,
+  formatTimestamp,
+  formatValue,
+  getTopEntries,
+} from "@/utils/issues";
+import {
   listSentryEventsFn,
   getSentryEventPayloadFn,
   getSentryIssueFn,
@@ -25,77 +34,13 @@ import { supportsResolution } from "@/types/issues";
 
 const logger = createLogger({ service: "app-worker" });
 
-function buildIssueSummary(issue: Issue) {
-  return JSON.stringify(
-    {
-      id: issue.id,
-      title: issue.title,
-      level: issue.level,
-      status: issue.status,
-      eventCount: issue.eventCount,
-      firstSeenAt: issue.firstSeenAt,
-      lastSeenAt: issue.lastSeenAt,
-    },
-    null,
-    2
-  );
-}
-
-function buildInvestigatePrompt(issue: Issue, event: Event | undefined) {
-  const eventContext = event
-    ? `\nLatest event:\n- Event ID: ${event.id}\n- Type: ${event.type}\n- Level: ${event.level ?? "unknown"}\n- Message: ${event.message ?? "n/a"}\n- Received: ${event.receivedAt}\n- Request: ${event.request?.method ?? "n/a"} ${event.request?.url ?? ""}\n`
-    : "\nNo event selected yet. Use issue-level signals.\n";
-
-  return `Investigate this production issue and explain likely root causes.
-
-Issue:
-- ID: ${issue.id}
-- Title: ${issue.title}
-- Level: ${issue.level}
-- Status: ${issue.status}
-- Event count: ${issue.eventCount}
-- First seen (unix): ${issue.firstSeenAt}
-- Last seen (unix): ${issue.lastSeenAt}${eventContext}
-Please provide:
-1) Most likely root cause hypotheses (ranked)
-2) Signals that support each hypothesis
-3) What to check next
-4) Short-term mitigation options`;
-}
-
-function buildFixPrompt(
-  issue: Issue,
-  event: Event | undefined,
-  payload: string | null
-) {
-  const payloadExcerpt = payload
-    ? payload.slice(0, 12000)
-    : "Payload not loaded yet.";
-  const eventDetails = event
-    ? `Event ID: ${event.id}\nEvent type: ${event.type}\nEvent level: ${event.level ?? "unknown"}\nEvent message: ${event.message ?? "n/a"}`
-    : "No event selected.";
-
-  return `You are fixing a production issue. Propose a safe patch plan and code change sketch.
-
-Issue:
-- ID: ${issue.id}
-- Title: ${issue.title}
-- Level: ${issue.level}
-- Status: ${issue.status}
-- Event count: ${issue.eventCount}
-
-Event:
-${eventDetails}
-
-Payload excerpt:
-${payloadExcerpt}
-
-Output:
-1) Probable root cause
-2) Concrete code-level fix
-3) Regression risks
-4) Minimal test plan for the fix`;
-}
+type StackFrameView = {
+  filename?: string;
+  function?: string;
+  lineno?: number;
+  colno?: number;
+  context_line?: string;
+};
 
 export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
   component: IssueDetail,
@@ -147,6 +92,115 @@ function IssueDetail() {
   const fixPrompt = buildFixPrompt(issueState, selectedEvent, eventPayload);
   const now = Math.floor(Date.now() / 1000);
 
+  const levelCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const event of events) {
+      const key = event.level || "unknown";
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return getTopEntries(map, 6);
+  }, [events]);
+
+  const environmentCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const event of events) {
+      const key = event.environment || "unknown";
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return getTopEntries(map, 5);
+  }, [events]);
+
+  const releaseCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const event of events) {
+      const key = event.release || "unknown";
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return getTopEntries(map, 5);
+  }, [events]);
+
+  const transactionCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const event of events) {
+      if (!event.transaction) continue;
+      map.set(event.transaction, (map.get(event.transaction) || 0) + 1);
+    }
+    return getTopEntries(map, 5);
+  }, [events]);
+
+  const topTagCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const event of events) {
+      if (!event.tags) continue;
+      for (const [key, value] of Object.entries(event.tags)) {
+        const normalised = `${key}:${value}`;
+        map.set(normalised, (map.get(normalised) || 0) + 1);
+      }
+    }
+    return getTopEntries(map, 10);
+  }, [events]);
+
+  const selectedFrames = useMemo<StackFrameView[]>(() => {
+    if (!selectedEvent?.exception?.values?.length) return [];
+
+    const frames: StackFrameView[] = [];
+
+    for (const value of selectedEvent.exception.values) {
+      if (
+        !value.stacktrace ||
+        typeof value.stacktrace !== "object" ||
+        !("frames" in value.stacktrace)
+      ) {
+        continue;
+      }
+
+      const frameCandidate = value.stacktrace.frames;
+      if (!Array.isArray(frameCandidate)) continue;
+
+      for (const frame of frameCandidate) {
+        if (!frame || typeof frame !== "object") continue;
+
+        const normalised: StackFrameView = {
+          filename:
+            "filename" in frame && typeof frame.filename === "string"
+              ? frame.filename
+              : undefined,
+          function:
+            "function" in frame && typeof frame.function === "string"
+              ? frame.function
+              : undefined,
+          lineno:
+            "lineno" in frame && typeof frame.lineno === "number"
+              ? frame.lineno
+              : undefined,
+          colno:
+            "colno" in frame && typeof frame.colno === "number"
+              ? frame.colno
+              : undefined,
+          context_line:
+            "context_line" in frame && typeof frame.context_line === "string"
+              ? frame.context_line
+              : undefined,
+        };
+
+        if (
+          !normalised.filename &&
+          !normalised.function &&
+          !normalised.context_line
+        ) {
+          continue;
+        }
+
+        frames.push(normalised);
+      }
+    }
+
+    return [...frames].reverse().slice(0, 20);
+  }, [selectedEvent]);
+
+  const latestEvent = events[0];
+  const oldestEvent = events.length > 0 ? events[events.length - 1] : null;
+
   const handleViewPayload = async (eventId: string) => {
     setSelectedEventId(eventId);
     setIsLoadingPayload(true);
@@ -194,374 +248,670 @@ function IssueDetail() {
   }, [issueState.assignedToUserId]);
 
   return (
-    <div className="page">
+    <div className="page-stack issue-detail-page">
       <PageHeader
-        title={issue.title}
+        title={issueState.title}
         description={
-          <Link to="/app/issues/$projectId" params={{ projectId }}>
-            ← Back to project
-          </Link>
+          <span className="issue-breadcrumb">
+            <Link to="/app/issues/$projectId" params={{ projectId }}>
+              ← Back to project
+            </Link>
+            <span>|</span>
+            <span className="font-mono text-xs">{issueState.id}</span>
+          </span>
         }
-        className="mb-6"
       />
 
-      <div className="grid two mb-4">
-        <Card>
-          <CardTitle>Overview</CardTitle>
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {isStatusType(issueState.level) ? (
-                <StatusBadge status={issueState.level}>
-                  {toTitleCase(issueState.level)}
-                </StatusBadge>
-              ) : (
-                <Badge size="small">{toTitleCase(issueState.level)}</Badge>
-              )}
-              {issueSupportsResolution && (
-                <Badge
-                  size="small"
-                  variant={
-                    issueState.status === "resolved"
-                      ? "success"
-                      : issueState.status === "ignored"
-                        ? "muted"
-                        : "danger"
-                  }
-                >
-                  {toTitleCase(issueState.status)}
-                </Badge>
-              )}
-            </div>
-
-            <div className="grid gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[color:var(--muted)]">Events</span>
-                <span className="font-medium">
-                  {issueState.eventCount.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[color:var(--muted)]">First seen</span>
-                <span>{formatRelativeTime(issueState.firstSeenAt)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[color:var(--muted)]">Last seen</span>
-                <span>{formatRelativeTime(issueState.lastSeenAt)}</span>
-              </div>
-              {issueState.culprit && (
-                <div className="flex justify-between gap-4">
-                  <span className="flex-shrink-0 text-[color:var(--muted)]">
-                    Culprit
-                  </span>
-                  <span className="truncate font-mono text-xs">
-                    {issueState.culprit}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {(issueState.lastSeenRelease || issueState.lastSeenEnvironment) && (
-              <div className="flex flex-wrap gap-2">
-                {issueState.lastSeenRelease && (
-                  <Badge size="small">{issueState.lastSeenRelease}</Badge>
-                )}
-                {issueState.lastSeenEnvironment && (
-                  <Badge size="small" variant="muted">
-                    {toTitleCase(issueState.lastSeenEnvironment)}
-                  </Badge>
-                )}
-              </div>
+      <Card className="issue-hero-card">
+        <div className="issue-hero-head">
+          <div className="flex flex-wrap items-center gap-2">
+            {isStatusType(issueState.level) ? (
+              <StatusBadge status={issueState.level}>
+                {toTitleCase(issueState.level)}
+              </StatusBadge>
+            ) : (
+              <Badge size="small">{toTitleCase(issueState.level)}</Badge>
             )}
-
-            {issueState.resolvedInRelease && (
-              <div className="text-sm">
-                <span className="text-[color:var(--muted)]">Resolved in: </span>
-                <Badge size="small" variant="success">
-                  {issueState.resolvedInRelease}
-                </Badge>
-              </div>
-            )}
-
-            {issueState.regressedCount > 0 && (
-              <div className="text-sm">
-                <Badge size="small" variant="warning">
-                  Regressed ×{issueState.regressedCount}
-                </Badge>
-                {issueState.regressedAt && (
-                  <span className="ml-2 text-[color:var(--muted)]">
-                    {formatRelativeTime(issueState.regressedAt)}
-                  </span>
-                )}
-              </div>
-            )}
+            {issueSupportsResolution ? (
+              <Badge
+                size="small"
+                variant={
+                  issueState.status === "resolved"
+                    ? "success"
+                    : issueState.status === "ignored"
+                      ? "muted"
+                      : "danger"
+                }
+              >
+                {toTitleCase(issueState.status)}
+              </Badge>
+            ) : null}
+            {issueState.regressedCount > 0 ? (
+              <Badge size="small" variant="warning">
+                Regressed x{issueState.regressedCount}
+              </Badge>
+            ) : null}
           </div>
-        </Card>
+          <div className="issue-chip-row">
+            <Badge size="small" variant="muted">
+              Fingerprint: {issueState.fingerprint}
+            </Badge>
+            {issueState.lastSeenRelease ? (
+              <Badge size="small">Release: {issueState.lastSeenRelease}</Badge>
+            ) : null}
+            {issueState.lastSeenEnvironment ? (
+              <Badge size="small" variant="muted">
+                Env: {issueState.lastSeenEnvironment}
+              </Badge>
+            ) : null}
+          </div>
+        </div>
 
-        <Card>
-          <CardTitle>Actions</CardTitle>
-          <div className="space-y-4">
-            <div className="button-row">
-              {issueSupportsResolution ? (
-                issueState.status === "unresolved" ? (
-                  <>
+        <div className="issue-hero-metrics">
+          <div className="issue-metric">
+            <span className="issue-metric-label">Events</span>
+            <span className="issue-metric-value">
+              {issueState.eventCount.toLocaleString()}
+            </span>
+          </div>
+          <div className="issue-metric">
+            <span className="issue-metric-label">Users</span>
+            <span className="issue-metric-value">
+              {issueState.userCount.toLocaleString()}
+            </span>
+          </div>
+          <div className="issue-metric">
+            <span className="issue-metric-label">First seen</span>
+            <span className="issue-metric-value-small">
+              {formatRelativeTime(issueState.firstSeenAt)}
+            </span>
+            <span className="issue-metric-subtext">
+              {formatTimestamp(issueState.firstSeenAt)}
+            </span>
+          </div>
+          <div className="issue-metric">
+            <span className="issue-metric-label">Last seen</span>
+            <span className="issue-metric-value-small">
+              {formatRelativeTime(issueState.lastSeenAt)}
+            </span>
+            <span className="issue-metric-subtext">
+              {formatTimestamp(issueState.lastSeenAt)}
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      <div className="issue-layout">
+        <div className="issue-main-column">
+          <Card className="mb-4">
+            <CardTitle>Issue Signals</CardTitle>
+            <div className="issue-signal-grid">
+              <div>
+                <p className="issue-subtitle">By level</p>
+                <div className="issue-chip-row">
+                  {levelCounts.length ? (
+                    levelCounts.map(([level, count]) => (
+                      <Badge key={level} size="small" variant="muted">
+                        {level}: {count}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="muted">No event levels</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="issue-subtitle">Top environments</p>
+                <div className="issue-chip-row">
+                  {environmentCounts.length ? (
+                    environmentCounts.map(([name, count]) => (
+                      <Badge key={name} size="small" variant="muted">
+                        {name}: {count}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="muted">No environment data</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="issue-subtitle">Top releases</p>
+                <div className="issue-chip-row">
+                  {releaseCounts.length ? (
+                    releaseCounts.map(([name, count]) => (
+                      <Badge key={name} size="small" variant="muted">
+                        {name}: {count}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="muted">No release data</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="issue-subtitle">Top transactions</p>
+                <div className="issue-chip-row">
+                  {transactionCounts.length ? (
+                    transactionCounts.map(([name, count]) => (
+                      <Badge key={name} size="small" variant="muted">
+                        {name}: {count}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="muted">No transaction data</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="issue-top-tags">
+              <p className="issue-subtitle">Top tags</p>
+              <div className="issue-chip-row">
+                {topTagCounts.length ? (
+                  topTagCounts.map(([name, count]) => (
+                    <Badge key={name} size="small" variant="muted">
+                      {name} ({count})
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="muted">No tags found</span>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <CardTitle>Events ({events.length})</CardTitle>
+            <ListContainer
+              isEmpty={!events.length}
+              emptyMessage="No events found for this issue."
+            >
+              {events.map((event: Event) => (
+                <ListRow
+                  key={event.id}
+                  className="list-item-expanded issue-event-row"
+                  title={
+                    <div className="issue-event-title-wrap">
+                      <span className="issue-event-title">
+                        {event.message || event.transaction || `${event.type} event`}
+                      </span>
+                      <span className="issue-event-id font-mono">{event.id}</span>
+                    </div>
+                  }
+                  badges={
+                    <div className="issue-chip-row">
+                      {event.level && isStatusType(event.level) ? (
+                        <StatusBadge status={event.level}>{event.level}</StatusBadge>
+                      ) : event.level ? (
+                        <Badge size="small">{event.level}</Badge>
+                      ) : null}
+                      {event.release ? <Badge size="small">{event.release}</Badge> : null}
+                      {event.environment ? (
+                        <Badge size="small" variant="muted">
+                          {event.environment}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  }
+                  subtitle={
+                    <div className="issue-event-meta">
+                      <div className="issue-event-meta-line">
+                        <span>{formatRelativeTime(event.receivedAt)}</span>
+                        <span>{formatTimestamp(event.receivedAt)}</span>
+                        {event.user?.email ? <span>User: {event.user.email}</span> : null}
+                        {event.user?.id ? <span>User ID: {event.user.id}</span> : null}
+                        {event.transaction ? (
+                          <span className="font-mono">{event.transaction}</span>
+                        ) : null}
+                      </div>
+                      {event.request?.url ? (
+                        <div className="issue-event-meta-line">
+                          <span>
+                            Request: {event.request.method || "GET"} {event.request.url}
+                          </span>
+                        </div>
+                      ) : null}
+                      {event.tags && Object.keys(event.tags).length > 0 ? (
+                        <div className="issue-chip-row">
+                          {Object.entries(event.tags)
+                            .slice(0, 8)
+                            .map(([key, value]) => (
+                              <Badge key={key} size="small" variant="muted">
+                                {key}: {value}
+                              </Badge>
+                            ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  }
+                  subtitleClassName="muted mt-1"
+                  actions={
                     <button
                       type="button"
-                      className="outline button-success"
+                      onClick={() => handleViewPayload(event.id)}
+                      className="outline text-sm"
+                    >
+                      {selectedEventId === event.id ? "Refresh details" : "View details"}
+                    </button>
+                  }
+                  expanded={selectedEventId === event.id}
+                  expandedContent={
+                    selectedEventId === event.id && (
+                      <div className="issue-event-expanded">
+                        <div className="issue-event-expanded-toolbar">
+                          <strong>Event Diagnostics</strong>
+                          <div className="button-row">
+                            <CopyButton
+                              text={eventPayload || ""}
+                              label="Copy payload"
+                              disabled={isLoadingPayload || !eventPayload}
+                            />
+                            <CopyButton
+                              text={buildInvestigatePrompt(issueState, event)}
+                              label="Copy investigate prompt"
+                              disabled={isLoadingPayload}
+                            />
+                            <CopyButton
+                              text={buildFixPrompt(issueState, event, eventPayload)}
+                              label="Copy fix prompt"
+                              disabled={isLoadingPayload}
+                            />
+                            <button
+                              type="button"
+                              onClick={closePayload}
+                              className="outline button-mini"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="issue-expanded-grid">
+                          <section className="issue-expanded-section">
+                            <h4>Exception</h4>
+                            {event.exception?.values?.length ? (
+                              <div className="issue-expanded-list">
+                                {event.exception.values.map((value, idx) => (
+                                  <div key={`${event.id}-ex-${idx}`}>
+                                    <div className="issue-expanded-key">
+                                      {value.type || "Error"}
+                                    </div>
+                                    <div className="issue-expanded-value">
+                                      {value.value || "No message"}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="muted">No exception values</div>
+                            )}
+                          </section>
+
+                          <section className="issue-expanded-section">
+                            <h4>Stack trace</h4>
+                            {selectedFrames.length ? (
+                              <div className="issue-expanded-list">
+                                {selectedFrames.map((frame, idx) => (
+                                  <div key={`${event.id}-frame-${idx}`}>
+                                    <div className="issue-expanded-key">
+                                      {frame.function || "anonymous"}
+                                      {typeof frame.lineno === "number" ? (
+                                        <span>
+                                          {" "}line {frame.lineno}
+                                          {typeof frame.colno === "number"
+                                            ? `:${frame.colno}`
+                                            : ""}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <div className="issue-expanded-value font-mono">
+                                      {frame.filename || "unknown file"}
+                                    </div>
+                                    {frame.context_line ? (
+                                      <pre className="issue-inline-pre">
+                                        {frame.context_line}
+                                      </pre>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="muted">No stack trace frames</div>
+                            )}
+                          </section>
+
+                          <section className="issue-expanded-section">
+                            <h4>Request</h4>
+                            <div className="issue-expanded-list">
+                              <div>
+                                <div className="issue-expanded-key">Method</div>
+                                <div className="issue-expanded-value">
+                                  {event.request?.method || "unknown"}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="issue-expanded-key">URL</div>
+                                <div className="issue-expanded-value break-all">
+                                  {event.request?.url || "unknown"}
+                                </div>
+                              </div>
+                              {event.request?.headers ? (
+                                <div>
+                                  <div className="issue-expanded-key">Headers</div>
+                                  <pre className="issue-inline-pre">
+                                    {JSON.stringify(event.request.headers, null, 2)}
+                                  </pre>
+                                </div>
+                              ) : null}
+                              {event.request?.data ? (
+                                <div>
+                                  <div className="issue-expanded-key">Body</div>
+                                  <pre className="issue-inline-pre">
+                                    {JSON.stringify(event.request.data, null, 2)}
+                                  </pre>
+                                </div>
+                              ) : null}
+                            </div>
+                          </section>
+
+                          <section className="issue-expanded-section">
+                            <h4>Contexts</h4>
+                            {event.contexts && Object.keys(event.contexts).length ? (
+                              <div className="issue-expanded-list">
+                                {Object.entries(event.contexts).map(([name, context]) => (
+                                  <div key={`${event.id}-ctx-${name}`}>
+                                    <div className="issue-expanded-key">{name}</div>
+                                    <pre className="issue-inline-pre">
+                                      {JSON.stringify(context, null, 2)}
+                                    </pre>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="muted">No context payloads</div>
+                            )}
+                          </section>
+
+                          <section className="issue-expanded-section">
+                            <h4>Breadcrumbs</h4>
+                            {event.breadcrumbs?.length ? (
+                              <div className="issue-expanded-list">
+                                {event.breadcrumbs.map((crumb, idx) => (
+                                  <div key={`${event.id}-crumb-${idx}`}>
+                                    <div className="issue-expanded-key">
+                                      {crumb.category || crumb.type || "default"}
+                                    </div>
+                                    <div className="issue-expanded-value">
+                                      {crumb.message || "No message"}
+                                    </div>
+                                    <div className="issue-expanded-value">
+                                      {formatIsoTimestamp(crumb.timestamp)}
+                                      {crumb.level ? ` | ${crumb.level}` : ""}
+                                    </div>
+                                    {crumb.data ? (
+                                      <pre className="issue-inline-pre">
+                                        {JSON.stringify(crumb.data, null, 2)}
+                                      </pre>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="muted">No breadcrumbs</div>
+                            )}
+                          </section>
+                        </div>
+
+                        <div className="issue-payload-panel">
+                          <h4>Raw payload</h4>
+                          {isLoadingPayload ? (
+                            <div>Loading payload...</div>
+                          ) : (
+                            <pre className="issue-payload-pre">{eventPayload}</pre>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  }
+                />
+              ))}
+            </ListContainer>
+          </Card>
+        </div>
+
+        <div className="issue-sidebar-column">
+          <Card className="mb-4">
+            <CardTitle>Actions</CardTitle>
+            <div className="space-y-4">
+              <div className="button-row">
+                {issueSupportsResolution ? (
+                  issueState.status === "unresolved" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="outline button-success"
+                        disabled={isUpdatingIssue}
+                        onClick={() =>
+                          applyIssueUpdate({
+                            status: "resolved",
+                            resolvedInRelease: issueState.lastSeenRelease ?? null,
+                          })
+                        }
+                      >
+                        Resolve
+                      </button>
+                      <button
+                        type="button"
+                        className="outline button-warning"
+                        disabled={isUpdatingIssue}
+                        onClick={() =>
+                          applyIssueUpdate({
+                            status: "ignored",
+                            ignoredUntil: now + TIME_CONSTANTS.ONE_WEEK_SECONDS,
+                          })
+                        }
+                      >
+                        Ignore 7d
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="outline"
                       disabled={isUpdatingIssue}
                       onClick={() =>
                         applyIssueUpdate({
-                          status: "resolved",
-                          resolvedInRelease: issueState.lastSeenRelease ?? null,
+                          status: "unresolved",
+                          ignoredUntil: null,
+                          resolvedInRelease: null,
                         })
                       }
                     >
-                      Resolve
+                      Reopen
                     </button>
-                    <button
-                      type="button"
-                      className="outline button-warning"
-                      disabled={isUpdatingIssue}
-                      onClick={() =>
-                        applyIssueUpdate({
-                          status: "ignored",
-                          ignoredUntil: now + TIME_CONSTANTS.ONE_WEEK_SECONDS,
-                        })
-                      }
-                    >
-                      Ignore 7d
-                    </button>
-                  </>
+                  )
+                ) : null}
+                {issueState.snoozedUntil && issueState.snoozedUntil > now ? (
+                  <button
+                    type="button"
+                    className="outline"
+                    disabled={isUpdatingIssue}
+                    onClick={() => applyIssueUpdate({ snoozedUntil: null })}
+                  >
+                    Unsnooze
+                  </button>
                 ) : (
                   <button
                     type="button"
                     className="outline"
                     disabled={isUpdatingIssue}
                     onClick={() =>
-                      applyIssueUpdate({
-                        status: "unresolved",
-                        ignoredUntil: null,
-                        resolvedInRelease: null,
-                      })
+                      applyIssueUpdate({ snoozedUntil: now + TIME_CONSTANTS.ONE_HOUR_SECONDS })
                     }
                   >
-                    Reopen
+                    Snooze 1h
                   </button>
-                )
-              ) : null}
-              {issueState.snoozedUntil && issueState.snoozedUntil > now ? (
-                <button
-                  type="button"
-                  className="outline"
-                  disabled={isUpdatingIssue}
-                  onClick={() => applyIssueUpdate({ snoozedUntil: null })}
+                )}
+              </div>
+
+              <div className="border-t border-[color:var(--stroke)] pt-4">
+                <Suspense
+                  fallback={<div className="muted text-sm">Loading assignees...</div>}
                 >
-                  Unsnooze
-                </button>
+                  <Await promise={membersPromise}>
+                    {(members: TeamMember[]) => {
+                      const emailById = new Map(
+                        members.map((m) => [m.userId, m.email] as const)
+                      );
+                      return (
+                        <>
+                          <div className="mb-2 text-sm text-[color:var(--muted)]">
+                            Assignee:{" "}
+                            <span className="text-[color:var(--ink)]">
+                              {issueState.assignedToUserId
+                                ? (emailById.get(issueState.assignedToUserId) ||
+                                  "Assigned")
+                                : "Unassigned"}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select
+                              value={assigneeUserId}
+                              onChange={(e) => setAssigneeUserId(e.target.value)}
+                              className="flex-1"
+                              disabled={isUpdatingIssue}
+                            >
+                              <option value="">Unassigned</option>
+                              {members.map((member) => (
+                                <option key={member.userId} value={member.userId}>
+                                  {member.email}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="outline"
+                              disabled={isUpdatingIssue}
+                              onClick={() =>
+                                applyIssueUpdate({
+                                  assignedToUserId: assigneeUserId || null,
+                                })
+                              }
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </>
+                      );
+                    }}
+                  </Await>
+                </Suspense>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="mb-4">
+            <CardTitle>Issue Metadata</CardTitle>
+            <div className="issue-kv-grid">
+              <div className="issue-kv-row">
+                <span>ID</span>
+                <span className="font-mono text-xs break-all">{issueState.id}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Fingerprint</span>
+                <span className="font-mono text-xs break-all">
+                  {issueState.fingerprint}
+                </span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Culprit</span>
+                <span className="break-all">{issueState.culprit || "-"}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Created</span>
+                <span>{formatIsoTimestamp(issueState.createdAt)}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Resolved at</span>
+                <span>{formatTimestamp(issueState.resolvedAt)}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Resolved in release</span>
+                <span>{issueState.resolvedInRelease || "-"}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Snoozed until</span>
+                <span>{formatTimestamp(issueState.snoozedUntil)}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Ignored until</span>
+                <span>{formatTimestamp(issueState.ignoredUntil)}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Latest event</span>
+                <span>{latestEvent ? formatTimestamp(latestEvent.receivedAt) : "-"}</span>
+              </div>
+              <div className="issue-kv-row">
+                <span>Oldest event</span>
+                <span>{oldestEvent ? formatTimestamp(oldestEvent.receivedAt) : "-"}</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <CardTitle>AI Prompts</CardTitle>
+            <div className="button-row">
+              <CopyButton text={buildIssueSummary(issueState)} label="Copy issue JSON" />
+              <CopyButton text={investigatePrompt} label="Copy investigate prompt" />
+              <CopyButton text={fixPrompt} label="Copy fix prompt" />
+            </div>
+            <div className="issue-ai-preview">
+              <p className="issue-subtitle">Selected event context</p>
+              {selectedEvent ? (
+                <div className="issue-kv-grid">
+                  <div className="issue-kv-row">
+                    <span>Event ID</span>
+                    <span className="font-mono text-xs">{selectedEvent.id}</span>
+                  </div>
+                  <div className="issue-kv-row">
+                    <span>Type</span>
+                    <span>{selectedEvent.type}</span>
+                  </div>
+                  <div className="issue-kv-row">
+                    <span>Level</span>
+                    <span>{selectedEvent.level || "unknown"}</span>
+                  </div>
+                  <div className="issue-kv-row">
+                    <span>Message</span>
+                    <span className="break-all">{selectedEvent.message || "-"}</span>
+                  </div>
+                  <div className="issue-kv-row">
+                    <span>Transaction</span>
+                    <span className="font-mono text-xs break-all">
+                      {selectedEvent.transaction || "-"}
+                    </span>
+                  </div>
+                  <div className="issue-kv-row">
+                    <span>User</span>
+                    <span>
+                      {formatValue(
+                        selectedEvent.user?.email ||
+                          selectedEvent.user?.username ||
+                          selectedEvent.user?.id
+                      )}
+                    </span>
+                  </div>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  className="outline"
-                  disabled={isUpdatingIssue}
-                  onClick={() =>
-                    applyIssueUpdate({ snoozedUntil: now + 60 * 60 })
-                  }
-                >
-                  Snooze 1h
-                </button>
+                <div className="muted">Open an event to enrich prompt context.</div>
               )}
             </div>
-
-            <div className="border-t border-[color:var(--stroke)] pt-4">
-              <Suspense
-                fallback={
-                  <div className="muted text-sm">Loading assignees…</div>
-                }
-              >
-                <Await promise={membersPromise}>
-                  {(members: TeamMember[]) => {
-                    const emailById = new Map(
-                      members.map((m) => [m.userId, m.email] as const)
-                    );
-                    return (
-                      <>
-                        <div className="mb-2 text-sm text-[color:var(--muted)]">
-                          Assignee:{" "}
-                          <span className="text-[color:var(--ink)]">
-                            {issueState.assignedToUserId
-                              ? (emailById.get(issueState.assignedToUserId) ??
-                                "Assigned")
-                              : "Unassigned"}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <select
-                            value={assigneeUserId}
-                            onChange={(e) =>
-                              setAssigneeUserId(e.target.value)
-                            }
-                            className="flex-1"
-                            disabled={isUpdatingIssue}
-                          >
-                            <option value="">Unassigned</option>
-                            {members.map((member) => (
-                              <option
-                                key={member.userId}
-                                value={member.userId}
-                              >
-                                {member.email}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            className="outline"
-                            disabled={isUpdatingIssue}
-                            onClick={() =>
-                              applyIssueUpdate({
-                                assignedToUserId: assigneeUserId || null,
-                              })
-                            }
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </>
-                    );
-                  }}
-                </Await>
-              </Suspense>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
-
-      <Card className="mb-4">
-        <CardTitle>AI Prompts</CardTitle>
-        <div className="button-row">
-          <CopyButton
-            text={buildIssueSummary(issueState)}
-            label="Copy issue JSON"
-          />
-          <CopyButton
-            text={investigatePrompt}
-            label="Copy AI investigate prompt"
-          />
-          <CopyButton text={fixPrompt} label="Copy AI fix prompt" />
-        </div>
-        <div className="muted mt-2">
-          Load an event payload for richer AI fix prompts.
-        </div>
-      </Card>
-
-      <Card>
-        <CardTitle>Events ({events.length})</CardTitle>
-        <ListContainer
-          isEmpty={!events.length}
-          emptyMessage="No events found for this issue."
-        >
-          {events.map((event: Event) => (
-            <ListRow
-              key={event.id}
-              className="list-item-expanded"
-              title={event.message || `${event.type} event`}
-              badges={
-                event.level && isStatusType(event.level) ? (
-                  <StatusBadge status={event.level}>{event.level}</StatusBadge>
-                ) : event.level ? (
-                  <Badge size="small">{event.level}</Badge>
-                ) : null
-              }
-              subtitle={
-                <div className="space-y-2">
-                  <div>
-                    {formatRelativeTime(event.receivedAt)}
-                    {event.user?.email && <> · User: {event.user.email}</>}
-                    {event.request?.url && (
-                      <>
-                        {" · "}
-                        {event.request.method} {event.request.url}
-                      </>
-                    )}
-                  </div>
-                  {event.tags && Object.keys(event.tags).length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {Object.entries(event.tags).map(([key, value]) => (
-                        <Badge key={key} size="small" variant="muted">
-                          {key}: {value}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  {event.breadcrumbs && event.breadcrumbs.length > 0 && (
-                    <div className="mt-2 text-xs">
-                      <strong>Breadcrumbs:</strong>
-                      {event.breadcrumbs.slice(-3).map((crumb, idx) => (
-                        <div
-                          key={idx}
-                          className="mt-0.5 text-[color:var(--muted)]"
-                        >
-                          [{crumb.category}] {crumb.message}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              }
-              subtitleClassName="muted mt-1"
-              actions={
-                <button
-                  type="button"
-                  onClick={() => handleViewPayload(event.id)}
-                  className="outline text-sm"
-                >
-                  View Payload
-                </button>
-              }
-              expanded={selectedEventId === event.id}
-              expandedContent={
-                selectedEventId === event.id && (
-                  <div className="min-w-0 border-t border-[color:var(--stroke)] bg-[color:var(--surface-1)] p-4">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <strong>Event Payload</strong>
-                      <div className="button-row">
-                        <CopyButton
-                          text={eventPayload || ""}
-                          label="Copy payload"
-                          disabled={isLoadingPayload || !eventPayload}
-                        />
-                        <CopyButton
-                          text={buildInvestigatePrompt(issue, event)}
-                          label="Copy AI investigate prompt"
-                          disabled={isLoadingPayload}
-                        />
-                        <CopyButton
-                          text={buildFixPrompt(issue, event, eventPayload)}
-                          label="Copy AI fix prompt"
-                          disabled={isLoadingPayload}
-                        />
-                        <button
-                          type="button"
-                          onClick={closePayload}
-                          className="outline button-mini"
-                        >
-                          Close
-                        </button>
-                      </div>
-                    </div>
-                    {isLoadingPayload ? (
-                      <div>Loading payload...</div>
-                    ) : (
-                      <pre className="max-h-[400px] w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded bg-white p-4 text-sm">
-                        {eventPayload}
-                      </pre>
-                    )}
-                  </div>
-                )
-              }
-            />
-          ))}
-        </ListContainer>
-      </Card>
     </div>
   );
 }
