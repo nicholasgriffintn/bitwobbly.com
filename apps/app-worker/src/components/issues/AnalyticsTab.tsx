@@ -1,159 +1,24 @@
-import { useState, useEffect } from "react";
-import { useServerFn } from "@tanstack/react-start";
-
 import { EventMetrics } from "@/components/EventMetrics";
 import { EventVolumeChart } from "@/components/EventVolumeChart";
 import { SDKDistributionChart } from "@/components/SDKDistributionChart";
 import { toTitleCase } from "@/utils/format";
 import { formatRelativeTime } from "@/utils/time";
-import {
-  getEventVolumeStatsFn,
-  getEventVolumeTimeseriesBreakdownFn,
-  getTopErrorMessagesFn,
-  getErrorRateByReleaseFn,
-  getSDKDistributionFn,
-} from "@/server/functions/sentry-analytics";
-import {
-  getSentryReleaseHealthFn,
-  listSentryClientReportsFn,
-} from "@/server/functions/sentry";
+import { useAnalyticsData } from "@/hooks/useAnalyticsData";
 
 interface AnalyticsTabProps {
   projectId: string;
 }
 
-interface VolumeStats {
-  total_events: number;
-  accepted_events: number;
-  filtered_events: number;
-  dropped_events: number;
-}
-
-interface TimeseriesData {
-  timestamp: string;
-  accepted: number;
-  filtered: number;
-  dropped: number;
-}
-
-interface SDKData {
-  sdk_name: string;
-  event_count: number;
-  percentage: number;
-}
-
-interface TopError {
-  message: string;
-  event_count: number;
-  first_seen: string;
-  last_seen: string;
-}
-
-interface ReleaseStat {
-  release: string;
-  environment: string;
-  error_count: number;
-  user_count: number;
-}
-
-interface ReleaseHealth {
-  release: string | null;
-  environment: string | null;
-  total_sessions: number;
-  crashed_sessions: number;
-  errored_sessions: number;
-  crash_free_rate: number;
-}
-
-interface ClientReport {
-  id: string;
-  timestamp: number;
-  discardedEvents: Array<{
-    reason: string;
-    category: string;
-    quantity: number;
-  }> | null;
-}
-
 export function AnalyticsTab({ projectId }: AnalyticsTabProps) {
-  const [volumeStats, setVolumeStats] = useState<{
-    data: VolumeStats | null;
-    loading: boolean;
-  }>({ data: null, loading: true });
-  const [timeseriesBreakdown, setTimeseriesBreakdown] = useState<{
-    data: TimeseriesData[];
-    loading: boolean;
-  }>({ data: [], loading: true });
-  const [sdkDistribution, setSdkDistribution] = useState<{
-    data: SDKData[];
-    loading: boolean;
-  }>({ data: [], loading: true });
-  const [topErrors, setTopErrors] = useState<{
-    data: TopError[];
-    loading: boolean;
-  }>({ data: [], loading: true });
-  const [releaseStats, setReleaseStats] = useState<{
-    data: ReleaseStat[];
-    loading: boolean;
-  }>({ data: [], loading: true });
-  const [releaseHealth, setReleaseHealth] = useState<{
-    data: ReleaseHealth[];
-    loading: boolean;
-  }>({ data: [], loading: true });
-  const [clientReports, setClientReports] = useState<{
-    data: ClientReport[];
-    loading: boolean;
-  }>({ data: [], loading: true });
-
-  const getStats = useServerFn(getEventVolumeStatsFn);
-  const getTimeseriesBreakdown = useServerFn(
-    getEventVolumeTimeseriesBreakdownFn
-  );
-  const getTopErrors = useServerFn(getTopErrorMessagesFn);
-  const getReleaseStats = useServerFn(getErrorRateByReleaseFn);
-  const getSDKDist = useServerFn(getSDKDistributionFn);
-  const getReleaseHealth = useServerFn(getSentryReleaseHealthFn);
-  const listClientReports = useServerFn(listSentryClientReportsFn);
-
-  useEffect(() => {
-    const endDate = new Date().toISOString();
-    const startDate = new Date(
-      Date.now() - 14 * 24 * 60 * 60 * 1000
-    ).toISOString();
-
-    getStats({ data: { projectId, startDate, endDate } })
-      .then((data) => setVolumeStats({ data, loading: false }))
-      .catch(() => setVolumeStats({ data: null, loading: false }));
-
-    getTimeseriesBreakdown({
-      data: { projectId, startDate, endDate, interval: "hour" },
-    })
-      .then((data) => setTimeseriesBreakdown({ data, loading: false }))
-      .catch(() => setTimeseriesBreakdown({ data: [], loading: false }));
-
-    getSDKDist({ data: { projectId, startDate, endDate } })
-      .then((data) => setSdkDistribution({ data, loading: false }))
-      .catch(() => setSdkDistribution({ data: [], loading: false }));
-
-    getTopErrors({ data: { projectId, limit: 10 } })
-      .then((data) => setTopErrors({ data, loading: false }))
-      .catch(() => setTopErrors({ data: [], loading: false }));
-
-    getReleaseStats({ data: { projectId, startDate, endDate } })
-      .then((data) => setReleaseStats({ data, loading: false }))
-      .catch(() => setReleaseStats({ data: [], loading: false }));
-
-    const since = Math.floor(Date.now() / 1000) - 14 * 24 * 60 * 60;
-    const until = Math.floor(Date.now() / 1000);
-
-    getReleaseHealth({ data: { projectId, since, until } })
-      .then((res) => setReleaseHealth({ data: res.health, loading: false }))
-      .catch(() => setReleaseHealth({ data: [], loading: false }));
-
-    listClientReports({ data: { projectId, since, until, limit: 50 } })
-      .then((res) => setClientReports({ data: res.reports, loading: false }))
-      .catch(() => setClientReports({ data: [], loading: false }));
-  }, [projectId]);
+  const {
+    volumeStats,
+    timeseriesBreakdown,
+    sdkDistribution,
+    topErrors,
+    releaseStats,
+    releaseHealth,
+    clientReports,
+  } = useAnalyticsData(projectId);
 
   return (
     <div className="rounded-2xl border border-[color:var(--stroke)] bg-[color:var(--bg)] p-4">

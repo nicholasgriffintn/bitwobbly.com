@@ -50,6 +50,11 @@ export function CreateMonitorModal({
     onClose();
   };
 
+  const handleDone = async () => {
+    await onSuccess();
+    handleClose();
+  };
+
   const onCreate = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -104,10 +109,7 @@ export function CreateMonitorModal({
           webhookToken={webhookToken}
           monitorId={createdMonitorId}
           tokenType={createdTokenType}
-          onDone={async () => {
-            await onSuccess();
-            handleClose();
-          }}
+          onDone={handleDone}
         />
       ) : (
         <form className="form" onSubmit={onCreate}>

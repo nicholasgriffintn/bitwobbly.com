@@ -1,11 +1,17 @@
 import { withSentry } from "@sentry/cloudflare";
-import { CACHE_TTL, getDb, createLogger } from "@bitwobbly/shared";
+import {
+  CACHE_TTL,
+  getDb,
+  createLogger,
+  serialiseError,
+} from "@bitwobbly/shared";
 
 import { parseEnvelope } from "./lib/envelope";
 import { buildManifests } from "./lib/manifest";
 import { isProjectCache } from "./lib/guards";
 import { validateDsn } from "./repositories/auth";
 import type { Env } from "./types/env";
+import { assertEnv } from "./types/env";
 
 const logger = createLogger({ service: "sentry-ingest-worker" });
 
@@ -17,6 +23,7 @@ const CORS_HEADERS = {
 
 const handler = {
   async fetch(request: Request, env: Env): Promise<Response> {
+    assertEnv(env);
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
@@ -121,7 +128,7 @@ const handler = {
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     } catch (error) {
-      logger.error("Error:", { error });
+      logger.error("Error:", { error: serialiseError(error) });
       return new Response("Internal Error", {
         status: 500,
         headers: CORS_HEADERS,

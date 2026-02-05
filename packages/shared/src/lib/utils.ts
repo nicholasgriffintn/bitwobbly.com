@@ -30,3 +30,19 @@ export function generateWebhookToken(): string {
 export async function hashWebhookToken(token: string): Promise<string> {
   return sha256Hex(token);
 }
+
+export function serialiseError(error: unknown): {
+  message: string;
+  name?: string;
+  stack?: string;
+} {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+    };
+  }
+
+  return { message: String(error) };
+}

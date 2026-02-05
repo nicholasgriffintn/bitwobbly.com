@@ -1,5 +1,10 @@
 import { withSentry } from "@sentry/cloudflare";
-import { CACHE_TTL, createLogger, getDb } from "@bitwobbly/shared";
+import {
+  CACHE_TTL,
+  createLogger,
+  getDb,
+  serialiseError,
+} from "@bitwobbly/shared";
 import { extractJsonFromEnvelope } from "./lib/envelope";
 import {
   computeFingerprint,
@@ -24,6 +29,7 @@ import {
 } from "./repositories/events";
 import { getProjectTeamId } from "./repositories/alert-rules";
 import type { Env, ProcessJob } from "./types/env";
+import { assertEnv } from "./types/env";
 import {
   deriveAggregateStatus,
   normaliseSessionStatus,
@@ -39,6 +45,7 @@ const groupingRulesResolver = createGroupingRulesResolver({
 
 const handler = {
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+    assertEnv(env);
     const db = getDb(env.DB, { withSentry: true });
 
     for (const msg of batch.messages) {
@@ -77,7 +84,7 @@ const handler = {
 
         msg.ack();
       } catch (error) {
-        logger.error("processing failed", { error });
+        logger.error("processing failed", { error: serialiseError(error) });
       }
     }
   },

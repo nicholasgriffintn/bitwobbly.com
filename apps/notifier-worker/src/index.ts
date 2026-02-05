@@ -3,10 +3,11 @@ import type {
   MonitorAlertJob,
   IssueAlertJob,
 } from "@bitwobbly/shared";
-import { isAlertJob, isError, createLogger } from "@bitwobbly/shared";
+import { isAlertJob, createLogger, serialiseError } from "@bitwobbly/shared";
 import { withSentry } from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
+import { assertEnv } from "./types/env";
 import { sendAlertEmail, sendIssueAlertEmail } from "./lib/email";
 import { getDb } from "@bitwobbly/shared";
 import {
@@ -27,6 +28,7 @@ const logger = createLogger({ service: "notifier-worker" });
 
 const handler = {
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+    assertEnv(env);
     const db = getDb(env.DB, { withSentry: true });
 
     for (const msg of batch.messages) {
@@ -63,8 +65,7 @@ const handler = {
 
         msg.ack();
       } catch (e: unknown) {
-        const errorMessage = isError(e) ? e.message : String(e);
-        logger.error("job delivery failed", { error: errorMessage });
+        logger.error("job delivery failed", { error: serialiseError(e) });
       }
     }
   },

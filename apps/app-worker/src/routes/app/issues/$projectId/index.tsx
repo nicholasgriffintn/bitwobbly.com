@@ -1,7 +1,11 @@
-import { useState, useMemo, memo, lazy, Suspense } from "react";
+import { useMemo, memo, lazy, Suspense, useReducer } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { TIME_CONSTANTS, createLogger } from "@bitwobbly/shared";
+import {
+  TIME_CONSTANTS,
+  createLogger,
+  serialiseError,
+} from "@bitwobbly/shared";
 
 import { Card, CardTitle, PageHeader } from "@/components/layout";
 import { ListContainer, ListRow } from "@/components/list";
@@ -16,7 +20,7 @@ import {
 } from "@/server/functions/sentry";
 import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
-import type { TeamMember, Issue, Event } from "@/types/issues";
+import type { Issue, Event } from "@/types/issues";
 import { supportsResolution } from "@/types/issues";
 
 const logger = createLogger({ service: "app-worker" });
@@ -32,6 +36,64 @@ const GroupingTab = lazy(() =>
     default: m.GroupingTab,
   }))
 );
+
+type TabId = "issues" | "events" | "analytics" | "grouping";
+
+type IssuesState = {
+  activeTab: TabId;
+  issues: Issue[];
+  searchQuery: string;
+  statusFilter: string;
+  levelFilter: string;
+  releaseFilter: string;
+  environmentFilter: string;
+  assigneeFilter: string;
+  includeSnoozed: boolean;
+  sortBy: "recent" | "oldest" | "count";
+  isRefreshingIssues: boolean;
+};
+
+type IssuesAction =
+  | { type: "setActiveTab"; value: TabId }
+  | { type: "setIssues"; value: Issue[] }
+  | { type: "setSearchQuery"; value: string }
+  | { type: "setStatusFilter"; value: string }
+  | { type: "setLevelFilter"; value: string }
+  | { type: "setReleaseFilter"; value: string }
+  | { type: "setEnvironmentFilter"; value: string }
+  | { type: "setAssigneeFilter"; value: string }
+  | { type: "setIncludeSnoozed"; value: boolean }
+  | { type: "setSortBy"; value: "recent" | "oldest" | "count" }
+  | { type: "setIsRefreshingIssues"; value: boolean };
+
+function issuesReducer(state: IssuesState, action: IssuesAction): IssuesState {
+  switch (action.type) {
+    case "setActiveTab":
+      return { ...state, activeTab: action.value };
+    case "setIssues":
+      return { ...state, issues: action.value };
+    case "setSearchQuery":
+      return { ...state, searchQuery: action.value };
+    case "setStatusFilter":
+      return { ...state, statusFilter: action.value };
+    case "setLevelFilter":
+      return { ...state, levelFilter: action.value };
+    case "setReleaseFilter":
+      return { ...state, releaseFilter: action.value };
+    case "setEnvironmentFilter":
+      return { ...state, environmentFilter: action.value };
+    case "setAssigneeFilter":
+      return { ...state, assigneeFilter: action.value };
+    case "setIncludeSnoozed":
+      return { ...state, includeSnoozed: action.value };
+    case "setSortBy":
+      return { ...state, sortBy: action.value };
+    case "setIsRefreshingIssues":
+      return { ...state, isRefreshingIssues: action.value };
+    default:
+      return state;
+  }
+}
 
 const EventItem = memo(function EventItem({
   event,
@@ -108,21 +170,21 @@ function ProjectIssues() {
     groupingRules: initialGroupingRules,
   } = Route.useLoaderData();
 
-  const [activeTab, setActiveTab] = useState<
-    "issues" | "events" | "analytics" | "grouping"
-  >("issues");
-  const [issues, setIssues] = useState<Issue[]>(initialIssues);
-  const [events] = useState<Event[]>(initialEvents);
-  const [members] = useState<TeamMember[]>(initialMembers);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [releaseFilter, setReleaseFilter] = useState<string>("all");
-  const [environmentFilter, setEnvironmentFilter] = useState<string>("all");
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
-  const [includeSnoozed, setIncludeSnoozed] = useState(false);
-  const [sortBy, setSortBy] = useState<"recent" | "oldest" | "count">("recent");
-  const [isRefreshingIssues, setIsRefreshingIssues] = useState(false);
+  const [state, dispatch] = useReducer(issuesReducer, {
+    activeTab: "issues",
+    issues: initialIssues,
+    searchQuery: "",
+    statusFilter: "all",
+    levelFilter: "all",
+    releaseFilter: "all",
+    environmentFilter: "all",
+    assigneeFilter: "all",
+    includeSnoozed: false,
+    sortBy: "recent",
+    isRefreshingIssues: false,
+  });
+  const events = initialEvents;
+  const members = initialMembers;
 
   const updateIssue = useServerFn(updateSentryIssueFn);
   const listIssues = useServerFn(listSentryIssuesFn);
@@ -136,33 +198,36 @@ function ProjectIssues() {
   }, [members]);
 
   const refreshIssues = async () => {
-    setIsRefreshingIssues(true);
+    dispatch({ type: "setIsRefreshingIssues", value: true });
     try {
       const res = await listIssues({
         data: {
           projectId,
-          status: statusFilter === "all" ? undefined : statusFilter,
-          query: searchQuery || undefined,
-          release: releaseFilter === "all" ? undefined : releaseFilter,
+          status: state.statusFilter === "all" ? undefined : state.statusFilter,
+          query: state.searchQuery || undefined,
+          release: state.releaseFilter === "all" ? undefined : state.releaseFilter,
           environment:
-            environmentFilter === "all" ? undefined : environmentFilter,
-          assignedToUserId:
-            assigneeFilter === "all" || assigneeFilter === "unassigned"
+            state.environmentFilter === "all"
               ? undefined
-              : assigneeFilter,
-          unassigned: assigneeFilter === "unassigned" ? true : undefined,
-          includeSnoozed,
+              : state.environmentFilter,
+          assignedToUserId:
+            state.assigneeFilter === "all" ||
+            state.assigneeFilter === "unassigned"
+              ? undefined
+              : state.assigneeFilter,
+          unassigned: state.assigneeFilter === "unassigned" ? true : undefined,
+          includeSnoozed: state.includeSnoozed,
         },
       });
-      setIssues(res.issues);
+      dispatch({ type: "setIssues", value: res.issues });
     } finally {
-      setIsRefreshingIssues(false);
+      dispatch({ type: "setIsRefreshingIssues", value: false });
     }
   };
 
   const handleStatusChange = async (issueId: string, newStatus: string) => {
     try {
-      const issue = issues.find((i) => i.id === issueId);
+      const issue = state.issues.find((i) => i.id === issueId);
       const now = Math.floor(Date.now() / 1000);
       await updateIssue({
         data: {
@@ -183,31 +248,31 @@ function ProjectIssues() {
       });
       await refreshIssues();
     } catch (err) {
-      logger.error("Failed to update issue:", { err });
+      logger.error("Failed to update issue:", { error: serialiseError(err) });
     }
   };
 
   const filteredAndSortedIssues = useMemo(() => {
-    let filtered = issues;
+    let filtered = state.issues;
 
-    if (levelFilter !== "all") {
-      filtered = filtered.filter((issue) => issue.level === levelFilter);
+    if (state.levelFilter !== "all") {
+      filtered = filtered.filter((issue) => issue.level === state.levelFilter);
     }
 
     const sorted = [...filtered];
-    if (sortBy === "recent") {
+    if (state.sortBy === "recent") {
       sorted.sort((a, b) => b.lastSeenAt - a.lastSeenAt);
-    } else if (sortBy === "oldest") {
+    } else if (state.sortBy === "oldest") {
       sorted.sort((a, b) => a.firstSeenAt - b.firstSeenAt);
-    } else if (sortBy === "count") {
+    } else if (state.sortBy === "count") {
       sorted.sort((a, b) => b.eventCount - a.eventCount);
     }
 
     return sorted;
-  }, [issues, levelFilter, sortBy]);
+  }, [state.issues, state.levelFilter, state.sortBy]);
 
   const issueStatusCounts = useMemo(() => {
-    return issues.reduce(
+    return state.issues.reduce(
       (acc, issue) => {
         if (issue.status === "unresolved") acc.unresolved += 1;
         else if (issue.status === "resolved") acc.resolved += 1;
@@ -216,23 +281,23 @@ function ProjectIssues() {
       },
       { unresolved: 0, resolved: 0, ignored: 0 }
     );
-  }, [issues]);
+  }, [state.issues]);
 
   const releaseOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const issue of issues) {
+    for (const issue of state.issues) {
       if (issue.lastSeenRelease) set.add(issue.lastSeenRelease);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [issues]);
+  }, [state.issues]);
 
   const environmentOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const issue of issues) {
+    for (const issue of state.issues) {
       if (issue.lastSeenEnvironment) set.add(issue.lastSeenEnvironment);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [issues]);
+  }, [state.issues]);
 
   return (
     <div className="page">
@@ -259,33 +324,37 @@ function ProjectIssues() {
                 count: initialGroupingRules.length,
               },
             ]}
-            activeTab={activeTab}
+            activeTab={state.activeTab}
             onTabChange={(tabId) =>
-              setActiveTab(
-                tabId as "issues" | "events" | "analytics" | "grouping"
-              )
+              dispatch({ type: "setActiveTab", value: tabId as TabId })
             }
           />
         </CardTitle>
 
-        {activeTab === "issues" && (
+        {state.activeTab === "issues" && (
           <div className="mb-4 space-y-3 border-b border-[color:var(--stroke)] pb-4">
             <div className="flex flex-wrap gap-2">
               <Badge
                 size="small"
-                variant={statusFilter === "unresolved" ? "danger" : "default"}
+                variant={
+                  state.statusFilter === "unresolved" ? "danger" : "default"
+                }
               >
                 Open: {issueStatusCounts.unresolved}
               </Badge>
               <Badge
                 size="small"
-                variant={statusFilter === "resolved" ? "success" : "default"}
+                variant={
+                  state.statusFilter === "resolved" ? "success" : "default"
+                }
               >
                 Resolved: {issueStatusCounts.resolved}
               </Badge>
               <Badge
                 size="small"
-                variant={statusFilter === "ignored" ? "muted" : "default"}
+                variant={
+                  state.statusFilter === "ignored" ? "muted" : "default"
+                }
               >
                 Ignored: {issueStatusCounts.ignored}
               </Badge>
@@ -294,15 +363,19 @@ function ProjectIssues() {
             <input
               type="text"
               placeholder="Search issues..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={state.searchQuery}
+              onChange={(e) =>
+                dispatch({ type: "setSearchQuery", value: e.target.value })
+              }
               className="w-full rounded-lg border border-[color:var(--stroke)] bg-white px-3 py-2"
             />
 
             <div className="flex flex-wrap gap-2">
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={state.statusFilter}
+                onChange={(e) =>
+                  dispatch({ type: "setStatusFilter", value: e.target.value })
+                }
                 className="flex-none"
               >
                 <option value="all">All Statuses</option>
@@ -311,8 +384,10 @@ function ProjectIssues() {
                 <option value="ignored">Ignored</option>
               </select>
               <select
-                value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value)}
+                value={state.levelFilter}
+                onChange={(e) =>
+                  dispatch({ type: "setLevelFilter", value: e.target.value })
+                }
                 className="flex-none"
               >
                 <option value="all">All Levels</option>
@@ -322,9 +397,12 @@ function ProjectIssues() {
                 <option value="debug">Debug</option>
               </select>
               <select
-                value={sortBy}
+                value={state.sortBy}
                 onChange={(e) =>
-                  setSortBy(e.target.value as "recent" | "oldest" | "count")
+                  dispatch({
+                    type: "setSortBy",
+                    value: e.target.value as "recent" | "oldest" | "count",
+                  })
                 }
                 className="flex-none"
               >
@@ -336,8 +414,10 @@ function ProjectIssues() {
 
             <div className="flex flex-wrap items-center gap-2">
               <select
-                value={releaseFilter}
-                onChange={(e) => setReleaseFilter(e.target.value)}
+                value={state.releaseFilter}
+                onChange={(e) =>
+                  dispatch({ type: "setReleaseFilter", value: e.target.value })
+                }
                 className="flex-none"
               >
                 <option value="all">All Releases</option>
@@ -348,8 +428,13 @@ function ProjectIssues() {
                 ))}
               </select>
               <select
-                value={environmentFilter}
-                onChange={(e) => setEnvironmentFilter(e.target.value)}
+                value={state.environmentFilter}
+                onChange={(e) =>
+                  dispatch({
+                    type: "setEnvironmentFilter",
+                    value: e.target.value,
+                  })
+                }
                 className="flex-none"
               >
                 <option value="all">All Environments</option>
@@ -360,8 +445,10 @@ function ProjectIssues() {
                 ))}
               </select>
               <select
-                value={assigneeFilter}
-                onChange={(e) => setAssigneeFilter(e.target.value)}
+                value={state.assigneeFilter}
+                onChange={(e) =>
+                  dispatch({ type: "setAssigneeFilter", value: e.target.value })
+                }
                 className="flex-none"
               >
                 <option value="all">All Assignees</option>
@@ -375,8 +462,13 @@ function ProjectIssues() {
               <label className="flex items-center gap-2 text-sm text-[color:var(--text-secondary)]">
                 <input
                   type="checkbox"
-                  checked={includeSnoozed}
-                  onChange={(e) => setIncludeSnoozed(e.target.checked)}
+                  checked={state.includeSnoozed}
+                  onChange={(e) =>
+                    dispatch({
+                      type: "setIncludeSnoozed",
+                      value: e.target.checked,
+                    })
+                  }
                 />
                 Include snoozed
               </label>
@@ -384,25 +476,25 @@ function ProjectIssues() {
                 type="button"
                 className="outline"
                 onClick={() => refreshIssues()}
-                disabled={isRefreshingIssues}
+                disabled={state.isRefreshingIssues}
               >
-                {isRefreshingIssues ? "Refreshing..." : "Apply"}
+                {state.isRefreshingIssues ? "Refreshing..." : "Apply"}
               </button>
             </div>
           </div>
         )}
 
         <div className="list">
-          {activeTab === "issues" ? (
+          {state.activeTab === "issues" ? (
             <ListContainer
               isEmpty={!filteredAndSortedIssues.length}
               emptyMessage={
-                searchQuery ||
-                statusFilter !== "all" ||
-                levelFilter !== "all" ||
-                releaseFilter !== "all" ||
-                environmentFilter !== "all" ||
-                assigneeFilter !== "all"
+                state.searchQuery ||
+                state.statusFilter !== "all" ||
+                state.levelFilter !== "all" ||
+                state.releaseFilter !== "all" ||
+                state.environmentFilter !== "all" ||
+                state.assigneeFilter !== "all"
                   ? "No issues match your filters."
                   : "No issues found."
               }
@@ -516,7 +608,7 @@ function ProjectIssues() {
                 />
               ))}
             </ListContainer>
-          ) : activeTab === "events" ? (
+          ) : state.activeTab === "events" ? (
             events.length ? (
               events.map((event) => (
                 <EventItem key={event.id} event={event} projectId={projectId} />
@@ -524,11 +616,11 @@ function ProjectIssues() {
             ) : (
               <div className="muted">No events found.</div>
             )
-          ) : activeTab === "analytics" ? (
+          ) : state.activeTab === "analytics" ? (
             <Suspense fallback={<TabLoadingFallback />}>
               <AnalyticsTab projectId={projectId} />
             </Suspense>
-          ) : activeTab === "grouping" ? (
+          ) : state.activeTab === "grouping" ? (
             <Suspense fallback={<TabLoadingFallback />}>
               <GroupingTab
                 projectId={projectId}

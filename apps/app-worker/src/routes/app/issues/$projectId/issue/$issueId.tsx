@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { TIME_CONSTANTS, createLogger } from "@bitwobbly/shared";
+import {
+  TIME_CONSTANTS,
+  createLogger,
+  serialiseError,
+} from "@bitwobbly/shared";
 
 import { Card, CardTitle, PageHeader } from "@/components/layout";
 import { ListContainer, ListRow } from "@/components/list";
@@ -159,7 +163,7 @@ function IssueDetail() {
       });
       setEventPayload(result.payload);
     } catch (err) {
-      logger.error("Failed to load payload:", { err });
+      logger.error("Failed to load payload:", { error: serialiseError(err) });
       setEventPayload("Failed to load event payload");
     } finally {
       setIsLoadingPayload(false);

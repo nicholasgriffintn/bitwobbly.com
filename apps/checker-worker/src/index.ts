@@ -3,7 +3,7 @@ import {
   instrumentDurableObjectWithSentry,
   withSentry,
 } from "@sentry/cloudflare";
-import { getDb, createLogger } from "@bitwobbly/shared";
+import { getDb, createLogger, serialiseError } from "@bitwobbly/shared";
 
 import {
   rebuildAllSnapshots,
@@ -11,6 +11,7 @@ import {
   resolveIncident,
 } from "./repositories/snapshot";
 import type { Env } from "./types/env";
+import { assertEnv } from "./types/env";
 import { jsonResponse } from "./lib/responses";
 import { parseTransitionRequest } from "./lib/transition-request";
 import { handleCheck } from "./lib/check-processing";
@@ -31,6 +32,7 @@ class IncidentCoordinatorBase implements DurableObject {
   }
 
   async fetch(req: Request): Promise<Response> {
+    assertEnv(this.env);
     const url = new URL(req.url);
     if (req.method !== "POST" || url.pathname !== "/transition")
       return new Response("Not found", { status: 404 });
@@ -98,6 +100,7 @@ const handler = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
+    assertEnv(env);
     const db = getDb(env.DB, { withSentry: true });
 
     for (const msg of batch.messages) {
@@ -105,8 +108,7 @@ const handler = {
         await handleCheck(msg.body, env, ctx, db);
         msg.ack();
       } catch (e: unknown) {
-        const error = e instanceof Error ? e : null;
-        logger.error("[CHECKER] check failed", { error });
+        logger.error("[CHECKER] check failed", { error: serialiseError(e) });
       }
     }
   },

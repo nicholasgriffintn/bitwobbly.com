@@ -7,6 +7,20 @@ export interface Env {
   SENTRY_DSN: string;
 }
 
+export function assertEnv(env: Env): Env {
+  const missing: string[] = [];
+  if (!env.DB) missing.push("DB");
+  if (!env.SENTRY_RAW) missing.push("SENTRY_RAW");
+  if (!env.ALERT_JOBS) missing.push("ALERT_JOBS");
+  if (!env.SENTRY_DSN) missing.push("SENTRY_DSN");
+
+  if (missing.length) {
+    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
+  }
+
+  return env;
+}
+
 export interface ProcessJob {
   manifest_id: string;
   sentry_project_id: number;

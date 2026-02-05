@@ -1,8 +1,14 @@
 import type { CheckJob, MonitorType } from "@bitwobbly/shared";
-import { MonitorTypeValues, randomId, createLogger } from "@bitwobbly/shared";
+import {
+  MonitorTypeValues,
+  randomId,
+  createLogger,
+  serialiseError,
+} from "@bitwobbly/shared";
 import * as Sentry from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
+import { assertEnv } from "./types/env";
 import { getDb } from "@bitwobbly/shared";
 import { runStatusPageDigests } from "./lib/status-page-digests";
 import {
@@ -26,6 +32,7 @@ const handler = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
+    assertEnv(env);
     await Sentry.withMonitor(
       "monitor-scheduler",
       async () => {
@@ -40,13 +47,17 @@ const handler = {
             logger.info("cleaned expired sessions", { count: cleanedSessions });
           }
         } catch (error) {
-          logger.error("session cleanup failed", { error });
+          logger.error("session cleanup failed", {
+            error: serialiseError(error),
+          });
         }
 
         try {
           await runStatusPageDigests(db, env, ctx);
         } catch (error) {
-          logger.error("status page digest failed", { error });
+          logger.error("status page digest failed", {
+            error: serialiseError(error),
+          });
         }
 
         for (let batchIndex = 0; batchIndex < maxBatches; batchIndex += 1) {
@@ -88,7 +99,9 @@ const handler = {
                 Math.max(30, Math.min(3600, Number(m.intervalSeconds) || 60));
               ctx.waitUntil(updateMonitorNextRun(db, m.id, next, lockUntil));
             } catch (err) {
-              logger.error("scheduler enqueue failed", { error: err });
+              logger.error("scheduler enqueue failed", {
+                error: serialiseError(err),
+              });
               ctx.waitUntil(unlockMonitor(db, m.id, lockUntil));
             }
           }
