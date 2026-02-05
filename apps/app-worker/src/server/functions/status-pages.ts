@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { hashPassword } from "../lib/auth";
 import {
   createStatusPage,

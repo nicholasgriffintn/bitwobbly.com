@@ -6,7 +6,7 @@ import { schema } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
 import { requireOwner, useAppSession } from "@bitwobbly/auth/server";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { CreateTeamInputSchema } from "../validators/teams";
 import { DEFAULT_TEAM_SLO_TARGET_PPM } from "../lib/availability";
 import {

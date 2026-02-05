@@ -1,7 +1,7 @@
 import { schema } from "@bitwobbly/shared";
 import { eq, and } from "drizzle-orm";
 
-import type { DB } from "../lib/db";
+import type { DB } from "@bitwobbly/shared";
 
 export async function getAlertRuleById(db: DB, ruleId: string) {
   const results = await db

@@ -1,6 +1,7 @@
 import { withSentry } from "@sentry/cloudflare";
+import { CACHE_TTL } from "@bitwobbly/shared";
 
-import { getDb } from "./lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { extractJsonFromEnvelope } from "./lib/envelope";
 import {
   computeFingerprint,
@@ -32,13 +33,13 @@ import {
 } from "./lib/session-utils";
 
 const groupingRulesResolver = createGroupingRulesResolver({
-  ttlMs: 60_000,
+  ttlMs: CACHE_TTL.GROUPING_RULES,
   listRules: listIssueGroupingRules,
 });
 
 const handler = {
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
-    const db = getDb(env.DB);
+    const db = getDb(env.DB, { withSentry: true });
 
     for (const msg of batch.messages) {
       try {
@@ -52,15 +53,28 @@ const handler = {
           continue;
         }
 
+        const r2Object = await env.SENTRY_RAW.get(job.r2_raw_key);
+        if (!r2Object) {
+          console.error(
+            "[SENTRY-PROCESSOR] R2 object not found:",
+            job.r2_raw_key
+          );
+          msg.ack();
+          continue;
+        }
+
+        const envelopeBytes = await r2Object.arrayBuffer();
+        const rawBytes = new Uint8Array(envelopeBytes);
+
         if (job.item_type === "event" || job.item_type === "transaction") {
-          await processEvent(job, env, db);
+          await processEvent(job, rawBytes, env, db);
         } else if (
           job.item_type === "session" ||
           job.item_type === "sessions"
         ) {
-          await processSession(job, env, db);
+          await processSession(job, rawBytes, db);
         } else if (job.item_type === "client_report") {
-          await processClientReport(job, env, db);
+          await processClientReport(job, rawBytes, db);
         } else {
           console.error(
             `[SENTRY-PROCESSOR] Skipping unsupported type: ${job.item_type}`
@@ -76,11 +90,14 @@ const handler = {
 };
 
 export default withSentry<Env, unknown>(
-  () => ({
-    dsn: "https://33a63e6607f84daba8582fde0acfe117@ingest.bitwobbly.com/6",
+  (env) => ({
+    dsn: env.SENTRY_DSN,
     environment: "production",
     tracesSampleRate: 0.2,
     beforeSend(event) {
+      // Drop all error events to prevent infinite recursion.
+      // This worker processes Sentry events, so sending its own errors
+      // to Sentry would create a feedback loop.
       return null;
     },
   }),
@@ -89,20 +106,11 @@ export default withSentry<Env, unknown>(
 
 async function processEvent(
   job: ProcessJob,
+  rawBytes: Uint8Array,
   env: Env,
   db: ReturnType<typeof getDb>
 ) {
-  const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
-  if (!obj) {
-    console.error("[SENTRY-PROCESSOR] R2 object not found:", job.r2_raw_key);
-    return;
-  }
-
-  const envelopeBytes = await obj.arrayBuffer();
-  const raw = extractJsonFromEnvelope(
-    new Uint8Array(envelopeBytes),
-    job.item_index
-  );
+  const raw = extractJsonFromEnvelope(rawBytes, job.item_index);
 
   const event = parseSentryEvent(raw);
   if (!event) {
@@ -196,20 +204,10 @@ async function processEvent(
 
 async function processSession(
   job: ProcessJob,
-  env: Env,
+  rawBytes: Uint8Array,
   db: ReturnType<typeof getDb>
 ) {
-  const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
-  if (!obj) {
-    console.error("[SENTRY-PROCESSOR] R2 object not found:", job.r2_raw_key);
-    return;
-  }
-
-  const envelopeBytes = await obj.arrayBuffer();
-  const raw = extractJsonFromEnvelope(
-    new Uint8Array(envelopeBytes),
-    job.item_index
-  );
+  const raw = extractJsonFromEnvelope(rawBytes, job.item_index);
 
   const sessionData = parseSessionPayload(raw);
   if (!sessionData) {
@@ -272,20 +270,10 @@ async function processSession(
 
 async function processClientReport(
   job: ProcessJob,
-  env: Env,
+  rawBytes: Uint8Array,
   db: ReturnType<typeof getDb>
 ) {
-  const obj = await env.SENTRY_RAW.get(job.r2_raw_key);
-  if (!obj) {
-    console.error("[SENTRY-PROCESSOR] R2 object not found:", job.r2_raw_key);
-    return;
-  }
-
-  const envelopeBytes = await obj.arrayBuffer();
-  const raw = extractJsonFromEnvelope(
-    new Uint8Array(envelopeBytes),
-    job.item_index
-  );
+  const raw = extractJsonFromEnvelope(rawBytes, job.item_index);
 
   const reportData = parseClientReportPayload(raw);
   if (!reportData) {

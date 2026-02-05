@@ -15,6 +15,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@sentry/cloudflare": "^10.36.0",
     "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {

@@ -6,7 +6,7 @@ import type {
 } from "@bitwobbly/shared";
 import { schema } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
-import type { DB } from "./db";
+import type { DB } from "@bitwobbly/shared";
 import type { Env } from "../types/env";
 import {
   extractUserId,

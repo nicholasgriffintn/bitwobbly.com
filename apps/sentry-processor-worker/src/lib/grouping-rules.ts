@@ -1,5 +1,6 @@
-import type { DB } from "./db";
+import type { DB } from "@bitwobbly/shared";
 import type { SentryEvent } from "./sentry-payloads";
+import { CACHE_TTL } from "@bitwobbly/shared";
 
 type GroupingRule = {
   id: string;
@@ -18,7 +19,7 @@ export function createGroupingRulesResolver(options: {
   ttlMs?: number;
   listRules: (db: DB, projectId: string) => Promise<GroupingRule[]>;
 }) {
-  const ttlMs = options.ttlMs ?? 60_000;
+  const ttlMs = options.ttlMs ?? CACHE_TTL.GROUPING_RULES;
   const cache = new Map<
     string,
     { loadedAtMs: number; rules: GroupingRule[] }

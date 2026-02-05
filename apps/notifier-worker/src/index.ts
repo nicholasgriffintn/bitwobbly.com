@@ -3,13 +3,15 @@ import type {
   MonitorAlertJob,
   IssueAlertJob,
 } from "@bitwobbly/shared";
+import { isAlertJob, isError } from "@bitwobbly/shared";
 import { withSentry } from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
 import { sendAlertEmail, sendIssueAlertEmail } from "./lib/email";
-import { getDb } from "./lib/db";
+import { getDb } from "@bitwobbly/shared";
 import {
   handleStatusPageJob,
+  isStatusPageJob,
   type StatusPageJob,
 } from "./lib/status-page-jobs";
 import {
@@ -23,70 +25,52 @@ import { acquireQueueDedupe } from "./repositories/queue-dedupe";
 
 const handler = {
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
-    const db = getDb(env.DB);
+    const db = getDb(env.DB, { withSentry: true });
 
     for (const msg of batch.messages) {
       try {
-        const job = msg.body as unknown;
+        const job = msg.body;
 
-        if (!job || typeof job !== "object") {
-          msg.ack();
-          continue;
-        }
-
-        const jobType = (job as { type?: unknown }).type;
-        if (typeof jobType !== "string") {
-          msg.ack();
-          continue;
-        }
-
-        if (jobType === "issue" || jobType === "monitor") {
-          const alertJob = job as AlertJob;
-          const ok = await acquireQueueDedupe(db, `alert:${alertJob.alert_id}`);
+        if (isAlertJob(job)) {
+          const ok = await acquireQueueDedupe(db, `alert:${job.alert_id}`);
           if (!ok) {
             msg.ack();
             continue;
           }
 
-          if (alertJob.type === "issue") {
-            await handleIssueAlert(alertJob, env, db);
+          if (job.type === "issue") {
+            await handleIssueAlert(job, env, db);
           } else {
-            await handleMonitorAlert(alertJob, env, db);
+            await handleMonitorAlert(job, env, db);
           }
           msg.ack();
           continue;
         }
 
-        if (jobType.startsWith("status_page_")) {
-          const jobId = (job as { job_id?: unknown }).job_id;
-          if (typeof jobId !== "string" || !jobId) {
-            msg.ack();
-            continue;
-          }
-
-          const ok = await acquireQueueDedupe(db, `status_page:${jobId}`);
+        if (isStatusPageJob(job)) {
+          const ok = await acquireQueueDedupe(db, `status_page:${job.job_id}`);
           if (!ok) {
             msg.ack();
             continue;
           }
 
-          await handleStatusPageJob(job as StatusPageJob, env, db, sendWebhook);
+          await handleStatusPageJob(job, env, db, sendWebhook);
           msg.ack();
           continue;
         }
 
         msg.ack();
       } catch (e: unknown) {
-        const error = e as Error;
-        console.error("job delivery failed", error?.message || e);
+        const errorMessage = isError(e) ? e.message : String(e);
+        console.error("job delivery failed", errorMessage);
       }
     }
   },
 };
 
 export default withSentry<Env, AlertJob>(
-  () => ({
-    dsn: "https://9f74b921b8364cf6af59cbe1a3aa0747@ingest.bitwobbly.com/3",
+  (env) => ({
+    dsn: env.SENTRY_DSN,
     environment: "production",
     tracesSampleRate: 0.2,
   }),

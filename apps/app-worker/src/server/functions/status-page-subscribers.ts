@@ -4,7 +4,7 @@ import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
 import { randomId } from "@bitwobbly/shared";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { getExternalStatusPageBySlug } from "../repositories/status-pages";
 import {
   isStatusPageUnlocked,

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { env } from "cloudflare:workers";
+import { getDb } from "@bitwobbly/shared";
 
-import { getDb } from "@/server/lib/db";
 import { getExternalStatusPageBySlug } from "@/server/repositories/status-pages";
 import {
   isStatusPageUnlocked,

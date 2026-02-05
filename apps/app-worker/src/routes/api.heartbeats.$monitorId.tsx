@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { env } from "cloudflare:workers";
+import { getDb, hashWebhookToken, randomId } from "@bitwobbly/shared";
 
-import { getDb } from "@/server/lib/db";
 import { getMonitorByWebhookToken } from "@/server/repositories/monitors";
-import { hashWebhookToken, randomId } from "@bitwobbly/shared";
 
 const HeartbeatPayloadSchema = z.object({
   token: z.string(),

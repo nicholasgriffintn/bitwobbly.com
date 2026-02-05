@@ -1,5 +1,6 @@
 import { getRequestProtocol, useSession } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
+import { TIME_CONSTANTS } from "@bitwobbly/shared";
 
 import {
   isStatusPageUnlocked as isUnlocked,
@@ -29,7 +30,7 @@ export function useStatusPageSession(): ReturnType<
       sameSite: "lax",
       httpOnly: true,
       path: "/status",
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: TIME_CONSTANTS.ONE_WEEK_SECONDS,
     },
   });
 }

@@ -1,6 +1,6 @@
 import { schema } from "@bitwobbly/shared";
 
-import type { DB } from "../lib/db";
+import type { DB } from "@bitwobbly/shared";
 
 export async function acquireQueueDedupe(
   db: DB,

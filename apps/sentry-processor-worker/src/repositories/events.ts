@@ -1,6 +1,6 @@
 import { schema, nowIso, randomId } from "@bitwobbly/shared";
 import { eq, and, desc } from "drizzle-orm";
-import type { DB } from "../lib/db";
+import type { DB } from "@bitwobbly/shared";
 
 export interface UpsertIssueResult {
   issueId: string;

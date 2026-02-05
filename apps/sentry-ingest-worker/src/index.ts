@@ -1,6 +1,7 @@
 import { withSentry } from "@sentry/cloudflare";
+import { CACHE_TTL } from "@bitwobbly/shared";
 
-import { getDb } from "./lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { parseEnvelope } from "./lib/envelope";
 import { buildManifests } from "./lib/manifest";
 import { isProjectCache } from "./lib/guards";
@@ -44,12 +45,12 @@ const handler = {
       if (isProjectCache(cached)) {
         project = cached;
       } else {
-        const db = getDb(env.DB);
+        const db = getDb(env.DB, { withSentry: true });
         project = await validateDsn(db, sentryProjectId, publicKey);
 
         if (project) {
           await env.KV.put(cacheKey, JSON.stringify(project), {
-            expirationTtl: 300,
+            expirationTtl: CACHE_TTL.DSN_VALIDATION,
           });
         }
       }
@@ -129,11 +130,14 @@ const handler = {
 };
 
 export default withSentry<Env>(
-  () => ({
-    dsn: "https://0b3358d7860a4be0909f9cebdff553b7@ingest.bitwobbly.com/5",
+  (env) => ({
+    dsn: env.SENTRY_DSN,
     environment: "production",
     tracesSampleRate: 0.2,
     beforeSend(event) {
+      // Drop all error events to prevent infinite recursion.
+      // This worker ingests Sentry events, so sending its own errors
+      // to Sentry would create a feedback loop.
       return null;
     },
   }),

@@ -9,7 +9,7 @@ import {
   openIncident,
   resolveIncident,
 } from "./repositories/snapshot";
-import { getDb } from "./lib/db";
+import { getDb } from "@bitwobbly/shared";
 import type { Env } from "./types/env";
 import { jsonResponse } from "./lib/responses";
 import {
@@ -99,7 +99,7 @@ const handler = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    const db = getDb(env.DB);
+    const db = getDb(env.DB, { withSentry: true });
 
     for (const msg of batch.messages) {
       try {
@@ -114,8 +114,8 @@ const handler = {
 };
 
 export default withSentry<Env, CheckJob>(
-  () => ({
-    dsn: "https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2",
+  (env) => ({
+    dsn: env.SENTRY_DSN,
     environment: "production",
     tracesSampleRate: 1.0,
   }),
@@ -127,8 +127,8 @@ export const IncidentCoordinator = instrumentDurableObjectWithSentry<
   any,
   typeof IncidentCoordinatorBase
 >(
-  () => ({
-    dsn: "https://c61e8263b3ae412dbc45ae579aba18f1@ingest.bitwobbly.com/2",
+  (env) => ({
+    dsn: env.SENTRY_DSN,
     environment: "production",
     tracesSampleRate: 0.2,
   }),

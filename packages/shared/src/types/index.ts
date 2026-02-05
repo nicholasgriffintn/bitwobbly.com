@@ -113,3 +113,28 @@ export const MonitorTypeValues = [
 ] as const;
 
 export type MonitorType = (typeof MonitorTypeValues)[number];
+
+export function isAlertJob(value: unknown): value is AlertJob {
+  if (!value || typeof value !== "object") return false;
+
+  const job = value as Record<string, unknown>;
+  if (typeof job.type !== "string") return false;
+  if (typeof job.alert_id !== "string") return false;
+  if (typeof job.team_id !== "string") return false;
+
+  if (job.type === "monitor") {
+    return (
+      typeof job.rule_id === "string" && typeof job.monitor_id === "string"
+    );
+  }
+
+  if (job.type === "issue") {
+    return typeof job.rule_id === "string" && typeof job.issue_id === "string";
+  }
+
+  return false;
+}
+
+export function isError(value: unknown): value is Error {
+  return value instanceof Error;
+}

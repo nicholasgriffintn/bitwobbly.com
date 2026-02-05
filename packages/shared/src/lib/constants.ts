@@ -1,0 +1,20 @@
+export const TIME_CONSTANTS = {
+  ONE_MINUTE_MS: 60_000,
+  ONE_HOUR_MS: 60 * 60 * 1000,
+  ONE_DAY_MS: 24 * 60 * 60 * 1000,
+  ONE_WEEK_MS: 7 * 24 * 60 * 60 * 1000,
+  ONE_MINUTE_SECONDS: 60,
+  ONE_HOUR_SECONDS: 60 * 60,
+  ONE_DAY_SECONDS: 24 * 60 * 60,
+  ONE_WEEK_SECONDS: 7 * 24 * 60 * 60,
+} as const;
+
+export const CACHE_TTL = {
+  DSN_VALIDATION: 300,
+  GROUPING_RULES: 60_000,
+} as const;
+
+export const TIMEOUT_MS = {
+  DEFAULT_WEBHOOK: 8000,
+  DEFAULT_HTTP_CHECK: 8000,
+} as const;

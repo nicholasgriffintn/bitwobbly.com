@@ -38,6 +38,20 @@ export type StatusPageJob =
       is_digest?: boolean;
     };
 
+export function isStatusPageJob(value: unknown): value is StatusPageJob {
+  if (!value || typeof value !== "object") return false;
+
+  const job = value as Record<string, unknown>;
+  if (typeof job.type !== "string") return false;
+  if (typeof job.job_id !== "string") return false;
+
+  if (job.type.startsWith("status_page_")) {
+    return typeof job.subscriber_id === "string";
+  }
+
+  return false;
+}
+
 export async function handleStatusPageJob(
   job: StatusPageJob,
   env: Env,

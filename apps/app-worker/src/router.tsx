@@ -16,7 +16,7 @@ export const getRouter = () => {
   });
 
   Sentry.init({
-    dsn: "https://ff9b8d6c174c4aaa90ddaa53a5fe178d@ingest.bitwobbly.com/1",
+    dsn: import.meta.env.VITE_SENTRY_DSN,
     environment: import.meta.env.MODE,
     release: import.meta.env.VITE_BUILD_ID,
     integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],

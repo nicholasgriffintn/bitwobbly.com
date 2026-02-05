@@ -19,7 +19,7 @@ import {
   useAppSession,
 } from "@bitwobbly/auth/server";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 
 const SignUpSchema = z.object({
   email: z.string().email(),

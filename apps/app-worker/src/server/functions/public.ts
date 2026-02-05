@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { verifyPassword } from "../lib/auth";
 import { isStatusSnapshot } from "../lib/type-guards";
 import {

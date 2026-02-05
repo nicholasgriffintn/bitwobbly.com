@@ -1,7 +1,7 @@
 import { schema, nowIso } from "@bitwobbly/shared";
 import { eq } from "drizzle-orm";
 
-import type { DB } from "../lib/db";
+import type { DB } from "@bitwobbly/shared";
 
 export async function getMonitorState(db: DB, monitorId: string) {
   const states = await db

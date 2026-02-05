@@ -3,7 +3,7 @@ import { MonitorTypeValues, randomId } from "@bitwobbly/shared";
 import * as Sentry from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
-import { getDb } from "./lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { runStatusPageDigests } from "./lib/status-page-digests";
 import {
   getDueMonitors,
@@ -27,7 +27,7 @@ const handler = {
     await Sentry.withMonitor(
       "monitor-scheduler",
       async () => {
-        const db = getDb(env.DB);
+        const db = getDb(env.DB, { withSentry: true });
         const nowSec = Math.floor(Date.now() / 1000);
         const lockTtlSec = 90;
         const maxBatches = 5;
@@ -105,8 +105,8 @@ const handler = {
 };
 
 export default Sentry.withSentry<Env>(
-  () => ({
-    dsn: "https://a2ada73c0a154eb5b035f850d8e0d505@ingest.bitwobbly.com/4",
+  (env) => ({
+    dsn: env.SENTRY_DSN,
     environment: "production",
     tracesSampleRate: 0.2,
   }),

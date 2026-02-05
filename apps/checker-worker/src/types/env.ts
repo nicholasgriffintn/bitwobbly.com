@@ -6,4 +6,5 @@ export interface Env {
   ALERT_JOBS: Queue;
   INCIDENT_DO: DurableObjectNamespace;
   AE?: AnalyticsEngineDataset;
+  SENTRY_DSN: string;
 }

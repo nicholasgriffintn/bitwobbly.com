@@ -1,7 +1,7 @@
 import { requireTeam as baseRequireTeam } from "@bitwobbly/auth/server";
 import { env } from "cloudflare:workers";
 
-import { getDb } from "./db";
+import { getDb } from "@bitwobbly/shared";
 
 export async function requireTeam() {
   const vars = env;

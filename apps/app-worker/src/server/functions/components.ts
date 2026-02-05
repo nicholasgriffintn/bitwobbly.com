@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { schema } from "@bitwobbly/shared";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import {
   listComponents,
   createComponent,

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { env } from "cloudflare:workers";
 
-import { getDb } from "@/server/lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { getMonitorByWebhookToken } from "@/server/repositories/monitors";
 import { hashWebhookToken, randomId } from "@bitwobbly/shared";
 

@@ -4,6 +4,7 @@ export interface Env {
   DB: D1Database;
   SENTRY_RAW: R2Bucket;
   ALERT_JOBS: Queue<IssueAlertJob>;
+  SENTRY_DSN: string;
 }
 
 export interface ProcessJob {

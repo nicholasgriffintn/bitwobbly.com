@@ -1,7 +1,7 @@
 import { and, eq, inArray, lte, gt, or, isNull } from "drizzle-orm";
 import { schema } from "@bitwobbly/shared";
 
-import type { DB } from "../lib/db";
+import type { DB } from "@bitwobbly/shared";
 
 export type MonitorSuppressionState = {
   isMaintenance: boolean;

@@ -30,61 +30,14 @@ import { EventVolumeChart } from "@/components/EventVolumeChart";
 import { SDKDistributionChart } from "@/components/SDKDistributionChart";
 import { GroupingRuleModal } from "@/components/modals/issues";
 import { toTitleCase } from "@/utils/format";
-
-const supportsResolution = (level: string) =>
-  level === "error" || level === "warning";
-
-type TeamMember = {
-  userId: string;
-  email: string;
-  role: string;
-  joinedAt: string;
-};
-
-type Issue = {
-  id: string;
-  title: string;
-  level: string;
-  status: string;
-  culprit: string | null;
-  assignedToUserId: string | null;
-  assignedAt: number | null;
-  snoozedUntil: number | null;
-  ignoredUntil: number | null;
-  resolvedInRelease: string | null;
-  regressedAt: number | null;
-  regressedCount: number;
-  eventCount: number;
-  userCount: number;
-  firstSeenAt: number;
-  lastSeenAt: number;
-  lastSeenRelease: string | null;
-  lastSeenEnvironment: string | null;
-};
-
-type Event = {
-  id: string;
-  type: string;
-  level: string | null;
-  message: string | null;
-  receivedAt: number;
-  issueId: string | null;
-};
-
-type IssueGroupingRule = {
-  id: string;
-  name: string;
-  enabled: number;
-  matchers: {
-    exceptionType?: string;
-    level?: string;
-    messageIncludes?: string;
-    culpritIncludes?: string;
-    transactionIncludes?: string;
-  } | null;
-  fingerprint: string;
-  createdAt: string;
-};
+import type {
+  TeamMember,
+  Issue,
+  Event,
+  IssueGroupingRule,
+} from "@/types/issues";
+import { supportsResolution } from "@/types/issues";
+import { TIME_CONSTANTS } from "@bitwobbly/shared";
 
 export const Route = createFileRoute("/app/issues/$projectId/")({
   component: ProjectIssues,
@@ -315,7 +268,10 @@ function ProjectIssues() {
           projectId,
           issueId,
           status: newStatus,
-          ignoredUntil: newStatus === "ignored" ? now + 7 * 24 * 60 * 60 : null,
+          ignoredUntil:
+            newStatus === "ignored"
+              ? now + TIME_CONSTANTS.ONE_WEEK_SECONDS
+              : null,
           resolvedInRelease:
             newStatus === "resolved"
               ? (issue?.lastSeenRelease ?? null)

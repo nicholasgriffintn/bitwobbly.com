@@ -1,6 +1,6 @@
 import { schema, randomId } from "@bitwobbly/shared";
 import { eq, and, gte, isNull, or } from "drizzle-orm";
-import type { DB } from "../lib/db";
+import type { DB } from "@bitwobbly/shared";
 
 export async function getProjectTeamId(db: DB, projectId: string) {
   const results = await db

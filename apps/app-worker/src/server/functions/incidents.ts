@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { randomId } from "@bitwobbly/shared";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import {
   listAllIncidents,
   listOpenIncidents,

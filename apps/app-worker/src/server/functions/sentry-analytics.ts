@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { requireAuth } from "@bitwobbly/auth/server";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { requireTeam } from "../lib/auth-middleware";
 import { getSentryProject } from "../repositories/sentry-projects";
 import { withCache, analyticsKey } from "../lib/cache";

@@ -9,7 +9,7 @@ import {
 import { getMonitorSuppressionState } from "../repositories/suppressions";
 import type { Env } from "../types/env";
 import { isRecord } from "./guards";
-import type { DB } from "./db";
+import type { DB } from "@bitwobbly/shared";
 import { computeHeartbeatStatus, parseTargetHostPort } from "./monitor-utils";
 import { readResponseTextUpTo } from "./http-utils";
 import { checkTlsExpiry } from "./checks/tls";

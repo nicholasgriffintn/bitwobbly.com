@@ -15,70 +15,9 @@ import {
 } from "@/server/functions/sentry";
 import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
-
-const supportsResolution = (level: string) =>
-  level === "error" || level === "warning";
-
-type Event = {
-  id: string;
-  type: string;
-  level: string | null;
-  message: string | null;
-  receivedAt: number;
-  issueId: string | null;
-  user?: {
-    id?: string;
-    username?: string;
-    email?: string;
-    ip_address?: string;
-  } | null;
-  tags?: Record<string, string> | null;
-  contexts?: {
-    device?: { [key: string]: {} };
-    os?: { [key: string]: {} };
-    runtime?: { [key: string]: {} };
-    browser?: { [key: string]: {} };
-    app?: { [key: string]: {} };
-  } | null;
-  request?: {
-    url?: string;
-    method?: string;
-  } | null;
-  breadcrumbs?: Array<{
-    timestamp?: string;
-    type?: string;
-    category?: string;
-    message?: string;
-    level?: string;
-  }> | null;
-};
-
-type Issue = {
-  id: string;
-  title: string;
-  level: string;
-  status: string;
-  culprit: string | null;
-  assignedToUserId: string | null;
-  assignedAt: number | null;
-  snoozedUntil: number | null;
-  ignoredUntil: number | null;
-  resolvedInRelease: string | null;
-  regressedAt: number | null;
-  regressedCount: number;
-  eventCount: number;
-  firstSeenAt: number;
-  lastSeenAt: number;
-  lastSeenRelease: string | null;
-  lastSeenEnvironment: string | null;
-};
-
-type TeamMember = {
-  userId: string;
-  email: string;
-  role: string;
-  joinedAt: string;
-};
+import type { Event, Issue, TeamMember } from "@/types/issues";
+import { supportsResolution } from "@/types/issues";
+import { TIME_CONSTANTS } from "@bitwobbly/shared";
 
 function buildIssueSummary(issue: Issue) {
   return JSON.stringify(
@@ -386,7 +325,7 @@ function IssueDetail() {
                       onClick={() =>
                         applyIssueUpdate({
                           status: "ignored",
-                          ignoredUntil: now + 7 * 24 * 60 * 60,
+                          ignoredUntil: now + TIME_CONSTANTS.ONE_WEEK_SECONDS,
                         })
                       }
                     >

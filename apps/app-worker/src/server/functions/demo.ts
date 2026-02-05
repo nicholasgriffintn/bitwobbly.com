@@ -5,7 +5,7 @@ import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { requireOwner } from "@bitwobbly/auth/server";
 import { hashWebhookToken, schema } from "@bitwobbly/shared";
 
-import { getDb } from "../lib/db";
+import { getDb } from "@bitwobbly/shared";
 import { hashPassword } from "../lib/auth";
 import { requireTeam } from "../lib/auth-middleware";
 import { DEFAULT_TEAM_SLO_TARGET_PPM } from "../lib/availability";

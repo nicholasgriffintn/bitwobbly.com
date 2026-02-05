@@ -4,4 +4,5 @@ export interface Env {
   DB: D1Database;
   ALERT_JOBS: Queue;
   CHECK_JOBS: Queue;
+  SENTRY_DSN: string;
 }

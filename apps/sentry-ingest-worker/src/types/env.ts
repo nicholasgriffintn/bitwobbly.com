@@ -7,4 +7,5 @@ export interface Env {
   SENTRY_EVENTS: Queue;
   KV: KVNamespace;
   SENTRY_RATE_LIMITER: RateLimit;
+  SENTRY_DSN: string;
 }
