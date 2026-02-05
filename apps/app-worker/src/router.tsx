@@ -8,6 +8,10 @@ let sentryInitPromise: Promise<void> | null = null;
 export const getRouter = () => {
   const router = createRouter({
     routeTree,
+    context: {
+      head: "",
+    },
+    defaultPreload: "intent",
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
     notFoundMode: "root",
