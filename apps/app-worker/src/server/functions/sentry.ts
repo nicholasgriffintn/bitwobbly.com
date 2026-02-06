@@ -237,9 +237,46 @@ export const getSentryEventPayloadFn = createServerFn({ method: "GET" })
     const obj = await env.SENTRY_RAW.get(event.r2Key);
     if (!obj) throw new Error("Payload not found in storage");
 
-    const payload = await obj.text();
+    const raw = await obj.arrayBuffer();
+    const payload = await decodePayload(
+      raw,
+      obj.httpMetadata?.contentEncoding || null
+    );
     return { event, payload };
   });
+
+async function decodePayload(
+  raw: ArrayBuffer,
+  contentEncoding: string | null
+): Promise<string> {
+  const rawBytes = new Uint8Array(raw);
+  const encoding = contentEncoding?.toLowerCase() || "";
+  const isGzip =
+    encoding.includes("gzip") ||
+    (rawBytes.length >= 2 && rawBytes[0] === 0x1f && rawBytes[1] === 0x8b);
+
+  let decodedBytes = rawBytes;
+  if (isGzip && typeof DecompressionStream !== "undefined") {
+    try {
+      const stream = new DecompressionStream("gzip");
+      const decompressed = new Response(
+        new Blob([rawBytes]).stream().pipeThrough(stream)
+      );
+      const buffer = await decompressed.arrayBuffer();
+      decodedBytes = new Uint8Array(buffer);
+    } catch {
+      decodedBytes = rawBytes;
+    }
+  }
+
+  const text = new TextDecoder().decode(decodedBytes);
+  try {
+    const parsed = JSON.parse(text);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return text;
+  }
+}
 
 export const listSentryIssueGroupingRulesFn = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => ListIssueGroupingRulesSchema.parse(data))
