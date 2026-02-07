@@ -16,6 +16,6 @@ superset init
 
 superset set-database-uri \
     --database_name "Trino R2" \
-    --uri "trino://dashboard-trino:8080/r2"
+    --uri "trino://trino@dashboard-trino:8080/r2"
 
 echo "Superset initialization complete!"

@@ -22,6 +22,7 @@ RUN . /app/.venv/bin/activate && \
       mysqlclient \
       pymssql \
       trino \
+      sqlalchemy-trino \
       apache-superset[trino] \
       openpyxl \
       redis \
@@ -29,9 +30,12 @@ RUN . /app/.venv/bin/activate && \
       gunicorn \
       gevent
 
-RUN python -c "import psycopg2; print('psycopg2 OK')" && \
+RUN . /app/.venv/bin/activate && \
+    python -c "import psycopg2; print('psycopg2 OK')" && \
     python -c "import redis; print('redis OK')" && \
-    python -c "import flask_cors; print('flask-cors OK')"
+    python -c "import flask_cors; print('flask-cors OK')" && \
+    python -c "import trino; print('trino OK')" && \
+    python -c "from trino.sqlalchemy import dialect; print('trino.sqlalchemy OK')"
 
 RUN apt-get purge -y \
       build-essential \

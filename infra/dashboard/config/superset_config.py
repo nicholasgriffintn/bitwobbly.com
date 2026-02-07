@@ -22,6 +22,8 @@ CACHE_CONFIG = {
     "CACHE_REDIS_URL": f"redis://{os.getenv('REDIS_HOST', 'valkey')}:6379/0",
 }
 
+RATELIMIT_STORAGE_URI = f"redis://{os.getenv('REDIS_HOST', 'valkey')}:6379/1"
+
 FEATURE_FLAGS = {
     "ALERT_REPORTS": False,
     "DASHBOARD_NATIVE_FILTERS": True,

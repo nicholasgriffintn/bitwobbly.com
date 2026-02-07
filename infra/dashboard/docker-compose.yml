@@ -38,6 +38,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - dashboard
 
   trino:
     image: trinodb/trino:latest
@@ -53,9 +55,7 @@ services:
       - dashboard
 
   superset:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: ./superset
     container_name: dashboard-superset
     user: "superset"
     ports:
