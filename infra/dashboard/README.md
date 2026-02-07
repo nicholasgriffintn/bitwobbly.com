@@ -64,99 +64,177 @@ You can also connect to the Trino CLI to run queries, first run the following co
 docker exec -it dashboard-trino trino
 ```
 
-And then run SQL queries against the R2 catalog:
+## Example Queries
 
 ```sql
--- Show all schemas in the R2 catalog
-SHOW SCHEMAS IN r2;
-
--- View all columns and data structure
-SELECT *
-FROM r2.default.issue_manifests
-LIMIT 10;
-
--- Count total events
-SELECT COUNT(*)
-FROM r2.default.issue_manifests;
-
--- Count events by type
-SELECT item_type, COUNT(*) as count
-FROM r2.default.issue_manifests
-GROUP BY item_type;
-
--- SDK distribution with version details
+-- Error Rate Overview (Last 7 Days)
 SELECT
-  sdk_name,
-  sdk_version,
-  COUNT(*) as event_count,
-  SUM(item_length_bytes) / 1024 / 1024 as total_mb
-FROM r2.default.issue_manifests
-WHERE item_type = 'event'
-GROUP BY sdk_name, sdk_version
-ORDER BY event_count DESC
-LIMIT 20;
-
--- Clock drift analysis by SDK
-SELECT
-  sdk_name,
-  AVG(sent_at_drift_ms) / 1000.0 as avg_drift_seconds,
-  MAX(sent_at_drift_ms) / 1000.0 as max_drift_seconds,
-  MIN(sent_at_drift_ms) / 1000.0 as min_drift_seconds,
-  COUNT(*) as sample_count
-FROM r2.default.issue_manifests
-WHERE sent_at IS NOT NULL
-  AND sent_at_drift_ms IS NOT NULL
-GROUP BY sdk_name
-ORDER BY avg_drift_seconds DESC;
-
--- Top error messages for a project
-SELECT
-  event_message,
-  COUNT(*) as occurrence_count,
-  MIN(received_at) as first_seen,
-  MAX(received_at) as last_seen
-FROM r2.default.issue_manifests
-WHERE sentry_project_id = 123
-  AND item_type = 'event'
-  AND event_message IS NOT NULL
-GROUP BY event_message
-ORDER BY occurrence_count DESC
-LIMIT 50;
-
--- Error rate by release and environment
-SELECT
+  date_trunc('hour', from_unixtime(received_at)) as time_bucket,
+  item_type,
   event_release,
   event_environment,
   COUNT(*) as error_count,
-  COUNT(DISTINCT event_user_id) as affected_users
-FROM r2.default.issue_manifests
-WHERE sentry_project_id = 123
-  AND item_type = 'event'
-  AND event_release IS NOT NULL
-  AND received_at >= 1704067200
-GROUP BY event_release, event_environment
-ORDER BY error_count DESC;
-
--- Hourly event pattern analysis
-SELECT
-  HOUR(from_unixtime(received_at)) as hour_of_day,
-  COUNT(*) as event_count,
-  AVG(item_length_bytes) as avg_size_bytes
+  COUNT(DISTINCT event_user_id) as unique_users,
+  COUNT(DISTINCT sentry_project_id) as affected_projects,
+  AVG(item_length_bytes) / 1024.0 as avg_size_kb
 FROM r2.default.issue_manifests
 WHERE received_at >= to_unixtime(current_timestamp - interval '7' day)
-GROUP BY HOUR(from_unixtime(received_at))
-ORDER BY hour_of_day;
+  AND item_type IN ('event', 'transaction')
+GROUP BY 1, 2, 3, 4
+ORDER BY time_bucket DESC;
 
--- Top contributors by data volume
+-- SDK Distribution & Performance
 SELECT
   sdk_name,
-  event_release,
+  sdk_version,
+  item_type,
   COUNT(*) as event_count,
-  SUM(item_length_bytes) / 1024 / 1024 as total_mb,
-  AVG(item_length_bytes) as avg_bytes
+  SUM(item_length_bytes) / 1024 / 1024.0 as total_mb,
+  AVG(item_length_bytes) as avg_bytes,
+  AVG(sent_at_drift_ms) / 1000.0 as avg_drift_seconds,
+  COUNT(DISTINCT sentry_project_id) as project_count,
+  MIN(received_at) as first_seen,
+  MAX(received_at) as last_seen
 FROM r2.default.issue_manifests
-WHERE received_at >= to_unixtime(current_timestamp - interval '1' day)
-GROUP BY sdk_name, event_release
-ORDER BY total_mb DESC
-LIMIT 20;
+WHERE received_at >= to_unixtime(current_timestamp - interval '30' day)
+GROUP BY sdk_name, sdk_version, item_type
+ORDER BY event_count DESC;
+
+-- Clock Drift Analysis
+SELECT
+  sdk_name,
+  sdk_version,
+  event_environment,
+  COUNT(*) as sample_count,
+  AVG(sent_at_drift_ms) / 1000.0 as avg_drift_sec,
+  STDDEV(sent_at_drift_ms / 1000.0) as drift_stddev,
+  MIN(sent_at_drift_ms) / 1000.0 as min_drift_sec,
+  MAX(sent_at_drift_ms) / 1000.0 as max_drift_sec,
+  APPROX_PERCENTILE(sent_at_drift_ms / 1000.0, 0.5) as median_drift_sec,
+  APPROX_PERCENTILE(sent_at_drift_ms / 1000.0, 0.95) as p95_drift_sec
+FROM r2.default.issue_manifests
+WHERE sent_at IS NOT NULL
+  AND sent_at_drift_ms IS NOT NULL
+  AND received_at >= to_unixtime(current_timestamp - interval '7' day)
+GROUP BY sdk_name, sdk_version, event_environment
+HAVING COUNT(*) >= 10
+ORDER BY ABS(avg_drift_sec) DESC;
+
+-- Top Error Messages
+SELECT
+  event_message,
+  event_environment,
+  event_release,
+  COUNT(*) as occurrence_count,
+  COUNT(DISTINCT event_user_id) as affected_users,
+  MIN(from_unixtime(received_at)) as first_seen,
+  MAX(from_unixtime(received_at)) as last_seen,
+  ARBITRARY(sentry_project_id) as sample_project_id
+FROM r2.default.issue_manifests
+WHERE item_type = 'event'
+  AND event_message IS NOT NULL
+  AND received_at >= to_unixtime(current_timestamp - interval '7' day)
+GROUP BY event_message, event_environment, event_release
+ORDER BY occurrence_count DESC
+LIMIT 100;
+
+-- Release Analysis
+SELECT
+  event_release,
+  event_environment,
+  sentry_project_id,
+  COUNT(*) as event_count,
+  COUNT(DISTINCT event_user_id) as user_count,
+  COUNT(DISTINCT event_message) as unique_errors,
+  SUM(item_length_bytes) / 1024 / 1024.0 as total_mb,
+  MIN(from_unixtime(received_at)) as first_event,
+  MAX(from_unixtime(received_at)) as last_event,
+  date_diff('hour', MIN(from_unixtime(received_at)), MAX(from_unixtime(received_at))) as release_age_hours
+FROM r2.default.issue_manifests
+WHERE event_release IS NOT NULL
+  AND received_at >= to_unixtime(current_timestamp - interval '30' day)
+GROUP BY event_release, event_environment, sentry_project_id
+ORDER BY first_event DESC;
+
+-- Hourly Pattern Analysis
+SELECT
+  HOUR(from_unixtime(received_at)) as hour_of_day,
+  DAY_OF_WEEK(from_unixtime(received_at)) as day_of_week,
+  item_type,
+  COUNT(*) as event_count,
+  AVG(item_length_bytes) as avg_size_bytes,
+  COUNT(DISTINCT event_user_id) as unique_users
+FROM r2.default.issue_manifests
+WHERE received_at >= to_unixtime(current_timestamp - interval '30' day)
+GROUP BY hour_of_day, day_of_week, item_type
+ORDER BY day_of_week, hour_of_day;
+
+-- Data Volume by Project
+SELECT
+  sentry_project_id,
+  date_trunc('day', from_unixtime(received_at)) as date,
+  item_type,
+  COUNT(*) as event_count,
+  SUM(item_length_bytes) / 1024 / 1024.0 as total_mb,
+  AVG(item_length_bytes) as avg_bytes,
+  MIN(item_length_bytes) as min_bytes,
+  MAX(item_length_bytes) as max_bytes,
+  APPROX_PERCENTILE(item_length_bytes, 0.95) as p95_bytes
+FROM r2.default.issue_manifests
+WHERE received_at >= to_unixtime(current_timestamp - interval '90' day)
+GROUP BY sentry_project_id, date, item_type
+ORDER BY date DESC, total_mb DESC;
+
+-- User Impact Analysis
+SELECT
+  event_user_id,
+  event_environment,
+  COUNT(*) as error_count,
+  COUNT(DISTINCT event_message) as unique_errors,
+  COUNT(DISTINCT event_release) as affected_releases,
+  MIN(from_unixtime(received_at)) as first_error,
+  MAX(from_unixtime(received_at)) as last_error,
+  date_diff('hour', MIN(from_unixtime(received_at)), MAX(from_unixtime(received_at))) as error_span_hours
+FROM r2.default.issue_manifests
+WHERE event_user_id IS NOT NULL
+  AND item_type = 'event'
+  AND received_at >= to_unixtime(current_timestamp - interval '7' day)
+GROUP BY event_user_id, event_environment
+HAVING error_count > 1
+ORDER BY error_count DESC
+LIMIT 500;
+
+-- Environment Comparison
+SELECT
+  event_environment,
+  item_type,
+  date_trunc('hour', from_unixtime(received_at)) as time_bucket,
+  COUNT(*) as event_count,
+  COUNT(DISTINCT event_message) as unique_errors,
+  COUNT(DISTINCT event_user_id) as affected_users,
+  AVG(item_length_bytes) / 1024.0 as avg_size_kb,
+  SUM(item_length_bytes) / 1024 / 1024.0 as total_mb
+FROM r2.default.issue_manifests
+WHERE received_at >= to_unixtime(current_timestamp - interval '7' day)
+  AND event_environment IS NOT NULL
+GROUP BY event_environment, item_type, time_bucket
+ORDER BY time_bucket DESC;
+
+-- Real-time Event Stream (Last Hour)
+SELECT
+  from_unixtime(received_at) as received_time,
+  item_type,
+  event_message,
+  event_environment,
+  event_release,
+  event_user_id,
+  sdk_name,
+  sdk_version,
+  sentry_project_id,
+  item_length_bytes / 1024.0 as size_kb,
+  sent_at_drift_ms / 1000.0 as drift_seconds
+FROM r2.default.issue_manifests
+WHERE received_at >= to_unixtime(current_timestamp - interval '1' hour)
+ORDER BY received_at DESC
+LIMIT 1000;
 ```
