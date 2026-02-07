@@ -1,4 +1,10 @@
-import { getArray, getNumber, getString, isRecord, safeJsonParse } from "./guards";
+import {
+  getArray,
+  getNumber,
+  getString,
+  isRecord,
+  safeJsonParse,
+} from "./guards";
 import type { SentryEvent } from "./sentry-payloads";
 
 export type OtlpMappedEvent = {
@@ -45,20 +51,18 @@ export async function parseOtlpTraces(
         const status = isRecord(span.status) ? span.status : null;
         const statusCode = parseStatusCode(status?.code);
         const httpStatus = parseHttpStatus(attrs);
+        const isCanceledByClient = attrs["cloudflare.outcome"] === "canceled";
         const isError =
-          statusCode === "error" ||
+          (statusCode === "error" && !isCanceledByClient) ||
           (typeof httpStatus === "number" && httpStatus >= 500);
 
         const name = getString(span, "name") || "OTLP Span";
-        const transaction =
-          attrs["http.route"] ||
-          attrs["rpc.method"] ||
-          attrs["url.path"] ||
-          name;
-        const message =
-          (status && getString(status, "message")) ||
-          (isError ? name : null) ||
-          name;
+        const httpMethod = attrs["http.method"] || attrs["http.request.method"];
+        const httpPath =
+          attrs["http.route"] || attrs["url.path"] || attrs["http.target"];
+        const transaction = httpPath || attrs["rpc.method"] || name;
+        const displayName = buildDisplayName(httpMethod, httpPath, name);
+        const message = (status && getString(status, "message")) || displayName;
 
         const event: SentryEvent = {
           message,
@@ -121,10 +125,7 @@ export async function parseOtlpLogs(
 
         const body = readAnyValue(record.body);
         const message =
-          body ||
-          severityText ||
-          attrs["exception.message"] ||
-          "Log entry";
+          body || severityText || attrs["exception.message"] || "Log entry";
 
         const event: SentryEvent = {
           message,
@@ -213,11 +214,18 @@ function readAnyValue(value: unknown): string | null {
   if (!isRecord(value)) return null;
 
   if (typeof value.stringValue === "string") return value.stringValue;
-  if (typeof value.boolValue === "boolean") return value.boolValue ? "true" : "false";
-  if (typeof value.intValue === "number" || typeof value.intValue === "string") {
+  if (typeof value.boolValue === "boolean")
+    return value.boolValue ? "true" : "false";
+  if (
+    typeof value.intValue === "number" ||
+    typeof value.intValue === "string"
+  ) {
     return String(value.intValue);
   }
-  if (typeof value.doubleValue === "number" || typeof value.doubleValue === "string") {
+  if (
+    typeof value.doubleValue === "number" ||
+    typeof value.doubleValue === "string"
+  ) {
     return String(value.doubleValue);
   }
   if (typeof value.bytesValue === "string") return value.bytesValue;
@@ -272,9 +280,7 @@ function buildUser(attrs: Record<string, string>) {
 
 function buildRequest(attrs: Record<string, string>) {
   const method =
-    attrs["http.method"] ||
-    attrs["http.request.method"] ||
-    attrs["rpc.method"];
+    attrs["http.method"] || attrs["http.request.method"] || attrs["rpc.method"];
   const url =
     attrs["url.full"] ||
     attrs["http.url"] ||
@@ -292,6 +298,17 @@ function buildRequest(attrs: Record<string, string>) {
     url: url || undefined,
     method: method || undefined,
   };
+}
+
+function buildDisplayName(
+  method?: string,
+  path?: string,
+  fallback?: string
+): string {
+  if (method && path) return `${method} ${path}`;
+  if (path) return path;
+  if (method) return method;
+  return fallback || "OTLP Span";
 }
 
 function buildUrl(
@@ -334,7 +351,8 @@ function pickTags(
 
   const add = (key: string, value: string | undefined) => {
     if (!value || count >= MAX_TAGS || key in tags) return;
-    const trimmed = value.length > MAX_TAG_VALUE ? value.slice(0, MAX_TAG_VALUE) : value;
+    const trimmed =
+      value.length > MAX_TAG_VALUE ? value.slice(0, MAX_TAG_VALUE) : value;
     tags[key] = trimmed;
     count += 1;
   };
