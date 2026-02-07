@@ -25,6 +25,11 @@ flowchart TD
   Processor --> D1["Groups events into issues, writes to D1"]
 ```
 
+Alongside the workers, we have some infrastructure that is not part of the core system but would be if you were using those particular services. This includes:
+
+- `infra/dashboard` -- Superset dashboard with a Trino query engine for querying the data catalog and visualising data.
+- `infra/cognito-email-sender` -- A CDK setup for deploying a custom AWS Lambda function to send emails via Resend, used for Cognito user pool custom email messages.
+
 ### Apps
 
 | App                            | Purpose                                                                                                                                  |

@@ -1,0 +1,4 @@
+.env
+postgres_data/
+superset_data/
+valkey_data/
