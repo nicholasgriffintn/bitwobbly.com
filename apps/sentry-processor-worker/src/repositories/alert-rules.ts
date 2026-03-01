@@ -1,5 +1,5 @@
 import { schema, randomId } from "@bitwobbly/shared";
-import { eq, and, gte, lt, isNull, or, count } from "drizzle-orm";
+import { eq, and, gte, lt, isNull, or, count, sql } from "drizzle-orm";
 import type { DB } from "@bitwobbly/shared";
 
 export async function getProjectTeamId(db: DB, projectId: string) {
@@ -49,13 +49,19 @@ export async function countEventsInWindow(
   return result[0]?.total ?? 0;
 }
 
-export async function getEventsInWindow(
+export async function countUniqueUsersInWindow(
   db: DB,
   issueId: string,
   windowStart: number
-) {
-  return await db
-    .select({ user: schema.sentryEvents.user })
+): Promise<number> {
+  const result = await db
+    .select({
+      total: sql<number>`count(distinct coalesce(
+        json_extract(${schema.sentryEvents.user}, '$.id'),
+        json_extract(${schema.sentryEvents.user}, '$.email'),
+        json_extract(${schema.sentryEvents.user}, '$.ip_address')
+      ))`,
+    })
     .from(schema.sentryEvents)
     .where(
       and(
@@ -63,6 +69,7 @@ export async function getEventsInWindow(
         gte(schema.sentryEvents.receivedAt, windowStart)
       )
     );
+  return result[0]?.total ?? 0;
 }
 
 export async function getEventsForComparison(

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -63,7 +63,10 @@ export const Route = createFileRoute("/app/monitors")({
   loader: async () => {
     const groupsPromise = listMonitorGroupsFn().then((r) => r.groups);
     const monitorsRes = await listMonitorsFn();
-    return { monitors: monitorsRes.monitors, groupsPromise: defer(groupsPromise) };
+    return {
+      monitors: monitorsRes.monitors,
+      groupsPromise: defer(groupsPromise),
+    };
   },
 });
 
@@ -183,6 +186,53 @@ function Monitors() {
     }
   };
 
+  const sections = useMemo(() => {
+    if (!monitors.length) return [];
+
+    const byGroupId = new Map<string | null, Monitor[]>();
+    for (const monitor of monitors) {
+      const gid = monitor.groupId || null;
+      const arr = byGroupId.get(gid) || [];
+      arr.push(monitor);
+      byGroupId.set(gid, arr);
+    }
+
+    const result: Array<{ id: string; title: string; items: Monitor[] }> = [];
+
+    if (groups.length) {
+      for (const g of groups) {
+        const items = byGroupId.get(g.id) || [];
+        if (!items.length) continue;
+        result.push({ id: g.id, title: g.name, items });
+      }
+      const ungrouped = byGroupId.get(null) || [];
+      if (ungrouped.length) {
+        result.push({
+          id: "__ungrouped__",
+          title: "Ungrouped",
+          items: ungrouped,
+        });
+      }
+    } else {
+      for (const [gid, items] of byGroupId.entries()) {
+        if (!items.length) continue;
+        result.push({
+          id: gid ?? "__ungrouped__",
+          title: gid ? `Group ${gid}` : "Ungrouped",
+          items,
+        });
+      }
+      result.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return result;
+  }, [monitors, groups]);
+
+  const onModalSuccess = useCallback(async () => {
+    await refreshMonitors();
+    await refreshGroups();
+  }, []);
+
   return (
     <Page className="page-stack">
       <PageHeader
@@ -220,176 +270,133 @@ function Monitors() {
           </Button>
         </CardTitle>
 
-        {(() => {
-          if (!monitors.length) {
-            return (
-              <ListContainer isEmpty emptyMessage="No monitors configured.">
-                {null}
-              </ListContainer>
-            );
-          }
-
-          const byGroupId = new Map<string | null, Monitor[]>();
-          for (const monitor of monitors) {
-            const gid = monitor.groupId || null;
-            const arr = byGroupId.get(gid) || [];
-            arr.push(monitor);
-            byGroupId.set(gid, arr);
-          }
-
-          const sections: Array<{
-            id: string;
-            title: string;
-            items: Monitor[];
-          }> = [];
-
-          if (groups.length) {
-            for (const g of groups) {
-              const items = byGroupId.get(g.id) || [];
-              if (!items.length) continue;
-              sections.push({ id: g.id, title: g.name, items });
-            }
-
-            const ungrouped = byGroupId.get(null) || [];
-            if (ungrouped.length) {
-              sections.push({
-                id: "__ungrouped__",
-                title: "Ungrouped",
-                items: ungrouped,
-              });
-            }
-          } else {
-            for (const [gid, items] of byGroupId.entries()) {
-              if (!items.length) continue;
-              sections.push({
-                id: gid ?? "__ungrouped__",
-                title: gid ? `Group ${gid}` : "Ungrouped",
-                items,
-              });
-            }
-            sections.sort((a, b) => a.title.localeCompare(b.title));
-          }
-
-          const renderMonitorRow = (monitor: Monitor) => {
-            const rawStatus = monitor.state?.lastStatus ?? "unknown";
-            const status = isStatusType(rawStatus) ? rawStatus : "unknown";
-            const isMetricsExpandable =
-              monitor.type !== "webhook" && monitor.type !== "manual";
-            const isMetricsExpanded = expandedMonitorId === monitor.id;
-
-            return (
-              <ListRow
-                key={monitor.id}
-                className="list-item-expanded"
-                title={monitor.name}
-                badges={
-                  !monitor.enabled ? (
-                    <Badge size="small" variant="muted">
-                      Paused
-                    </Badge>
-                  ) : null
-                }
-                subtitle={
-                  <>
-                    {monitor.url ? <div>{monitor.url}</div> : null}
-                    <div className={monitor.url ? "mt-1" : ""}>
-                      <StatusBadge status={status}>
-                        {toTitleCase(status)}
-                      </StatusBadge>
-                      {" · "}
-                      <Badge size="small">{toTitleCase(monitor.type)}</Badge>
-                      {isMetricsExpandable && (
-                        <>
-                          {" · "}
-                          {monitor.intervalSeconds}s interval ·{" "}
-                          {monitor.timeoutMs}ms timeout ·{" "}
-                          {monitor.failureThreshold} failures
-                        </>
-                      )}
-                    </div>
-                  </>
-                }
-                actions={
-                  <>
-                    {isMetricsExpandable && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          setExpandedMonitorId(
-                            isMetricsExpanded ? null : monitor.id
-                          )
-                        }
-                      >
-                        {isMetricsExpanded ? "Hide" : "Metrics"}
-                      </Button>
-                    )}
-                    {monitor.type === "manual" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => openManualStatusModal(monitor.id)}
-                      >
-                        Set Status
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => startEditing(monitor)}
-                    >
-                      Edit
-                    </Button>
-                    {isMetricsExpandable && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        color={monitor.enabled ? "warning" : "success"}
-                        onClick={() => toggleEnabled(monitor)}
-                      >
-                        {monitor.enabled ? "Pause" : "Resume"}
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      color="danger"
-                      onClick={() => onDelete(monitor.id)}
-                    >
-                      Delete
-                    </Button>
-                  </>
-                }
-                expanded={isMetricsExpandable && isMetricsExpanded}
-                expandedContent={
-                  isMetricsExpandable ? (
-                    <div className="mt-4">
-                      <MetricsChart monitorId={monitor.id} />
-                    </div>
-                  ) : null
-                }
-              />
-            );
-          };
-
-          return (
-            <div className="space-y-6">
-              {sections.map((section) => (
-                <div key={section.id}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="text-sm font-semibold">{section.title}</div>
-                    <Badge size="small" variant="muted">
-                      {section.items.length}
-                    </Badge>
-                  </div>
-                  <ListContainer isEmpty={false} emptyMessage="">
-                    {section.items.map(renderMonitorRow)}
-                  </ListContainer>
+        {!monitors.length ? (
+          <ListContainer isEmpty emptyMessage="No monitors configured.">
+            {null}
+          </ListContainer>
+        ) : (
+          <div className="space-y-6">
+            {sections.map((section) => (
+              <div key={section.id}>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-sm font-semibold">{section.title}</div>
+                  <Badge size="small" variant="muted">
+                    {section.items.length}
+                  </Badge>
                 </div>
-              ))}
-            </div>
-          );
-        })()}
+                <ListContainer isEmpty={false} emptyMessage="">
+                  {section.items.map((monitor) => {
+                    const rawStatus = monitor.state?.lastStatus ?? "unknown";
+                    const status = isStatusType(rawStatus)
+                      ? rawStatus
+                      : "unknown";
+                    const isMetricsExpandable =
+                      monitor.type !== "webhook" && monitor.type !== "manual";
+                    const isMetricsExpanded = expandedMonitorId === monitor.id;
+
+                    return (
+                      <ListRow
+                        key={monitor.id}
+                        className="list-item-expanded"
+                        title={monitor.name}
+                        badges={
+                          !monitor.enabled ? (
+                            <Badge size="small" variant="muted">
+                              Paused
+                            </Badge>
+                          ) : null
+                        }
+                        subtitle={
+                          <>
+                            {monitor.url ? <div>{monitor.url}</div> : null}
+                            <div className={monitor.url ? "mt-1" : ""}>
+                              <StatusBadge status={status}>
+                                {toTitleCase(status)}
+                              </StatusBadge>
+                              {" · "}
+                              <Badge size="small">
+                                {toTitleCase(monitor.type)}
+                              </Badge>
+                              {isMetricsExpandable && (
+                                <>
+                                  {" · "}
+                                  {monitor.intervalSeconds}s interval ·{" "}
+                                  {monitor.timeoutMs}ms timeout ·{" "}
+                                  {monitor.failureThreshold} failures
+                                </>
+                              )}
+                            </div>
+                          </>
+                        }
+                        actions={
+                          <>
+                            {isMetricsExpandable && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  setExpandedMonitorId(
+                                    isMetricsExpanded ? null : monitor.id
+                                  )
+                                }
+                              >
+                                {isMetricsExpanded ? "Hide" : "Metrics"}
+                              </Button>
+                            )}
+                            {monitor.type === "manual" && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  openManualStatusModal(monitor.id)
+                                }
+                              >
+                                Set Status
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => startEditing(monitor)}
+                            >
+                              Edit
+                            </Button>
+                            {isMetricsExpandable && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                color={monitor.enabled ? "warning" : "success"}
+                                onClick={() => toggleEnabled(monitor)}
+                              >
+                                {monitor.enabled ? "Pause" : "Resume"}
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              color="danger"
+                              onClick={() => onDelete(monitor.id)}
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        }
+                        expanded={isMetricsExpandable && isMetricsExpanded}
+                        expandedContent={
+                          isMetricsExpandable ? (
+                            <div className="mt-4">
+                              <MetricsChart monitorId={monitor.id} />
+                            </div>
+                          ) : null
+                        }
+                      />
+                    );
+                  })}
+                </ListContainer>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Suspense fallback={null}>
@@ -411,10 +418,7 @@ function Monitors() {
         groups={groups}
         isGroupsOpen={isGroupsModalOpen}
         onCloseGroups={() => setIsGroupsModalOpen(false)}
-        onSuccess={async () => {
-          await refreshMonitors();
-          await refreshGroups();
-        }}
+        onSuccess={onModalSuccess}
       />
     </Page>
   );

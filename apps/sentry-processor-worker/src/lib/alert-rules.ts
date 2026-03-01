@@ -9,7 +9,6 @@ import { eq } from "drizzle-orm";
 import type { DB } from "@bitwobbly/shared";
 import type { Env } from "../types/env";
 import {
-  extractUserId,
   normaliseLevel,
   parseAlertConditions,
   parseAlertThreshold,
@@ -17,7 +16,7 @@ import {
 import {
   getActiveRulesForProject,
   countEventsInWindow,
-  getEventsInWindow,
+  countUniqueUsersInWindow,
   getEventsForComparison,
   getAlertRuleState,
   upsertAlertRuleState,
@@ -228,23 +227,6 @@ async function evaluateThreshold(
     return { value, severity: "resolved" };
   }
   return { value, severity: "resolved" };
-}
-
-async function countUniqueUsersInWindow(
-  db: DB,
-  issueId: string,
-  windowStart: number
-): Promise<number> {
-  const events = await getEventsInWindow(db, issueId, windowStart);
-
-  const uniqueUsers = new Set<string>();
-  for (const event of events) {
-    const userId = extractUserId(event.user);
-    if (userId) {
-      uniqueUsers.add(userId);
-    }
-  }
-  return uniqueUsers.size;
 }
 
 async function getComparisonValue(

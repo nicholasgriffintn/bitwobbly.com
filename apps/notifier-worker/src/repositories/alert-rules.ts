@@ -1,5 +1,5 @@
 import { schema } from "@bitwobbly/shared";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 import type { DB } from "@bitwobbly/shared";
 
@@ -24,6 +24,19 @@ export async function getChannelById(db: DB, channelId: string) {
     )
     .limit(1);
   return results[0] || null;
+}
+
+export async function getChannelsByIds(db: DB, channelIds: string[]) {
+  if (!channelIds.length) return [];
+  return await db
+    .select()
+    .from(schema.notificationChannels)
+    .where(
+      and(
+        inArray(schema.notificationChannels.id, channelIds),
+        eq(schema.notificationChannels.enabled, 1)
+      )
+    );
 }
 
 export async function getIssueById(db: DB, issueId: string) {

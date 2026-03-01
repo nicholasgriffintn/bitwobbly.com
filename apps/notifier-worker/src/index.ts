@@ -18,6 +18,7 @@ import {
 import {
   getAlertRuleById,
   getChannelById,
+  getChannelsByIds,
   getIssueById,
   getProjectById,
   getAlertRulesForMonitor,
@@ -92,12 +93,8 @@ async function handleMonitorAlert(
   if (!rules.length) return;
 
   const uniqueChannelIds = [...new Set(rules.map((r) => r.channelId))];
-  const channels = await Promise.all(
-    uniqueChannelIds.map((id) => getChannelById(db, id))
-  );
-  const channelMap = new Map(
-    uniqueChannelIds.map((id, i) => [id, channels[i]])
-  );
+  const channels = await getChannelsByIds(db, uniqueChannelIds);
+  const channelMap = new Map(channels.map((c) => [c.id, c]));
 
   const sendPromises: Promise<void>[] = [];
 
@@ -272,5 +269,7 @@ async function sendWebhook(
     signal: controller.signal,
   }).finally(() => clearTimeout(timeout));
 
-  if (!res.ok) throw new Error(`Webhook failed: HTTP ${res.status}`);
+  if (!res.ok && res.status >= 500) {
+    throw new Error(`Webhook failed: HTTP ${res.status}`);
+  }
 }

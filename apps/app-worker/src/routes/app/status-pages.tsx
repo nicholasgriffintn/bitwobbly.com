@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -53,7 +53,8 @@ export const Route = createFileRoute("/app/status-pages")({
 });
 
 export default function StatusPages() {
-  const { status_pages: initialPages, componentsPromise } = Route.useLoaderData();
+  const { status_pages: initialPages, componentsPromise } =
+    Route.useLoaderData();
   const [pages, setPages] = useState<StatusPage[]>(initialPages);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,20 +80,25 @@ export default function StatusPages() {
     }
   };
 
-  const loadPageComponents = async (pageId: string) => {
-    try {
-      const res = await getPageComponents({ data: { statusPageId: pageId } });
-      setPageComponents(res.components);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
+  const loadPageComponents = useCallback(
+    async (pageId: string) => {
+      try {
+        const res = await getPageComponents({
+          data: { statusPageId: pageId },
+        });
+        setPageComponents(res.components);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [getPageComponents]
+  );
 
   useEffect(() => {
     if (expandedPageId) {
       loadPageComponents(expandedPageId);
     }
-  }, [expandedPageId]);
+  }, [expandedPageId, loadPageComponents]);
 
   const startEditing = (page: StatusPage) => {
     setEditingPage(page);
@@ -116,9 +122,7 @@ export default function StatusPages() {
   ) => {
     setError(null);
     try {
-      const linked = pageComponents.some(
-        (pc) => pc.componentId === componentId
-      );
+      const linked = linkedComponentIds.has(componentId);
       if (checked && !linked) {
         await linkToPage({
           data: { statusPageId: pageId, componentId, sortOrder: 0 },
@@ -136,7 +140,16 @@ export default function StatusPages() {
     window.open(`/status/${slug}`, "_blank");
   };
 
-  const linkedComponentIds = pageComponents.map((pc) => pc.componentId);
+  const closeCreateModal = useCallback(() => setIsCreateModalOpen(false), []);
+  const closeEditModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setEditingPage(null);
+  }, []);
+
+  const linkedComponentIds = useMemo(
+    () => new Set(pageComponents.map((pc) => pc.componentId)),
+    [pageComponents]
+  );
   const accessLabel = (mode: StatusPage["access_mode"]) => {
     if (mode === "public") return "Public";
     if (mode === "private") return "Password";
@@ -224,9 +237,7 @@ export default function StatusPages() {
                               items={components.map((component) => ({
                                 id: component.id,
                                 label: component.name,
-                                checked: linkedComponentIds.includes(
-                                  component.id
-                                ),
+                                checked: linkedComponentIds.has(component.id),
                               }))}
                               onChange={(componentId, checked) =>
                                 onToggleComponent(page.id, componentId, checked)
@@ -248,12 +259,9 @@ export default function StatusPages() {
 
       <StatusPagesModals
         isCreateOpen={isCreateModalOpen}
-        onCloseCreate={() => setIsCreateModalOpen(false)}
+        onCloseCreate={closeCreateModal}
         isEditOpen={isEditModalOpen}
-        onCloseEdit={() => {
-          setIsEditModalOpen(false);
-          setEditingPage(null);
-        }}
+        onCloseEdit={closeEditModal}
         editingPage={editingPage}
         onSuccess={refreshPages}
       />

@@ -62,9 +62,11 @@ class IncidentCoordinatorBase implements DurableObject {
         open_incident_id: incidentId,
       });
 
-      await rebuildAllSnapshots(
-        { DB: this.env.DB, KV: this.env.KV },
-        { teamId: input.team_id }
+      this.state.waitUntil(
+        rebuildAllSnapshots(
+          { DB: this.env.DB, KV: this.env.KV },
+          { teamId: input.team_id }
+        )
       );
 
       return jsonResponse({
@@ -81,9 +83,11 @@ class IncidentCoordinatorBase implements DurableObject {
     await resolveIncident({ DB: this.env.DB }, input.monitor_id, incidentId);
     await this.state.storage.put<DOState>("s", {});
 
-    await rebuildAllSnapshots(
-      { DB: this.env.DB, KV: this.env.KV },
-      { teamId: input.team_id }
+    this.state.waitUntil(
+      rebuildAllSnapshots(
+        { DB: this.env.DB, KV: this.env.KV },
+        { teamId: input.team_id }
+      )
     );
 
     return jsonResponse({

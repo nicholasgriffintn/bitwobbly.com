@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -49,7 +49,8 @@ function ComponentsHydrator({
 }
 
 function IssueTracking() {
-  const { projects: initialProjects, componentsPromise } = Route.useLoaderData();
+  const { projects: initialProjects, componentsPromise } =
+    Route.useLoaderData();
 
   const [projects, setProjects] = useState<SentryProject[]>(initialProjects);
   const [components, setComponents] = useState<Component[]>([]);
@@ -112,9 +113,7 @@ function IssueTracking() {
       setOtlpTracesEndpoint(
         getOtlpTracesEndpoint(result.project.sentryProjectId)
       );
-      setOtlpLogsEndpoint(
-        getOtlpLogsEndpoint(result.project.sentryProjectId)
-      );
+      setOtlpLogsEndpoint(getOtlpLogsEndpoint(result.project.sentryProjectId));
       setOtlpAuthHeader(getOtlpAuthHeader(result.key.publicKey));
       setIsDsnModalOpen(true);
     } catch (err) {
@@ -122,9 +121,8 @@ function IssueTracking() {
     }
   };
 
-  const groupProjectsByComponent = () => {
+  const groupedProjects = useMemo(() => {
     const grouped = new Map<string, SentryProject[]>();
-
     for (const project of projects) {
       if (project.componentId) {
         const componentId = project.componentId;
@@ -134,9 +132,13 @@ function IssueTracking() {
         grouped.get(componentId)?.push(project);
       }
     }
-
     return grouped;
-  };
+  }, [projects]);
+
+  const projectsWithoutComponents = useMemo(
+    () => projects.filter((p) => !p.componentId),
+    [projects]
+  );
 
   const renderProjectGroup = (
     groupName: string,
@@ -210,7 +212,7 @@ function IssueTracking() {
     );
   };
 
-  const closeDsnModal = () => {
+  const closeDsnModal = useCallback(() => {
     setIsDsnModalOpen(false);
     setDsn(null);
     setPublicKey(null);
@@ -218,12 +220,17 @@ function IssueTracking() {
     setOtlpTracesEndpoint(null);
     setOtlpLogsEndpoint(null);
     setOtlpAuthHeader(null);
-  };
+  }, []);
 
-  const closeDeleteModal = () => {
+  const closeDeleteModal = useCallback(() => {
     setIsDeleteModalOpen(false);
     setDeletingProjectId(null);
-  };
+  }, []);
+
+  const closeEditModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setEditingProject(null);
+  }, []);
 
   return (
     <div className="page">
@@ -243,12 +250,8 @@ function IssueTracking() {
         <div className="card-title">Projects</div>
         {projects.length ? (
           (() => {
-            const groupedProjects = groupProjectsByComponent();
             const projectsWithComponents = Array.from(
               groupedProjects.entries()
-            );
-            const projectsWithoutComponents = projects.filter(
-              (p) => !p.componentId
             );
 
             return (
@@ -361,10 +364,7 @@ function IssueTracking() {
         }}
         components={components}
         isEditOpen={isEditModalOpen}
-        onCloseEdit={() => {
-          setIsEditModalOpen(false);
-          setEditingProject(null);
-        }}
+        onCloseEdit={closeEditModal}
         onEditSuccess={refreshProjects}
         editingProject={editingProject}
         isDsnOpen={isDsnModalOpen}

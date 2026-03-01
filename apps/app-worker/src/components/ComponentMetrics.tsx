@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import type { UptimeMetrics, ComponentMetrics } from "@bitwobbly/shared";
 
 import { useStableServerFn } from "@/hooks/useStableServerFn";
@@ -32,11 +32,7 @@ export function ComponentMetrics({ componentId }: ComponentMetricsProps) {
   const getUptime = useStableServerFn(getComponentUptimeFn);
   const getMetrics = useStableServerFn(getComponentMetricsFn);
 
-  useEffect(() => {
-    loadMetrics();
-  }, [componentId, period]);
-
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -58,7 +54,11 @@ export function ComponentMetrics({ componentId }: ComponentMetricsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [componentId, period, getUptime, getMetrics]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   const formatDowntime = (minutes: number) => {
     if (minutes < 60) {

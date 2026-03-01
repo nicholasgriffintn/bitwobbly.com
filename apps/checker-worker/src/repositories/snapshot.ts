@@ -76,15 +76,30 @@ async function rebuildStatusSnapshot(
 
   const nowSec = Math.floor(Date.now() / 1000);
   const componentIds = components.map((c) => c.id);
-  const componentMonitorLinks = componentIds.length
-    ? await db
-        .select({
-          componentId: schema.componentMonitors.componentId,
-          monitorId: schema.componentMonitors.monitorId,
-        })
-        .from(schema.componentMonitors)
-        .where(inArray(schema.componentMonitors.componentId, componentIds))
-    : [];
+
+  const [componentMonitorLinks, dependencyRows] = await Promise.all([
+    componentIds.length
+      ? db
+          .select({
+            componentId: schema.componentMonitors.componentId,
+            monitorId: schema.componentMonitors.monitorId,
+          })
+          .from(schema.componentMonitors)
+          .where(inArray(schema.componentMonitors.componentId, componentIds))
+      : Promise.resolve([]),
+    componentIds.length
+      ? db
+          .select({
+            componentId: schema.componentDependencies.componentId,
+            dependsOnComponentId:
+              schema.componentDependencies.dependsOnComponentId,
+          })
+          .from(schema.componentDependencies)
+          .where(
+            inArray(schema.componentDependencies.componentId, componentIds)
+          )
+      : Promise.resolve([]),
+  ]);
 
   const monitorIds = Array.from(
     new Set(componentMonitorLinks.map((l) => l.monitorId))
@@ -100,9 +115,9 @@ async function rebuildStatusSnapshot(
     new Set(monitors.map((m) => m.groupId).filter((id): id is string => !!id))
   );
 
-  const maintenanceMatches =
+  const [maintenanceMatches, monitorStates] = await Promise.all([
     componentIds.length || monitorIds.length || monitorGroupIds.length
-      ? await db
+      ? db
           .select({
             scopeType: schema.suppressionScopes.scopeType,
             scopeId: schema.suppressionScopes.scopeId,
@@ -142,7 +157,17 @@ async function rebuildStatusSnapshot(
               )
             )
           )
-      : [];
+      : Promise.resolve([]),
+    monitorIds.length
+      ? db
+          .select({
+            monitorId: schema.monitorState.monitorId,
+            lastStatus: schema.monitorState.lastStatus,
+          })
+          .from(schema.monitorState)
+          .where(inArray(schema.monitorState.monitorId, monitorIds))
+      : Promise.resolve([]),
+  ]);
 
   const maintenanceMonitorIds = new Set(
     maintenanceMatches
@@ -168,29 +193,9 @@ async function rebuildStatusSnapshot(
     componentIdToMonitorIds.set(link.componentId, arr);
   }
 
-  const monitorStates = monitorIds.length
-    ? await db
-        .select({
-          monitorId: schema.monitorState.monitorId,
-          lastStatus: schema.monitorState.lastStatus,
-        })
-        .from(schema.monitorState)
-        .where(inArray(schema.monitorState.monitorId, monitorIds))
-    : [];
   const monitorIdToStatus = new Map(
     monitorStates.map((s) => [s.monitorId, s.lastStatus])
   );
-
-  const dependencyRows = componentIds.length
-    ? await db
-        .select({
-          componentId: schema.componentDependencies.componentId,
-          dependsOnComponentId:
-            schema.componentDependencies.dependsOnComponentId,
-        })
-        .from(schema.componentDependencies)
-        .where(inArray(schema.componentDependencies.componentId, componentIds))
-    : [];
 
   const componentIdToDependencyIds = new Map<string, string[]>();
   for (const row of dependencyRows) {
@@ -272,31 +277,32 @@ async function rebuildStatusSnapshot(
     c.status = statusById.get(c.id) || c.status;
   }
 
-  const openIncidents = await db
-    .select()
-    .from(schema.incidents)
-    .where(
-      and(
-        eq(schema.incidents.teamId, page.teamId),
-        eq(schema.incidents.statusPageId, page.id),
-        ne(schema.incidents.status, "resolved")
-      )
-    )
-    .orderBy(schema.incidents.startedAt);
-
   const cutoffTimestamp = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
-  const resolvedIncidents = await db
-    .select()
-    .from(schema.incidents)
-    .where(
-      and(
-        eq(schema.incidents.teamId, page.teamId),
-        eq(schema.incidents.statusPageId, page.id),
-        eq(schema.incidents.status, "resolved")
+  const [openIncidents, resolvedIncidents] = await Promise.all([
+    db
+      .select()
+      .from(schema.incidents)
+      .where(
+        and(
+          eq(schema.incidents.teamId, page.teamId),
+          eq(schema.incidents.statusPageId, page.id),
+          ne(schema.incidents.status, "resolved")
+        )
       )
-    )
-    .orderBy(desc(schema.incidents.startedAt))
-    .limit(50);
+      .orderBy(schema.incidents.startedAt),
+    db
+      .select()
+      .from(schema.incidents)
+      .where(
+        and(
+          eq(schema.incidents.teamId, page.teamId),
+          eq(schema.incidents.statusPageId, page.id),
+          eq(schema.incidents.status, "resolved")
+        )
+      )
+      .orderBy(desc(schema.incidents.startedAt))
+      .limit(50),
+  ]);
 
   const recentResolvedIncidents = resolvedIncidents.filter(
     (i) => (i.resolvedAt || 0) >= cutoffTimestamp
