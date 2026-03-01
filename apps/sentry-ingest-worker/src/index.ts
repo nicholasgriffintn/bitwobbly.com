@@ -37,9 +37,8 @@ const handler = {
 
     const envelopeMatch = url.pathname.match(/^\/api\/(\d+)\/envelope\/?$/);
     const otlpTracesMatch =
-      url.pathname.match(
-        /^\/api\/(\d+)\/integration\/otlp\/v1\/traces\/?$/
-      ) || url.pathname.match(/^\/api\/(\d+)\/otlp\/v1\/traces\/?$/);
+      url.pathname.match(/^\/api\/(\d+)\/integration\/otlp\/v1\/traces\/?$/) ||
+      url.pathname.match(/^\/api\/(\d+)\/otlp\/v1\/traces\/?$/);
     const otlpLogsMatch =
       url.pathname.match(/^\/api\/(\d+)\/integration\/otlp\/v1\/logs\/?$/) ||
       url.pathname.match(/^\/api\/(\d+)\/otlp\/v1\/logs\/?$/);
@@ -138,15 +137,17 @@ const handler = {
 
         await env.SENTRY_PIPELINE.send(manifests);
 
-        for (const manifest of manifests) {
-          if (
-            manifest.item_type === "event" ||
-            manifest.item_type === "transaction" ||
-            manifest.item_type === "session" ||
-            manifest.item_type === "sessions" ||
-            manifest.item_type === "client_report"
-          ) {
-            await env.SENTRY_EVENTS.send({
+        const queueMessages = manifests
+          .filter(
+            (manifest) =>
+              manifest.item_type === "event" ||
+              manifest.item_type === "transaction" ||
+              manifest.item_type === "session" ||
+              manifest.item_type === "sessions" ||
+              manifest.item_type === "client_report"
+          )
+          .map((manifest) => ({
+            body: {
               manifest_id: manifest.manifest_id,
               sentry_project_id: manifest.sentry_project_id,
               project_id: manifest.project_id,
@@ -155,8 +156,11 @@ const handler = {
               event_id: manifest.event_id,
               r2_raw_key: manifest.r2_raw_key,
               item_index: manifest.item_index,
-            });
-          }
+            },
+          }));
+
+        if (queueMessages.length) {
+          await env.SENTRY_EVENTS.sendBatch(queueMessages);
         }
 
         return new Response(JSON.stringify({ id: envelope.header.event_id }), {

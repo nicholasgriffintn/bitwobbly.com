@@ -49,9 +49,9 @@ export function UptimeHeatmap({ data }: UptimeHeatmapProps) {
           maxWidth: "100%",
         }}
       >
-        {dailyStatuses.map((day, idx) => (
+        {dailyStatuses.map((day) => (
           <div
-            key={idx}
+            key={day.date}
             style={{
               width: "12px",
               height: "12px",

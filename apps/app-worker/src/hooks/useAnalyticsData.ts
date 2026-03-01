@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 
 import {
   getEventVolumeStatsFn,
@@ -12,6 +11,7 @@ import {
   getSentryReleaseHealthFn,
   listSentryClientReportsFn,
 } from "@/server/functions/sentry";
+import { useStableServerFn } from "@/hooks/useStableServerFn";
 
 export interface VolumeStats {
   total_events: number;
@@ -78,9 +78,9 @@ export function useAnalyticsData(projectId: string) {
   const [timeseriesBreakdown, setTimeseriesBreakdown] = useState<
     AsyncState<TimeseriesData[]>
   >({ data: [], loading: true });
-  const [sdkDistribution, setSdkDistribution] = useState<
-    AsyncState<SDKData[]>
-  >({ data: [], loading: true });
+  const [sdkDistribution, setSdkDistribution] = useState<AsyncState<SDKData[]>>(
+    { data: [], loading: true }
+  );
   const [topErrors, setTopErrors] = useState<AsyncState<TopError[]>>({
     data: [],
     loading: true,
@@ -102,15 +102,15 @@ export function useAnalyticsData(projectId: string) {
     loading: true,
   });
 
-  const getStats = useServerFn(getEventVolumeStatsFn);
-  const getTimeseriesBreakdown = useServerFn(
+  const getStats = useStableServerFn(getEventVolumeStatsFn);
+  const getTimeseriesBreakdown = useStableServerFn(
     getEventVolumeTimeseriesBreakdownFn
   );
-  const getTopErrors = useServerFn(getTopErrorMessagesFn);
-  const getReleaseStats = useServerFn(getErrorRateByReleaseFn);
-  const getSDKDist = useServerFn(getSDKDistributionFn);
-  const getReleaseHealth = useServerFn(getSentryReleaseHealthFn);
-  const listClientReports = useServerFn(listSentryClientReportsFn);
+  const getTopErrors = useStableServerFn(getTopErrorMessagesFn);
+  const getReleaseStats = useStableServerFn(getErrorRateByReleaseFn);
+  const getSDKDist = useStableServerFn(getSDKDistributionFn);
+  const getReleaseHealth = useStableServerFn(getSentryReleaseHealthFn);
+  const listClientReports = useStableServerFn(listSentryClientReportsFn);
 
   const activeRequestId = useRef(0);
 
@@ -211,16 +211,7 @@ export function useAnalyticsData(projectId: string) {
     return () => {
       activeRequestId.current += 1;
     };
-  }, [
-    getReleaseHealth,
-    getReleaseStats,
-    getSDKDist,
-    getStats,
-    getTimeseriesBreakdown,
-    getTopErrors,
-    listClientReports,
-    projectId,
-  ]);
+  }, [projectId]);
 
   return {
     volumeStats,

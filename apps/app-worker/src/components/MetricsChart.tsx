@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { getMonitorMetricsFn } from "@/server/functions/monitors";
+import { useStableServerFn } from "@/hooks/useStableServerFn";
 import { UptimeChart } from "@/components/UptimeChart";
 import { LatencyChart } from "@/components/LatencyChart";
 import type { MetricDataPoint } from "@bitwobbly/shared";
@@ -46,7 +46,7 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
   const [error, setError] = useState<string | null>(null);
   const [hours, setHours] = useState("24");
 
-  const getMetrics = useServerFn(getMonitorMetricsFn);
+  const getMetrics = useStableServerFn(getMonitorMetricsFn);
 
   useEffect(() => {
     if (!monitorId) return;

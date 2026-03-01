@@ -66,8 +66,8 @@ export function AnalyticsTab({ projectId }: AnalyticsTabProps) {
               </div>
             ) : topErrors.data.length > 0 ? (
               <div className="list">
-                {topErrors.data.slice(0, 5).map((error, idx) => (
-                  <div key={idx} className="list-item">
+                {topErrors.data.slice(0, 5).map((error) => (
+                  <div key={error.message} className="list-item">
                     <div className="flex-1">
                       <div className="list-title">{error.message}</div>
                       <div className="muted mt-1">
@@ -93,8 +93,11 @@ export function AnalyticsTab({ projectId }: AnalyticsTabProps) {
             </div>
           ) : releaseStats.data.length > 0 ? (
             <div className="list">
-              {releaseStats.data.slice(0, 10).map((stat, idx) => (
-                <div key={idx} className="list-item">
+              {releaseStats.data.slice(0, 10).map((stat) => (
+                <div
+                  key={`${stat.release}-${stat.environment}`}
+                  className="list-item"
+                >
                   <div className="flex-1">
                     <div className="list-title">
                       {stat.release || "Unknown Release"}
@@ -130,8 +133,11 @@ export function AnalyticsTab({ projectId }: AnalyticsTabProps) {
               </div>
             ) : releaseHealth.data.length > 0 ? (
               <div className="list">
-                {releaseHealth.data.slice(0, 10).map((row, idx) => (
-                  <div key={idx} className="list-item">
+                {releaseHealth.data.slice(0, 10).map((row) => (
+                  <div
+                    key={`${row.release}-${row.environment}`}
+                    className="list-item"
+                  >
                     <div className="flex-1">
                       <div className="list-title">
                         {row.release || "Unknown Release"}

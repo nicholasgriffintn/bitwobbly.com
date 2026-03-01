@@ -7,14 +7,16 @@ import TopBar from "@/components/TopBar";
 
 export const Route = createFileRoute("/app")({
   beforeLoad: async () => {
-    const { user } = await getCurrentUserFn();
+    const [{ user }, teams] = await Promise.all([
+      getCurrentUserFn(),
+      getUserTeamsFn().catch(() => []),
+    ]);
     if (!user) {
       throw new Error("Not authenticated");
     }
     if (!user.currentTeamId) {
       throw redirect({ to: "/onboarding" });
     }
-    const teams = await getUserTeamsFn();
     return { user, teams };
   },
   component: AppLayout,

@@ -100,24 +100,30 @@ export async function getHistoricalBucketsForMonitors(
   const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("timeout"), 8000);
-  const response = await fetch(API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-    },
-    body: query,
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeout));
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    logger.error(`Analytics Engine query failed (${response.status}):`, {
-      errorText,
+  let responseJSON: unknown;
+  try {
+    const response = await fetch(API, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: query,
+      signal: controller.signal,
     });
-    return null;
-  }
 
-  const responseJSON: unknown = await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error(`Analytics Engine query failed (${response.status}):`, {
+        errorText,
+      });
+      return null;
+    }
+
+    responseJSON = await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
   const rawData: Array<{
     monitorId: string;
     status: string;

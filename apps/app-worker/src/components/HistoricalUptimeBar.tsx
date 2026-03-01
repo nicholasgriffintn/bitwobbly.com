@@ -10,24 +10,24 @@ interface HistoricalUptimeBarProps {
   overallUptime: number;
 }
 
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "operational":
+      return "#10b981";
+    case "degraded":
+      return "#f59e0b";
+    case "down":
+      return "#ef4444";
+    default:
+      return "#d1d5db";
+  }
+};
+
 export function HistoricalUptimeBar({
   data,
   componentName,
   overallUptime,
 }: HistoricalUptimeBarProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "operational":
-        return "#10b981";
-      case "degraded":
-        return "#f59e0b";
-      case "down":
-        return "#ef4444";
-      default:
-        return "#d1d5db";
-    }
-  };
-
   return (
     <div style={{ marginBottom: "1.5rem" }}>
       <div
@@ -56,9 +56,9 @@ export function HistoricalUptimeBar({
           borderRadius: "4px",
         }}
       >
-        {data.map((day, idx) => (
+        {data.map((day) => (
           <div
-            key={idx}
+            key={day.date}
             style={{
               backgroundColor: getStatusColor(day.status),
               borderRadius: "2px",
