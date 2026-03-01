@@ -14,6 +14,9 @@
     "db:migrate:local": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
   },
+  "peerDependencies": {
+    "@sentry/cloudflare": "^10.36.0"
+  },
   "dependencies": {
     "drizzle-orm": "^0.45.1"
   },
