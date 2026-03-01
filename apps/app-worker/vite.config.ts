@@ -36,11 +36,7 @@ const config = defineConfig(({ command, mode }) => {
         output: {
           manualChunks: {
             vendor: ["react", "react-dom"],
-            router: [
-              "@tanstack/react-router",
-              "@tanstack/react-start",
-              "@tanstack/react-cross-context",
-            ],
+            router: ["@tanstack/react-router", "@tanstack/react-start"],
             ui: ["recharts"],
             validation: ["zod"],
           },
