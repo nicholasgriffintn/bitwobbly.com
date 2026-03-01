@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -19,16 +20,20 @@ interface EventVolumeChartProps {
 }
 
 export function EventVolumeChart({ data }: EventVolumeChartProps) {
-  const chartData = data.map((point) => ({
-    time: new Date(point.timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-    }),
-    Accepted: point.accepted,
-    Filtered: point.filtered,
-    Dropped: point.dropped,
-  }));
+  const chartData = useMemo(
+    () =>
+      data.map((point) => ({
+        time: new Date(point.timestamp).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+        }),
+        Accepted: point.accepted,
+        Filtered: point.filtered,
+        Dropped: point.dropped,
+      })),
+    [data]
+  );
 
   return (
     <ResponsiveContainer width="100%" height={400}>

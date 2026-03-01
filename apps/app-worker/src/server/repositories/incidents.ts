@@ -203,15 +203,17 @@ export async function createIncident(
     await db.insert(schema.incidentComponents).values(componentLinks);
 
     const statusUpdatedAt = Math.floor(Date.now() / 1000);
-    for (const ac of input.affectedComponents) {
-      await db
-        .update(schema.components)
-        .set({
-          currentStatus: ac.impactLevel,
-          statusUpdatedAt,
-        })
-        .where(eq(schema.components.id, ac.componentId));
-    }
+    await Promise.all(
+      input.affectedComponents.map((ac) =>
+        db
+          .update(schema.components)
+          .set({
+            currentStatus: ac.impactLevel,
+            statusUpdatedAt,
+          })
+          .where(eq(schema.components.id, ac.componentId))
+      )
+    );
   }
 
   return { id };
@@ -288,32 +290,42 @@ export async function addIncidentUpdate(
       .where(eq(schema.incidentComponents.incidentId, incidentId));
 
     if (affectedComponents.length > 0) {
-      const statusUpdatedAt = Math.floor(Date.now() / 1000);
-      for (const ac of affectedComponents) {
-        const otherOpenIncidents = await db
-          .select()
-          .from(schema.incidentComponents)
-          .innerJoin(
-            schema.incidents,
-            eq(schema.incidentComponents.incidentId, schema.incidents.id)
-          )
-          .where(
-            and(
-              eq(schema.incidentComponents.componentId, ac.componentId),
-              ne(schema.incidentComponents.incidentId, incidentId),
-              ne(schema.incidents.status, "resolved")
-            )
-          );
+      const componentIds = affectedComponents.map((ac) => ac.componentId);
 
-        if (otherOpenIncidents.length === 0) {
-          await db
-            .update(schema.components)
-            .set({
-              currentStatus: "operational",
-              statusUpdatedAt,
-            })
-            .where(eq(schema.components.id, ac.componentId));
-        }
+      const otherOpenLinks = await db
+        .select({
+          componentId: schema.incidentComponents.componentId,
+        })
+        .from(schema.incidentComponents)
+        .innerJoin(
+          schema.incidents,
+          eq(schema.incidentComponents.incidentId, schema.incidents.id)
+        )
+        .where(
+          and(
+            inArray(schema.incidentComponents.componentId, componentIds),
+            ne(schema.incidentComponents.incidentId, incidentId),
+            ne(schema.incidents.status, "resolved")
+          )
+        );
+
+      const componentsWithOtherIncidents = new Set(
+        otherOpenLinks.map((r) => r.componentId)
+      );
+
+      const toReset = componentIds.filter(
+        (id) => !componentsWithOtherIncidents.has(id)
+      );
+
+      if (toReset.length > 0) {
+        const statusUpdatedAt = Math.floor(Date.now() / 1000);
+        await db
+          .update(schema.components)
+          .set({
+            currentStatus: "operational",
+            statusUpdatedAt,
+          })
+          .where(inArray(schema.components.id, toReset));
       }
     }
   }
@@ -347,31 +359,41 @@ export async function deleteIncident(
     );
 
   if (affectedComponents.length > 0) {
-    const statusUpdatedAt = Math.floor(Date.now() / 1000);
-    for (const ac of affectedComponents) {
-      const otherOpenIncidents = await db
-        .select()
-        .from(schema.incidentComponents)
-        .innerJoin(
-          schema.incidents,
-          eq(schema.incidentComponents.incidentId, schema.incidents.id)
-        )
-        .where(
-          and(
-            eq(schema.incidentComponents.componentId, ac.componentId),
-            ne(schema.incidents.status, "resolved")
-          )
-        );
+    const componentIds = affectedComponents.map((ac) => ac.componentId);
 
-      if (otherOpenIncidents.length === 0) {
-        await db
-          .update(schema.components)
-          .set({
-            currentStatus: "operational",
-            statusUpdatedAt,
-          })
-          .where(eq(schema.components.id, ac.componentId));
-      }
+    const otherOpenLinks = await db
+      .select({
+        componentId: schema.incidentComponents.componentId,
+      })
+      .from(schema.incidentComponents)
+      .innerJoin(
+        schema.incidents,
+        eq(schema.incidentComponents.incidentId, schema.incidents.id)
+      )
+      .where(
+        and(
+          inArray(schema.incidentComponents.componentId, componentIds),
+          ne(schema.incidents.status, "resolved")
+        )
+      );
+
+    const componentsWithOtherIncidents = new Set(
+      otherOpenLinks.map((r) => r.componentId)
+    );
+
+    const toReset = componentIds.filter(
+      (id) => !componentsWithOtherIncidents.has(id)
+    );
+
+    if (toReset.length > 0) {
+      const statusUpdatedAt = Math.floor(Date.now() / 1000);
+      await db
+        .update(schema.components)
+        .set({
+          currentStatus: "operational",
+          statusUpdatedAt,
+        })
+        .where(inArray(schema.components.id, toReset));
     }
   }
 }

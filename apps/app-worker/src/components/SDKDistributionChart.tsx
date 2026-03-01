@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -31,11 +32,15 @@ const COLORS = [
 ];
 
 export function SDKDistributionChart({ data }: SDKDistributionChartProps) {
-  const chartData = data.map((item) => ({
-    name: item.sdk_name,
-    events: item.event_count,
-    percentage: item.percentage.toFixed(1),
-  }));
+  const chartData = useMemo(
+    () =>
+      data.map((item) => ({
+        name: item.sdk_name,
+        events: item.event_count,
+        percentage: item.percentage.toFixed(1),
+      })),
+    [data]
+  );
 
   return (
     <ResponsiveContainer width="100%" height={300}>

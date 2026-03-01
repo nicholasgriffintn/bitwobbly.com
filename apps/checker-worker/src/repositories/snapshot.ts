@@ -1,5 +1,7 @@
-import { nowIso, createDb, schema } from "@bitwobbly/shared";
+import { nowIso, createDb, schema, createLogger } from "@bitwobbly/shared";
 import { eq, and, ne, inArray, desc, lte, gt, or, isNull } from "drizzle-orm";
+
+const logger = createLogger({ service: "checker-snapshot" });
 
 export async function rebuildAllSnapshots(env: {
   DB: D1Database;
@@ -19,8 +21,16 @@ export async function rebuildAllSnapshots(env: {
     .from(schema.statusPages)
     .where(inArray(schema.statusPages.accessMode, ["public", "private"]));
 
-  for (const p of pages) {
-    await rebuildStatusSnapshot(env, p);
+  const results = await Promise.allSettled(
+    pages.map((p) => rebuildStatusSnapshot(env, p))
+  );
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status === "rejected") {
+      logger.error("snapshot rebuild failed", {
+        slug: pages[i].slug,
+        error: (results[i] as PromiseRejectedResult).reason,
+      });
+    }
   }
 }
 

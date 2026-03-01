@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -15,14 +16,18 @@ interface UptimeChartProps {
 }
 
 export function UptimeChart({ data }: UptimeChartProps) {
-  const chartData = data.map((point) => ({
-    time: new Date(point.timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-    }),
-    uptime: point.uptimePercentage.toFixed(2),
-  }));
+  const chartData = useMemo(
+    () =>
+      data.map((point) => ({
+        time: new Date(point.timestamp).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+        }),
+        uptime: point.uptimePercentage.toFixed(2),
+      })),
+    [data]
+  );
 
   return (
     <ResponsiveContainer width="100%" height={300}>

@@ -6,9 +6,31 @@ import {
   Link,
 } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { TanStackDevtools } from "@tanstack/react-devtools";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "@bitwobbly/auth/react";
+
+const DevTools = import.meta.env.DEV
+  ? lazy(async () => {
+      const [{ TanStackDevtools }, { TanStackRouterDevtoolsPanel }] =
+        await Promise.all([
+          import("@tanstack/react-devtools"),
+          import("@tanstack/react-router-devtools"),
+        ]);
+      return {
+        default: () => (
+          <TanStackDevtools
+            config={{ position: "bottom-right" }}
+            plugins={[
+              {
+                name: "Tanstack Router",
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        ),
+      };
+    })
+  : () => null;
 
 import {
   signInFn,
@@ -69,17 +91,9 @@ function RootDocument() {
         >
           <Outlet />
         </AuthProvider>
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        <Suspense>
+          <DevTools />
+        </Suspense>
         <Scripts />
       </body>
     </html>

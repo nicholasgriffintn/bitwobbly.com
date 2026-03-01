@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 
 import { listMonitorsFn } from "@/server/functions/monitors";
@@ -36,12 +36,18 @@ export const Route = createFileRoute("/app/")({
 });
 
 function Overview() {
-  const { monitors, incidents, pagesPromise, setupPromise } = Route.useLoaderData();
+  const { monitors, incidents, pagesPromise, setupPromise } =
+    Route.useLoaderData();
 
-  const upCount = monitors.filter((m) => m.state?.lastStatus === "up").length;
-  const downCount = monitors.filter(
-    (m) => m.state?.lastStatus === "down"
-  ).length;
+  const { upCount, downCount } = useMemo(() => {
+    let up = 0;
+    let down = 0;
+    for (const m of monitors) {
+      if (m.state?.lastStatus === "up") up++;
+      else if (m.state?.lastStatus === "down") down++;
+    }
+    return { upCount: up, downCount: down };
+  }, [monitors]);
 
   const overallStatus =
     downCount > 0 ? "degraded" : upCount > 0 ? "operational" : "unknown";

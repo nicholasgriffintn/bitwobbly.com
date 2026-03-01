@@ -1,46 +1,43 @@
+import { useMemo } from "react";
 import type { MetricDataPoint } from "@bitwobbly/shared";
 
 interface UptimeHeatmapProps {
   data: MetricDataPoint[];
 }
 
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "operational":
+      return "#10b981";
+    case "degraded":
+      return "#f59e0b";
+    case "down":
+      return "#ef4444";
+    default:
+      return "#d1d5db";
+  }
+};
+
 export function UptimeHeatmap({ data }: UptimeHeatmapProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "operational":
-        return "#10b981";
-      case "degraded":
-        return "#f59e0b";
-      case "down":
-        return "#ef4444";
-      default:
-        return "#d1d5db";
-    }
-  };
-
-  const groupedByDay = data.reduce<Record<string, MetricDataPoint[]>>(
-    (acc, point) => {
+  const dailyStatuses = useMemo(() => {
+    const groupedByDay: Record<string, MetricDataPoint[]> = {};
+    for (const point of data) {
       const date = new Date(point.timestamp).toLocaleDateString();
-      if (!acc[date]) {
-        acc[date] = [];
-      }
-      acc[date].push(point);
-      return acc;
-    },
-    {}
-  );
-
-  const dailyStatuses = Object.entries(groupedByDay).map(([date, points]) => {
-    const avgUptime =
-      points.reduce((sum, p) => sum + p.uptimePercentage, 0) / points.length;
-    let status: "operational" | "degraded" | "down" = "operational";
-    if (avgUptime < 50) {
-      status = "down";
-    } else if (avgUptime < 99) {
-      status = "degraded";
+      (groupedByDay[date] ??= []).push(point);
     }
-    return { date, status, uptime: avgUptime };
-  });
+
+    return Object.entries(groupedByDay).map(([date, points]) => {
+      const avgUptime =
+        points.reduce((sum, p) => sum + p.uptimePercentage, 0) / points.length;
+      let status: "operational" | "degraded" | "down" = "operational";
+      if (avgUptime < 50) {
+        status = "down";
+      } else if (avgUptime < 99) {
+        status = "degraded";
+      }
+      return { date, status, uptime: avgUptime };
+    });
+  }, [data]);
 
   return (
     <div className="uptime-heatmap">

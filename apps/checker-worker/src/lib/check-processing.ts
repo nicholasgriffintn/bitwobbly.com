@@ -340,13 +340,10 @@ async function handleStatusResult(
 
   const nowSec = Math.floor(Date.now() / 1000);
   const checkedAtSec = options?.checkedAtSec ?? nowSec;
-  const suppression = await getMonitorSuppressionState(
-    db,
-    job.team_id,
-    job.monitor_id,
-    nowSec
-  );
-  const prev = await getMonitorState(db, job.monitor_id);
+  const [suppression, prev] = await Promise.all([
+    getMonitorSuppressionState(db, job.team_id, job.monitor_id, nowSec),
+    getMonitorState(db, job.monitor_id),
+  ]);
 
   const prevFailures = prev?.consecutiveFailures ?? 0;
   const prevIncidentOpen = prev?.incidentOpen ?? 0;

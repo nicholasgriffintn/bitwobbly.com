@@ -98,13 +98,16 @@ export async function getHistoricalBucketsForMonitors(
   `;
 
   const API = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort("timeout"), 8000);
   const response = await fetch(API, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiToken}`,
     },
     body: query,
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -124,7 +127,8 @@ export async function getHistoricalBucketsForMonitors(
   if (isRecord(responseJSON) && Array.isArray(responseJSON.data)) {
     for (const row of responseJSON.data) {
       if (!isRecord(row)) continue;
-      const monitorId = typeof row.monitorId === "string" ? row.monitorId : null;
+      const monitorId =
+        typeof row.monitorId === "string" ? row.monitorId : null;
       const status = typeof row.status === "string" ? row.status : null;
       const timestamp =
         typeof row.timestamp === "number" || typeof row.timestamp === "string"

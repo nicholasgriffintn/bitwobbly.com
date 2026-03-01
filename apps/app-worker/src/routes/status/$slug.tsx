@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useMemo, type FormEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -68,8 +68,15 @@ function StatusPage() {
   const availabilityApiBase = `${origin}/api/status/${encodedSlug}`;
   const exampleComponentId = components[0]?.id;
 
-  const activeIncidents = incidents.filter((i) => i.status !== "resolved");
-  const pastIncidents = incidents.filter((i) => i.status === "resolved");
+  const { activeIncidents, pastIncidents } = useMemo(() => {
+    const active: typeof incidents = [];
+    const past: typeof incidents = [];
+    for (const i of incidents) {
+      if (i.status === "resolved") past.push(i);
+      else active.push(i);
+    }
+    return { activeIncidents: active, pastIncidents: past };
+  }, [incidents]);
 
   const statusIcon = (status: "up" | "down" | "unknown" | "maintenance") => {
     switch (status) {
@@ -637,7 +644,15 @@ function StatusPage() {
       <div className="status-page">
         <div className="status-header">
           {page.logo_url && (
-            <img src={page.logo_url} alt={page.name} className="status-logo" />
+            <img
+              src={page.logo_url}
+              alt={page.name}
+              className="status-logo"
+              width={200}
+              height={50}
+              loading="lazy"
+              decoding="async"
+            />
           )}
           <h1 className="status-title">{page.name}</h1>
           <div className="status-header-actions">

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -15,14 +16,18 @@ interface LatencyChartProps {
 }
 
 export function LatencyChart({ data }: LatencyChartProps) {
-  const chartData = data.map((point) => ({
-    time: new Date(point.timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-    }),
-    latency: point.latencyMs,
-  }));
+  const chartData = useMemo(
+    () =>
+      data.map((point) => ({
+        time: new Date(point.timestamp).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+        }),
+        latency: point.latencyMs,
+      })),
+    [data]
+  );
 
   return (
     <ResponsiveContainer width="100%" height={300}>

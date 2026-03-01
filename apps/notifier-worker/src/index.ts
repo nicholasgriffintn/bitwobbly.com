@@ -91,8 +91,16 @@ async function handleMonitorAlert(
 
   if (!rules.length) return;
 
+  const uniqueChannelIds = [...new Set(rules.map((r) => r.channelId))];
+  const channels = await Promise.all(
+    uniqueChannelIds.map((id) => getChannelById(db, id))
+  );
+  const channelMap = new Map(
+    uniqueChannelIds.map((id, i) => [id, channels[i]])
+  );
+
   for (const rule of rules) {
-    const channel = await getChannelById(db, rule.channelId);
+    const channel = channelMap.get(rule.channelId);
     if (!channel) continue;
 
     let cfg: unknown = null;
@@ -147,7 +155,12 @@ async function handleIssueAlert(
     return;
   }
 
-  const channel = await getChannelById(db, rule.channelId);
+  const [channel, issue, project] = await Promise.all([
+    getChannelById(db, rule.channelId),
+    getIssueById(db, job.issue_id),
+    getProjectById(db, job.project_id),
+  ]);
+
   if (!channel) {
     logger.warn("notification channel not found or disabled", {
       channelId: rule.channelId,
@@ -155,13 +168,11 @@ async function handleIssueAlert(
     return;
   }
 
-  const issue = await getIssueById(db, job.issue_id);
   if (!issue) {
     logger.warn("issue not found", { issueId: job.issue_id });
     return;
   }
 
-  const project = await getProjectById(db, job.project_id);
   const projectName = project ? project.name : "Unknown Project";
 
   let cfg: unknown = null;

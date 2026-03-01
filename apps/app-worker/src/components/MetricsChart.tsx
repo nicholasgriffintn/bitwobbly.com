@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getMonitorMetricsFn } from "@/server/functions/monitors";
 import { UptimeChart } from "@/components/UptimeChart";
@@ -105,55 +105,70 @@ export function MetricsChart({ monitorId }: MetricsChartProps) {
       {loading && <div>Loading metrics...</div>}
       {error && <div className="error">{error}</div>}
 
-      {data && (
-        <div>
-          <div className="grid three mb-4">
-            <div className="text-center">
-              <div
-                className="font-bold text-2xl"
-                style={{
-                  color:
-                    data.summary.uptime_percentage >= 99
-                      ? "#28a745"
-                      : data.summary.uptime_percentage >= 95
-                        ? "#ffc107"
-                        : "#dc3545",
-                }}
-              >
-                {data.summary.uptime_percentage.toFixed(2)}%
-              </div>
-              <div className="muted">Uptime</div>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-                {data.metrics.length > 0
-                  ? `${(data.metrics.reduce((sum, m) => sum + m.latency_ms, 0) / data.metrics.length).toFixed(0)}ms`
-                  : "0ms"}
-              </div>
-              <div className="muted">Avg Latency</div>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-                {data.summary.total_checks}
-              </div>
-              <div className="muted">Total Checks</div>
-            </div>
+      {data && <MetricsContent data={data} />}
+    </div>
+  );
+}
+
+function MetricsContent({ data }: { data: MetricsResponse }) {
+  const dataPoints = useMemo(
+    () => transformToDataPoints(data.metrics),
+    [data.metrics]
+  );
+
+  const avgLatency = useMemo(() => {
+    if (data.metrics.length === 0) return "0ms";
+    const avg =
+      data.metrics.reduce((sum, m) => sum + m.latency_ms, 0) /
+      data.metrics.length;
+    return `${avg.toFixed(0)}ms`;
+  }, [data.metrics]);
+
+  return (
+    <div>
+      <div className="grid three mb-4">
+        <div className="text-center">
+          <div
+            className="font-bold text-2xl"
+            style={{
+              color:
+                data.summary.uptime_percentage >= 99
+                  ? "#28a745"
+                  : data.summary.uptime_percentage >= 95
+                    ? "#ffc107"
+                    : "#dc3545",
+            }}
+          >
+            {data.summary.uptime_percentage.toFixed(2)}%
+          </div>
+          <div className="muted">Uptime</div>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
+            {avgLatency}
+          </div>
+          <div className="muted">Avg Latency</div>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
+            {data.summary.total_checks}
+          </div>
+          <div className="muted">Total Checks</div>
+        </div>
+      </div>
+
+      {dataPoints.length > 0 && (
+        <>
+          <div style={{ marginTop: "1rem" }}>
+            <h4 style={{ marginBottom: "0.5rem" }}>Uptime Trend</h4>
+            <UptimeChart data={dataPoints} />
           </div>
 
-          {data.metrics.length > 0 && (
-            <>
-              <div style={{ marginTop: "1rem" }}>
-                <h4 style={{ marginBottom: "0.5rem" }}>Uptime Trend</h4>
-                <UptimeChart data={transformToDataPoints(data.metrics)} />
-              </div>
-
-              <div style={{ marginTop: "2rem" }}>
-                <h4 style={{ marginBottom: "0.5rem" }}>Response Time Trend</h4>
-                <LatencyChart data={transformToDataPoints(data.metrics)} />
-              </div>
-            </>
-          )}
-        </div>
+          <div style={{ marginTop: "2rem" }}>
+            <h4 style={{ marginBottom: "0.5rem" }}>Response Time Trend</h4>
+            <LatencyChart data={dataPoints} />
+          </div>
+        </>
       )}
     </div>
   );
