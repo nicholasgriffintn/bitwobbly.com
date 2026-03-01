@@ -2,7 +2,7 @@
 
 Open-source website monitoring and public status pages, built entirely on Cloudflare Workers.
 
-> Please Note: This project is in early development and not yet production-ready. Use at your own risk. The plan to get this into production can be seen below.
+> Please Note: This project is in early development and not yet production-ready. Use at your own risk.
 
 ## Architecture
 
