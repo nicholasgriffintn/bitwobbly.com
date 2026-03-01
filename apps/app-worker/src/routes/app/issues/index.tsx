@@ -26,8 +26,25 @@ type Component = {
   name: string;
 };
 
+function IssuesPending() {
+  return (
+    <div className="page">
+      <div className="skeleton h-10 w-48 mb-6" />
+      <div className="card">
+        <div className="skeleton h-6 w-24 mb-4" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="skeleton h-16 w-full mb-2" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/app/issues/")({
   component: IssueTracking,
+  pendingComponent: IssuesPending,
+  pendingMs: 150,
+  staleTime: 30_000,
   loader: async () => {
     const { projects } = await listSentryProjectsFn();
     const componentsPromise = listComponentsFn().then((r) => r.components);

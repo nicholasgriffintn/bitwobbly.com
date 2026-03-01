@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -42,10 +42,32 @@ type StackFrameView = {
   context_line?: string;
 };
 
+function IssueDetailPending() {
+  return (
+    <div className="page-stack">
+      <div className="skeleton h-10 w-72 mb-4" />
+      <div className="card mb-4">
+        <div className="skeleton h-32 w-full" />
+      </div>
+      <div className="grid two">
+        <div className="card">
+          <div className="skeleton h-48 w-full" />
+        </div>
+        <div className="card">
+          <div className="skeleton h-48 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
   component: IssueDetail,
+  pendingComponent: IssueDetailPending,
+  pendingMs: 150,
+  staleTime: 15_000,
   loader: async ({ params }) => {
-    const issuePromise = getSentryIssueFn({
+    const issue = await getSentryIssueFn({
       data: { projectId: params.projectId, issueId: params.issueId },
     }).then((r) => r.issue);
 
@@ -59,19 +81,32 @@ export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
 
     const membersPromise = listTeamMembersFn().then((r) => r.members);
 
-    const [events, issue] = await Promise.all([eventsPromise, issuePromise]);
-
     return {
-      events,
       issue,
+      eventsPromise: defer(eventsPromise),
       membersPromise: defer(membersPromise),
     };
   },
 });
 
+function EventsHydrator({
+  events,
+  onLoaded,
+}: {
+  events: Event[];
+  onLoaded: (events: Event[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(events);
+  }, [events, onLoaded]);
+  return null;
+}
+
 function IssueDetail() {
   const { projectId } = Route.useParams();
-  const { events, issue, membersPromise } = Route.useLoaderData();
+  const { issue, eventsPromise, membersPromise } = Route.useLoaderData();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
   const [issueState, setIssueState] = useState<Issue>(issue);
   const issueSupportsResolution = supportsResolution(issueState.level);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -81,6 +116,11 @@ function IssueDetail() {
     issue.assignedToUserId || ""
   );
   const [isUpdatingIssue, setIsUpdatingIssue] = useState(false);
+
+  const handleEventsLoaded = useCallback((loadedEvents: Event[]) => {
+    setEvents(loadedEvents);
+    setEventsLoaded(true);
+  }, []);
 
   const getEventPayload = useServerFn(getSentryEventPayloadFn);
   const updateIssue = useServerFn(updateSentryIssueFn);
@@ -345,340 +385,408 @@ function IssueDetail() {
         <div className="issue-main-column">
           <Card className="mb-4">
             <CardTitle>Issue Signals</CardTitle>
-            <div className="issue-signal-grid">
-              <div>
-                <p className="issue-subtitle">By level</p>
-                <div className="issue-chip-row">
-                  {levelCounts.length ? (
-                    levelCounts.map(([level, count]) => (
-                      <Badge key={level} size="small" variant="muted">
-                        {level}: {count}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="muted">No event levels</span>
-                  )}
-                </div>
+            {!eventsLoaded ? (
+              <div className="issue-signal-grid">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="skeleton h-16 w-full" />
+                ))}
               </div>
+            ) : (
+              <>
+                <div className="issue-signal-grid">
+                  <div>
+                    <p className="issue-subtitle">By level</p>
+                    <div className="issue-chip-row">
+                      {levelCounts.length ? (
+                        levelCounts.map(([level, count]) => (
+                          <Badge key={level} size="small" variant="muted">
+                            {level}: {count}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="muted">No event levels</span>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <p className="issue-subtitle">Top environments</p>
-                <div className="issue-chip-row">
-                  {environmentCounts.length ? (
-                    environmentCounts.map(([name, count]) => (
-                      <Badge key={name} size="small" variant="muted">
-                        {name}: {count}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="muted">No environment data</span>
-                  )}
-                </div>
-              </div>
+                  <div>
+                    <p className="issue-subtitle">Top environments</p>
+                    <div className="issue-chip-row">
+                      {environmentCounts.length ? (
+                        environmentCounts.map(([name, count]) => (
+                          <Badge key={name} size="small" variant="muted">
+                            {name}: {count}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="muted">No environment data</span>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <p className="issue-subtitle">Top releases</p>
-                <div className="issue-chip-row">
-                  {releaseCounts.length ? (
-                    releaseCounts.map(([name, count]) => (
-                      <Badge key={name} size="small" variant="muted">
-                        {name}: {count}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="muted">No release data</span>
-                  )}
-                </div>
-              </div>
+                  <div>
+                    <p className="issue-subtitle">Top releases</p>
+                    <div className="issue-chip-row">
+                      {releaseCounts.length ? (
+                        releaseCounts.map(([name, count]) => (
+                          <Badge key={name} size="small" variant="muted">
+                            {name}: {count}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="muted">No release data</span>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <p className="issue-subtitle">Top transactions</p>
-                <div className="issue-chip-row">
-                  {transactionCounts.length ? (
-                    transactionCounts.map(([name, count]) => (
-                      <Badge key={name} size="small" variant="muted">
-                        {name}: {count}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="muted">No transaction data</span>
-                  )}
+                  <div>
+                    <p className="issue-subtitle">Top transactions</p>
+                    <div className="issue-chip-row">
+                      {transactionCounts.length ? (
+                        transactionCounts.map(([name, count]) => (
+                          <Badge key={name} size="small" variant="muted">
+                            {name}: {count}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="muted">No transaction data</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="issue-top-tags">
-              <p className="issue-subtitle">Top tags</p>
-              <div className="issue-chip-row">
-                {topTagCounts.length ? (
-                  topTagCounts.map(([name, count]) => (
-                    <Badge key={name} size="small" variant="muted">
-                      {name} ({count})
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="muted">No tags found</span>
-                )}
-              </div>
-            </div>
+                <div className="issue-top-tags">
+                  <p className="issue-subtitle">Top tags</p>
+                  <div className="issue-chip-row">
+                    {topTagCounts.length ? (
+                      topTagCounts.map(([name, count]) => (
+                        <Badge key={name} size="small" variant="muted">
+                          {name} ({count})
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="muted">No tags found</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </Card>
 
           <Card>
-            <CardTitle>Events ({events.length})</CardTitle>
-            <ListContainer
-              isEmpty={!events.length}
-              emptyMessage="No events found for this issue."
-            >
-              {events.map((event: Event) => (
-                <ListRow
-                  key={event.id}
-                  className="list-item-expanded issue-event-row"
-                  title={
-                    <div className="issue-event-title-wrap">
-                      <span className="issue-event-title">
-                        {event.message || event.transaction || `${event.type} event`}
-                      </span>
-                      <span className="issue-event-id font-mono">{event.id}</span>
-                    </div>
-                  }
-                  badges={
-                    <div className="issue-chip-row">
-                      {event.level && isStatusType(event.level) ? (
-                        <StatusBadge status={event.level}>{event.level}</StatusBadge>
-                      ) : event.level ? (
-                        <Badge size="small">{event.level}</Badge>
-                      ) : null}
-                      {event.release ? <Badge size="small">{event.release}</Badge> : null}
-                      {event.environment ? (
-                        <Badge size="small" variant="muted">
-                          {event.environment}
-                        </Badge>
-                      ) : null}
-                    </div>
-                  }
-                  subtitle={
-                    <div className="issue-event-meta">
-                      <div className="issue-event-meta-line">
-                        <span>{formatRelativeTime(event.receivedAt)}</span>
-                        <span>{formatTimestamp(event.receivedAt)}</span>
-                        {event.user?.email ? <span>User: {event.user.email}</span> : null}
-                        {event.user?.id ? <span>User ID: {event.user.id}</span> : null}
-                        {event.transaction ? (
-                          <span className="font-mono">{event.transaction}</span>
+            <CardTitle>
+              Events {eventsLoaded ? `(${events.length})` : ""}
+            </CardTitle>
+            {!eventsLoaded ? (
+              <div className="p-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton h-20 w-full mb-3" />
+                ))}
+              </div>
+            ) : null}
+            {eventsLoaded && (
+              <ListContainer
+                isEmpty={!events.length}
+                emptyMessage="No events found for this issue."
+              >
+                {events.map((event: Event) => (
+                  <ListRow
+                    key={event.id}
+                    className="list-item-expanded issue-event-row"
+                    title={
+                      <div className="issue-event-title-wrap">
+                        <span className="issue-event-title">
+                          {event.message ||
+                            event.transaction ||
+                            `${event.type} event`}
+                        </span>
+                        <span className="issue-event-id font-mono">
+                          {event.id}
+                        </span>
+                      </div>
+                    }
+                    badges={
+                      <div className="issue-chip-row">
+                        {event.level && isStatusType(event.level) ? (
+                          <StatusBadge status={event.level}>
+                            {event.level}
+                          </StatusBadge>
+                        ) : event.level ? (
+                          <Badge size="small">{event.level}</Badge>
+                        ) : null}
+                        {event.release ? (
+                          <Badge size="small">{event.release}</Badge>
+                        ) : null}
+                        {event.environment ? (
+                          <Badge size="small" variant="muted">
+                            {event.environment}
+                          </Badge>
                         ) : null}
                       </div>
-                      {event.request?.url ? (
+                    }
+                    subtitle={
+                      <div className="issue-event-meta">
                         <div className="issue-event-meta-line">
-                          <span>
-                            Request: {event.request.method || "GET"} {event.request.url}
-                          </span>
+                          <span>{formatRelativeTime(event.receivedAt)}</span>
+                          <span>{formatTimestamp(event.receivedAt)}</span>
+                          {event.user?.email ? (
+                            <span>User: {event.user.email}</span>
+                          ) : null}
+                          {event.user?.id ? (
+                            <span>User ID: {event.user.id}</span>
+                          ) : null}
+                          {event.transaction ? (
+                            <span className="font-mono">
+                              {event.transaction}
+                            </span>
+                          ) : null}
                         </div>
-                      ) : null}
-                      {event.tags && Object.keys(event.tags).length > 0 ? (
-                        <div className="issue-chip-row">
-                          {Object.entries(event.tags)
-                            .slice(0, 8)
-                            .map(([key, value]) => (
-                              <Badge key={key} size="small" variant="muted">
-                                {key}: {value}
-                              </Badge>
-                            ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  }
-                  subtitleClassName="muted mt-1"
-                  actions={
-                    <button
-                      type="button"
-                      onClick={() => handleViewPayload(event.id)}
-                      className="outline text-sm"
-                    >
-                      {selectedEventId === event.id ? "Refresh details" : "View details"}
-                    </button>
-                  }
-                  expanded={selectedEventId === event.id}
-                  expandedContent={
-                    selectedEventId === event.id && (
-                      <div className="issue-event-expanded">
-                        <div className="issue-event-expanded-toolbar">
-                          <strong>Event Diagnostics</strong>
-                          <div className="button-row">
-                            <CopyButton
-                              text={eventPayload || ""}
-                              label="Copy payload"
-                              disabled={isLoadingPayload || !eventPayload}
-                            />
-                            <CopyButton
-                              text={buildInvestigatePrompt(issueState, event)}
-                              label="Copy investigate prompt"
-                              disabled={isLoadingPayload}
-                            />
-                            <CopyButton
-                              text={buildFixPrompt(issueState, event, eventPayload)}
-                              label="Copy fix prompt"
-                              disabled={isLoadingPayload}
-                            />
-                            <button
-                              type="button"
-                              onClick={closePayload}
-                              className="outline button-mini"
-                            >
-                              Close
-                            </button>
+                        {event.request?.url ? (
+                          <div className="issue-event-meta-line">
+                            <span>
+                              Request: {event.request.method || "GET"}{" "}
+                              {event.request.url}
+                            </span>
                           </div>
-                        </div>
+                        ) : null}
+                        {event.tags && Object.keys(event.tags).length > 0 ? (
+                          <div className="issue-chip-row">
+                            {Object.entries(event.tags)
+                              .slice(0, 8)
+                              .map(([key, value]) => (
+                                <Badge key={key} size="small" variant="muted">
+                                  {key}: {value}
+                                </Badge>
+                              ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    }
+                    subtitleClassName="muted mt-1"
+                    actions={
+                      <button
+                        type="button"
+                        onClick={() => handleViewPayload(event.id)}
+                        className="outline text-sm"
+                      >
+                        {selectedEventId === event.id
+                          ? "Refresh details"
+                          : "View details"}
+                      </button>
+                    }
+                    expanded={selectedEventId === event.id}
+                    expandedContent={
+                      selectedEventId === event.id && (
+                        <div className="issue-event-expanded">
+                          <div className="issue-event-expanded-toolbar">
+                            <strong>Event Diagnostics</strong>
+                            <div className="button-row">
+                              <CopyButton
+                                text={eventPayload || ""}
+                                label="Copy payload"
+                                disabled={isLoadingPayload || !eventPayload}
+                              />
+                              <CopyButton
+                                text={buildInvestigatePrompt(issueState, event)}
+                                label="Copy investigate prompt"
+                                disabled={isLoadingPayload}
+                              />
+                              <CopyButton
+                                text={buildFixPrompt(
+                                  issueState,
+                                  event,
+                                  eventPayload
+                                )}
+                                label="Copy fix prompt"
+                                disabled={isLoadingPayload}
+                              />
+                              <button
+                                type="button"
+                                onClick={closePayload}
+                                className="outline button-mini"
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
 
-                        <div className="issue-expanded-grid">
-                          <section className="issue-expanded-section">
-                            <h4>Exception</h4>
-                            {event.exception?.values?.length ? (
-                              <div className="issue-expanded-list">
-                                {event.exception.values.map((value, idx) => (
-                                  <div key={`${event.id}-ex-${idx}`}>
-                                    <div className="issue-expanded-key">
-                                      {value.type || "Error"}
+                          <div className="issue-expanded-grid">
+                            <section className="issue-expanded-section">
+                              <h4>Exception</h4>
+                              {event.exception?.values?.length ? (
+                                <div className="issue-expanded-list">
+                                  {event.exception.values.map((value, idx) => (
+                                    <div key={`${event.id}-ex-${idx}`}>
+                                      <div className="issue-expanded-key">
+                                        {value.type || "Error"}
+                                      </div>
+                                      <div className="issue-expanded-value">
+                                        {value.value || "No message"}
+                                      </div>
                                     </div>
-                                    <div className="issue-expanded-value">
-                                      {value.value || "No message"}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="muted">No exception values</div>
-                            )}
-                          </section>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="muted">No exception values</div>
+                              )}
+                            </section>
 
-                          <section className="issue-expanded-section">
-                            <h4>Stack trace</h4>
-                            {selectedFrames.length ? (
-                              <div className="issue-expanded-list">
-                                {selectedFrames.map((frame, idx) => (
-                                  <div key={`${event.id}-frame-${idx}`}>
-                                    <div className="issue-expanded-key">
-                                      {frame.function || "anonymous"}
-                                      {typeof frame.lineno === "number" ? (
-                                        <span>
-                                          {" "}line {frame.lineno}
-                                          {typeof frame.colno === "number"
-                                            ? `:${frame.colno}`
-                                            : ""}
-                                        </span>
+                            <section className="issue-expanded-section">
+                              <h4>Stack trace</h4>
+                              {selectedFrames.length ? (
+                                <div className="issue-expanded-list">
+                                  {selectedFrames.map((frame, idx) => (
+                                    <div key={`${event.id}-frame-${idx}`}>
+                                      <div className="issue-expanded-key">
+                                        {frame.function || "anonymous"}
+                                        {typeof frame.lineno === "number" ? (
+                                          <span>
+                                            {" "}
+                                            line {frame.lineno}
+                                            {typeof frame.colno === "number"
+                                              ? `:${frame.colno}`
+                                              : ""}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div className="issue-expanded-value font-mono">
+                                        {frame.filename || "unknown file"}
+                                      </div>
+                                      {frame.context_line ? (
+                                        <pre className="issue-inline-pre">
+                                          {frame.context_line}
+                                        </pre>
                                       ) : null}
                                     </div>
-                                    <div className="issue-expanded-value font-mono">
-                                      {frame.filename || "unknown file"}
-                                    </div>
-                                    {frame.context_line ? (
-                                      <pre className="issue-inline-pre">
-                                        {frame.context_line}
-                                      </pre>
-                                    ) : null}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="muted">No stack trace frames</div>
-                            )}
-                          </section>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="muted">
+                                  No stack trace frames
+                                </div>
+                              )}
+                            </section>
 
-                          <section className="issue-expanded-section">
-                            <h4>Request</h4>
-                            <div className="issue-expanded-list">
-                              <div>
-                                <div className="issue-expanded-key">Method</div>
-                                <div className="issue-expanded-value">
-                                  {event.request?.method || "unknown"}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="issue-expanded-key">URL</div>
-                                <div className="issue-expanded-value break-all">
-                                  {event.request?.url || "unknown"}
-                                </div>
-                              </div>
-                              {event.request?.headers ? (
-                                <div>
-                                  <div className="issue-expanded-key">Headers</div>
-                                  <pre className="issue-inline-pre">
-                                    {JSON.stringify(event.request.headers, null, 2)}
-                                  </pre>
-                                </div>
-                              ) : null}
-                              {event.request?.data ? (
-                                <div>
-                                  <div className="issue-expanded-key">Body</div>
-                                  <pre className="issue-inline-pre">
-                                    {JSON.stringify(event.request.data, null, 2)}
-                                  </pre>
-                                </div>
-                              ) : null}
-                            </div>
-                          </section>
-
-                          <section className="issue-expanded-section">
-                            <h4>Contexts</h4>
-                            {event.contexts && Object.keys(event.contexts).length ? (
+                            <section className="issue-expanded-section">
+                              <h4>Request</h4>
                               <div className="issue-expanded-list">
-                                {Object.entries(event.contexts).map(([name, context]) => (
-                                  <div key={`${event.id}-ctx-${name}`}>
-                                    <div className="issue-expanded-key">{name}</div>
+                                <div>
+                                  <div className="issue-expanded-key">
+                                    Method
+                                  </div>
+                                  <div className="issue-expanded-value">
+                                    {event.request?.method || "unknown"}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="issue-expanded-key">URL</div>
+                                  <div className="issue-expanded-value break-all">
+                                    {event.request?.url || "unknown"}
+                                  </div>
+                                </div>
+                                {event.request?.headers ? (
+                                  <div>
+                                    <div className="issue-expanded-key">
+                                      Headers
+                                    </div>
                                     <pre className="issue-inline-pre">
-                                      {JSON.stringify(context, null, 2)}
+                                      {JSON.stringify(
+                                        event.request.headers,
+                                        null,
+                                        2
+                                      )}
                                     </pre>
                                   </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="muted">No context payloads</div>
-                            )}
-                          </section>
-
-                          <section className="issue-expanded-section">
-                            <h4>Breadcrumbs</h4>
-                            {event.breadcrumbs?.length ? (
-                              <div className="issue-expanded-list">
-                                {event.breadcrumbs.map((crumb, idx) => (
-                                  <div key={`${event.id}-crumb-${idx}`}>
+                                ) : null}
+                                {event.request?.data ? (
+                                  <div>
                                     <div className="issue-expanded-key">
-                                      {crumb.category || crumb.type || "default"}
+                                      Body
                                     </div>
-                                    <div className="issue-expanded-value">
-                                      {crumb.message || "No message"}
-                                    </div>
-                                    <div className="issue-expanded-value">
-                                      {formatIsoTimestamp(crumb.timestamp)}
-                                      {crumb.level ? ` | ${crumb.level}` : ""}
-                                    </div>
-                                    {crumb.data ? (
-                                      <pre className="issue-inline-pre">
-                                        {JSON.stringify(crumb.data, null, 2)}
-                                      </pre>
-                                    ) : null}
+                                    <pre className="issue-inline-pre">
+                                      {JSON.stringify(
+                                        event.request.data,
+                                        null,
+                                        2
+                                      )}
+                                    </pre>
                                   </div>
-                                ))}
+                                ) : null}
                               </div>
-                            ) : (
-                              <div className="muted">No breadcrumbs</div>
-                            )}
-                          </section>
-                        </div>
+                            </section>
 
-                        <div className="issue-payload-panel">
-                          <h4>Raw payload</h4>
-                          {isLoadingPayload ? (
-                            <div>Loading payload...</div>
-                          ) : (
-                            <pre className="issue-payload-pre">{eventPayload}</pre>
-                          )}
+                            <section className="issue-expanded-section">
+                              <h4>Contexts</h4>
+                              {event.contexts &&
+                              Object.keys(event.contexts).length ? (
+                                <div className="issue-expanded-list">
+                                  {Object.entries(event.contexts).map(
+                                    ([name, context]) => (
+                                      <div key={`${event.id}-ctx-${name}`}>
+                                        <div className="issue-expanded-key">
+                                          {name}
+                                        </div>
+                                        <pre className="issue-inline-pre">
+                                          {JSON.stringify(context, null, 2)}
+                                        </pre>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="muted">No context payloads</div>
+                              )}
+                            </section>
+
+                            <section className="issue-expanded-section">
+                              <h4>Breadcrumbs</h4>
+                              {event.breadcrumbs?.length ? (
+                                <div className="issue-expanded-list">
+                                  {event.breadcrumbs.map((crumb, idx) => (
+                                    <div key={`${event.id}-crumb-${idx}`}>
+                                      <div className="issue-expanded-key">
+                                        {crumb.category ||
+                                          crumb.type ||
+                                          "default"}
+                                      </div>
+                                      <div className="issue-expanded-value">
+                                        {crumb.message || "No message"}
+                                      </div>
+                                      <div className="issue-expanded-value">
+                                        {formatIsoTimestamp(crumb.timestamp)}
+                                        {crumb.level ? ` | ${crumb.level}` : ""}
+                                      </div>
+                                      {crumb.data ? (
+                                        <pre className="issue-inline-pre">
+                                          {JSON.stringify(crumb.data, null, 2)}
+                                        </pre>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="muted">No breadcrumbs</div>
+                              )}
+                            </section>
+                          </div>
+
+                          <div className="issue-payload-panel">
+                            <h4>Raw payload</h4>
+                            {isLoadingPayload ? (
+                              <div>Loading payload...</div>
+                            ) : (
+                              <pre className="issue-payload-pre">
+                                {eventPayload}
+                              </pre>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  }
-                />
-              ))}
-            </ListContainer>
+                      )
+                    }
+                  />
+                ))}
+              </ListContainer>
+            )}
           </Card>
         </div>
 
@@ -697,7 +805,8 @@ function IssueDetail() {
                         onClick={() =>
                           applyIssueUpdate({
                             status: "resolved",
-                            resolvedInRelease: issueState.lastSeenRelease ?? null,
+                            resolvedInRelease:
+                              issueState.lastSeenRelease ?? null,
                           })
                         }
                       >
@@ -749,7 +858,9 @@ function IssueDetail() {
                     className="outline"
                     disabled={isUpdatingIssue}
                     onClick={() =>
-                      applyIssueUpdate({ snoozedUntil: now + TIME_CONSTANTS.ONE_HOUR_SECONDS })
+                      applyIssueUpdate({
+                        snoozedUntil: now + TIME_CONSTANTS.ONE_HOUR_SECONDS,
+                      })
                     }
                   >
                     Snooze 1h
@@ -759,7 +870,9 @@ function IssueDetail() {
 
               <div className="border-t border-[color:var(--stroke)] pt-4">
                 <Suspense
-                  fallback={<div className="muted text-sm">Loading assignees...</div>}
+                  fallback={
+                    <div className="muted text-sm">Loading assignees...</div>
+                  }
                 >
                   <Await promise={membersPromise}>
                     {(members: TeamMember[]) => {
@@ -772,21 +885,26 @@ function IssueDetail() {
                             Assignee:{" "}
                             <span className="text-[color:var(--ink)]">
                               {issueState.assignedToUserId
-                                ? (emailById.get(issueState.assignedToUserId) ||
-                                  "Assigned")
+                                ? emailById.get(issueState.assignedToUserId) ||
+                                  "Assigned"
                                 : "Unassigned"}
                             </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <select
                               value={assigneeUserId}
-                              onChange={(e) => setAssigneeUserId(e.target.value)}
+                              onChange={(e) =>
+                                setAssigneeUserId(e.target.value)
+                              }
                               className="flex-1"
                               disabled={isUpdatingIssue}
                             >
                               <option value="">Unassigned</option>
                               {members.map((member) => (
-                                <option key={member.userId} value={member.userId}>
+                                <option
+                                  key={member.userId}
+                                  value={member.userId}
+                                >
                                   {member.email}
                                 </option>
                               ))}
@@ -818,7 +936,9 @@ function IssueDetail() {
             <div className="issue-kv-grid">
               <div className="issue-kv-row">
                 <span>ID</span>
-                <span className="font-mono text-xs break-all">{issueState.id}</span>
+                <span className="font-mono text-xs break-all">
+                  {issueState.id}
+                </span>
               </div>
               <div className="issue-kv-row">
                 <span>Fingerprint</span>
@@ -852,11 +972,15 @@ function IssueDetail() {
               </div>
               <div className="issue-kv-row">
                 <span>Latest event</span>
-                <span>{latestEvent ? formatTimestamp(latestEvent.receivedAt) : "-"}</span>
+                <span>
+                  {latestEvent ? formatTimestamp(latestEvent.receivedAt) : "-"}
+                </span>
               </div>
               <div className="issue-kv-row">
                 <span>Oldest event</span>
-                <span>{oldestEvent ? formatTimestamp(oldestEvent.receivedAt) : "-"}</span>
+                <span>
+                  {oldestEvent ? formatTimestamp(oldestEvent.receivedAt) : "-"}
+                </span>
               </div>
             </div>
           </Card>
@@ -864,8 +988,14 @@ function IssueDetail() {
           <Card>
             <CardTitle>AI Prompts</CardTitle>
             <div className="button-row">
-              <CopyButton text={buildIssueSummary(issueState)} label="Copy issue JSON" />
-              <CopyButton text={investigatePrompt} label="Copy investigate prompt" />
+              <CopyButton
+                text={buildIssueSummary(issueState)}
+                label="Copy issue JSON"
+              />
+              <CopyButton
+                text={investigatePrompt}
+                label="Copy investigate prompt"
+              />
               <CopyButton text={fixPrompt} label="Copy fix prompt" />
             </div>
             <div className="issue-ai-preview">
@@ -874,7 +1004,9 @@ function IssueDetail() {
                 <div className="issue-kv-grid">
                   <div className="issue-kv-row">
                     <span>Event ID</span>
-                    <span className="font-mono text-xs">{selectedEvent.id}</span>
+                    <span className="font-mono text-xs">
+                      {selectedEvent.id}
+                    </span>
                   </div>
                   <div className="issue-kv-row">
                     <span>Type</span>
@@ -886,7 +1018,9 @@ function IssueDetail() {
                   </div>
                   <div className="issue-kv-row">
                     <span>Message</span>
-                    <span className="break-all">{selectedEvent.message || "-"}</span>
+                    <span className="break-all">
+                      {selectedEvent.message || "-"}
+                    </span>
                   </div>
                   <div className="issue-kv-row">
                     <span>Transaction</span>
@@ -906,12 +1040,22 @@ function IssueDetail() {
                   </div>
                 </div>
               ) : (
-                <div className="muted">Open an event to enrich prompt context.</div>
+                <div className="muted">
+                  Open an event to enrich prompt context.
+                </div>
               )}
             </div>
           </Card>
         </div>
       </div>
+
+      <Suspense fallback={null}>
+        <Await promise={eventsPromise}>
+          {(loaded: Event[]) => (
+            <EventsHydrator events={loaded} onLoaded={handleEventsLoaded} />
+          )}
+        </Await>
+      </Suspense>
     </div>
   );
 }

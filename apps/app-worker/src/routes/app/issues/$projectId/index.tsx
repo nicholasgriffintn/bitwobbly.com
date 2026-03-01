@@ -132,8 +132,33 @@ const EventItem = memo(function EventItem({
   );
 });
 
+function ProjectIssuesPending() {
+  return (
+    <div className="page">
+      <div className="skeleton h-10 w-56 mb-6" />
+      <div className="card">
+        <div className="skeleton h-10 w-full mb-4" />
+        <div className="mb-4 space-y-3 pb-4">
+          <div className="skeleton h-8 w-full" />
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton h-9 w-32" />
+            ))}
+          </div>
+        </div>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="skeleton h-16 w-full mb-2" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/app/issues/$projectId/")({
   component: ProjectIssues,
+  pendingComponent: ProjectIssuesPending,
+  pendingMs: 150,
+  staleTime: 15_000,
   loader: async ({ params }) => {
     const issuesPromise = listSentryIssuesFn({
       data: { projectId: params.projectId },
@@ -212,7 +237,8 @@ function ProjectIssues() {
           projectId,
           status: state.statusFilter === "all" ? undefined : state.statusFilter,
           query: state.searchQuery || undefined,
-          release: state.releaseFilter === "all" ? undefined : state.releaseFilter,
+          release:
+            state.releaseFilter === "all" ? undefined : state.releaseFilter,
           environment:
             state.environmentFilter === "all"
               ? undefined
@@ -358,9 +384,7 @@ function ProjectIssues() {
               </Badge>
               <Badge
                 size="small"
-                variant={
-                  state.statusFilter === "ignored" ? "muted" : "default"
-                }
+                variant={state.statusFilter === "ignored" ? "muted" : "default"}
               >
                 Ignored: {issueStatusCounts.ignored}
               </Badge>

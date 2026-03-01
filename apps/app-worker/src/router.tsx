@@ -13,7 +13,8 @@ export const getRouter = () => {
     },
     defaultPreload: "intent",
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreloadStaleTime: 30_000,
+    defaultStaleTime: 10_000,
     notFoundMode: "root",
     defaultErrorComponent: ({ error, reset }) => {
       return <ErrorComponent error={error} reset={reset} />;
