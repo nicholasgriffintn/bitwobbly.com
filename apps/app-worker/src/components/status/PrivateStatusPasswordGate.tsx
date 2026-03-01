@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { unlockPrivateStatusPageFn } from "@/server/functions/public";
@@ -14,13 +14,14 @@ export function PrivateStatusPasswordGate({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const unlock = useServerFn(unlockPrivateStatusPageFn);
+  const router = useRouter();
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
     try {
       await unlock({ data: { slug, password } });
-      window.location.reload();
+      await router.invalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }

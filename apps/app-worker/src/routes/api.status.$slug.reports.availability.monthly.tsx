@@ -95,7 +95,14 @@ export const Route = createFileRoute(
           });
 
           if (data.format === "json") {
-            return Response.json({ ok: true, report });
+            return Response.json(
+              { ok: true, report },
+              {
+                headers: {
+                  "cache-control": "public, max-age=300, s-maxage=300",
+                },
+              }
+            );
           }
 
           const lines: string[] = [];

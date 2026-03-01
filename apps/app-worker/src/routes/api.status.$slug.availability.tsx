@@ -73,7 +73,12 @@ export const Route = createFileRoute("/api/status/$slug/availability")({
             );
           }
 
-          return Response.json({ ok: true, ...res });
+          return Response.json(
+            { ok: true, ...res },
+            {
+              headers: { "cache-control": "public, max-age=60, s-maxage=60" },
+            }
+          );
         } catch (error) {
           if (error instanceof z.ZodError) {
             return Response.json(

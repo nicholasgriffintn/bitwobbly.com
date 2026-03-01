@@ -40,8 +40,25 @@ type PageComponent = {
   sortOrder: number;
 };
 
+function StatusPagesPending() {
+  return (
+    <Page className="page-stack">
+      <div className="skeleton h-10 w-48 mb-6" />
+      <div className="card">
+        <div className="skeleton h-6 w-32 mb-4" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="skeleton h-16 w-full mb-2" />
+        ))}
+      </div>
+    </Page>
+  );
+}
+
 export const Route = createFileRoute("/app/status-pages")({
   component: StatusPages,
+  pendingComponent: StatusPagesPending,
+  pendingMs: 150,
+  staleTime: 30_000,
   loader: async () => {
     const componentsPromise = listComponentsFn().then((r) => r.components);
     const pagesRes = await listStatusPagesFn();

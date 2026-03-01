@@ -12,8 +12,83 @@ import { StatusBadge, isStatusType } from "@/components/ui";
 import { PrivateStatusPasswordGate } from "@/components/status/PrivateStatusPasswordGate";
 import { Modal } from "@/components/Modal";
 
+function StatusPagePending() {
+  return (
+    <div
+      style={{
+        maxWidth: 960,
+        margin: "0 auto",
+        padding: "2rem 1rem",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      }}
+    >
+      <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+        <div
+          style={{
+            width: 200,
+            height: 40,
+            background: "#f3f4f6",
+            borderRadius: 6,
+            margin: "0 auto 1rem",
+          }}
+        />
+        <div
+          style={{
+            width: 240,
+            height: 32,
+            background: "#f3f4f6",
+            borderRadius: 6,
+            margin: "0 auto",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          height: 48,
+          background: "#f0fdf4",
+          borderRadius: 8,
+          marginBottom: "2rem",
+        }}
+      />
+      <div
+        style={{
+          background: "white",
+          border: "1px solid #e5e7eb",
+          borderRadius: 8,
+          padding: "1.5rem",
+          marginBottom: "2rem",
+        }}
+      >
+        <div
+          style={{
+            width: 160,
+            height: 24,
+            background: "#f3f4f6",
+            borderRadius: 4,
+            marginBottom: "1rem",
+          }}
+        />
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            style={{
+              height: 52,
+              background: "#f9fafb",
+              borderRadius: 4,
+              marginBottom: "0.75rem",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/status/$slug")({
   component: StatusPage,
+  pendingComponent: StatusPagePending,
+  pendingMs: 200,
+  staleTime: 30_000,
   loader: async ({ params }): Promise<PublicStatusResult> => {
     return await getPublicStatusFn({ data: { slug: params.slug } });
   },
