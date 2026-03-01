@@ -1,14 +1,21 @@
-import { useState, useEffect } from "react";
-import { useServerFn } from "@tanstack/react-start";
+import { useState, useEffect, lazy, Suspense } from "react";
 import type { UptimeMetrics, ComponentMetrics } from "@bitwobbly/shared";
 
-import { UptimeChart } from "./UptimeChart";
-import { LatencyChart } from "./LatencyChart";
-import { UptimeHeatmap } from "./UptimeHeatmap";
+import { useStableServerFn } from "@/hooks/useStableServerFn";
 import {
   getComponentUptimeFn,
   getComponentMetricsFn,
 } from "@/server/functions/components";
+
+const UptimeChart = lazy(() =>
+  import("./UptimeChart").then((m) => ({ default: m.UptimeChart }))
+);
+const LatencyChart = lazy(() =>
+  import("./LatencyChart").then((m) => ({ default: m.LatencyChart }))
+);
+const UptimeHeatmap = lazy(() =>
+  import("./UptimeHeatmap").then((m) => ({ default: m.UptimeHeatmap }))
+);
 
 interface ComponentMetricsProps {
   componentId: string;
@@ -22,8 +29,8 @@ export function ComponentMetrics({ componentId }: ComponentMetricsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getUptime = useServerFn(getComponentUptimeFn);
-  const getMetrics = useServerFn(getComponentMetricsFn);
+  const getUptime = useStableServerFn(getComponentUptimeFn);
+  const getMetrics = useStableServerFn(getComponentMetricsFn);
 
   useEffect(() => {
     loadMetrics();
@@ -178,7 +185,7 @@ export function ComponentMetrics({ componentId }: ComponentMetricsProps) {
           </div>
 
           {metrics && metrics.dataPoints.length > 0 && (
-            <>
+            <Suspense fallback={<div>Loading charts...</div>}>
               <div className="card" style={{ marginBottom: "1rem" }}>
                 <div className="card-title" style={{ marginBottom: "1rem" }}>
                   Uptime Timeline
@@ -199,7 +206,7 @@ export function ComponentMetrics({ componentId }: ComponentMetricsProps) {
                 </div>
                 <UptimeHeatmap data={metrics.dataPoints} />
               </div>
-            </>
+            </Suspense>
           )}
 
           {(!metrics || metrics.dataPoints.length === 0) && (

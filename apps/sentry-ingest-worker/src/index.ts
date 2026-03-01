@@ -198,17 +198,18 @@ const handler = {
         item_content_type: contentType,
       };
 
-      await env.SENTRY_PIPELINE.send([manifest]);
-
-      await env.SENTRY_EVENTS.send({
-        manifest_id: manifest.manifest_id,
-        sentry_project_id: manifest.sentry_project_id,
-        project_id: manifest.project_id,
-        received_at: manifest.received_at,
-        item_type: manifest.item_type,
-        r2_raw_key: manifest.r2_raw_key,
-        item_index: manifest.item_index,
-      });
+      await Promise.all([
+        env.SENTRY_PIPELINE.send([manifest]),
+        env.SENTRY_EVENTS.send({
+          manifest_id: manifest.manifest_id,
+          sentry_project_id: manifest.sentry_project_id,
+          project_id: manifest.project_id,
+          received_at: manifest.received_at,
+          item_type: manifest.item_type,
+          r2_raw_key: manifest.r2_raw_key,
+          item_index: manifest.item_index,
+        }),
+      ]);
 
       return new Response(JSON.stringify({}), {
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },

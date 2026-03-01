@@ -1,5 +1,5 @@
 import { schema, randomId } from "@bitwobbly/shared";
-import { eq, and, gte, isNull, or } from "drizzle-orm";
+import { eq, and, gte, lt, isNull, or, count } from "drizzle-orm";
 import type { DB } from "@bitwobbly/shared";
 
 export async function getProjectTeamId(db: DB, projectId: string) {
@@ -38,7 +38,7 @@ export async function countEventsInWindow(
   windowStart: number
 ) {
   const result = await db
-    .select()
+    .select({ total: count() })
     .from(schema.sentryEvents)
     .where(
       and(
@@ -46,7 +46,7 @@ export async function countEventsInWindow(
         gte(schema.sentryEvents.receivedAt, windowStart)
       )
     );
-  return result.length;
+  return result[0]?.total ?? 0;
 }
 
 export async function getEventsInWindow(
@@ -72,15 +72,16 @@ export async function getEventsForComparison(
   windowEnd: number
 ) {
   const result = await db
-    .select()
+    .select({ total: count() })
     .from(schema.sentryEvents)
     .where(
       and(
         eq(schema.sentryEvents.issueId, issueId),
-        gte(schema.sentryEvents.receivedAt, windowStart)
+        gte(schema.sentryEvents.receivedAt, windowStart),
+        lt(schema.sentryEvents.receivedAt, windowEnd)
       )
     );
-  return result.filter((e) => e.receivedAt < windowEnd).length;
+  return result[0]?.total ?? 0;
 }
 
 export async function getAlertRuleState(
@@ -108,26 +109,23 @@ export async function upsertAlertRuleState(
   status: string,
   triggeredAt: number
 ) {
-  const existing = await getAlertRuleState(db, ruleId, issueId);
-
-  if (existing) {
-    await db
-      .update(schema.alertRuleStates)
-      .set({
-        status,
-        triggeredAt,
-        resolvedAt: null,
-      })
-      .where(eq(schema.alertRuleStates.id, existing.id));
-  } else {
-    await db.insert(schema.alertRuleStates).values({
+  await db
+    .insert(schema.alertRuleStates)
+    .values({
       id: randomId("als"),
       ruleId,
       issueId,
       status,
       triggeredAt,
+    })
+    .onConflictDoUpdate({
+      target: [schema.alertRuleStates.ruleId, schema.alertRuleStates.issueId],
+      set: {
+        status,
+        triggeredAt,
+        resolvedAt: null,
+      },
     });
-  }
 }
 
 export async function resolveAlertRuleState(

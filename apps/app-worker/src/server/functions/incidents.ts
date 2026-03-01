@@ -101,23 +101,31 @@ export const createIncidentFn = createServerFn({ method: "POST" })
         statusPageId
       );
 
-      for (const sub of subscribers) {
-        const { eventId } = await createSubscriberEvent(db, {
-          statusPageId,
-          subscriberId: sub.id,
-          eventType: "incident_created",
-          incidentId: created.id,
-          incidentUpdateId: null,
-        });
+      const eventResults = await Promise.all(
+        subscribers.map((sub) =>
+          createSubscriberEvent(db, {
+            statusPageId,
+            subscriberId: sub.id,
+            eventType: "incident_created",
+            incidentId: created.id,
+            incidentUpdateId: null,
+          }).then(({ eventId }) => ({ sub, eventId }))
+        )
+      );
 
-        if (sub.digestCadence === "immediate") {
-          await vars.ALERT_JOBS.send({
-            type: "status_page_deliver_events",
+      const immediateMessages = eventResults
+        .filter(({ sub }) => sub.digestCadence === "immediate")
+        .map(({ sub, eventId }) => ({
+          body: {
+            type: "status_page_deliver_events" as const,
             job_id: randomId("spj"),
             subscriber_id: sub.id,
             event_ids: [eventId],
-          });
-        }
+          },
+        }));
+
+      if (immediateMessages.length) {
+        await vars.ALERT_JOBS.sendBatch(immediateMessages);
       }
 
       await insertSubscriptionAuditLog(db, {
@@ -147,14 +155,12 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
     await clearAllStatusPageCaches(db, vars.KV, teamId);
 
     const targetStatusPageIds = new Set<string>();
-    const linkedStatusPageId = await getIncidentStatusPageId(
-      db,
-      teamId,
-      data.incidentId
-    );
+    const [linkedStatusPageId, componentIds] = await Promise.all([
+      getIncidentStatusPageId(db, teamId, data.incidentId),
+      listIncidentComponentIds(db, data.incidentId),
+    ]);
     if (linkedStatusPageId) targetStatusPageIds.add(linkedStatusPageId);
 
-    const componentIds = await listIncidentComponentIds(db, data.incidentId);
     if (componentIds.length) {
       const pageIds = await listStatusPageIdsForComponents(
         db,
@@ -173,23 +179,31 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
         statusPageId
       );
 
-      for (const sub of subscribers) {
-        const { eventId } = await createSubscriberEvent(db, {
-          statusPageId,
-          subscriberId: sub.id,
-          eventType,
-          incidentId: data.incidentId,
-          incidentUpdateId: result.id,
-        });
+      const eventResults = await Promise.all(
+        subscribers.map((sub) =>
+          createSubscriberEvent(db, {
+            statusPageId,
+            subscriberId: sub.id,
+            eventType,
+            incidentId: data.incidentId,
+            incidentUpdateId: result.id,
+          }).then(({ eventId }) => ({ sub, eventId }))
+        )
+      );
 
-        if (sub.digestCadence === "immediate") {
-          await vars.ALERT_JOBS.send({
-            type: "status_page_deliver_events",
+      const immediateMessages = eventResults
+        .filter(({ sub }) => sub.digestCadence === "immediate")
+        .map(({ sub, eventId }) => ({
+          body: {
+            type: "status_page_deliver_events" as const,
             job_id: randomId("spj"),
             subscriber_id: sub.id,
             event_ids: [eventId],
-          });
-        }
+          },
+        }));
+
+      if (immediateMessages.length) {
+        await vars.ALERT_JOBS.sendBatch(immediateMessages);
       }
 
       await insertSubscriptionAuditLog(db, {

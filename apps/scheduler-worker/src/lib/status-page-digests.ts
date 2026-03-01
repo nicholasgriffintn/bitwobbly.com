@@ -43,6 +43,8 @@ async function enqueueDigestForCadence(
   const maxEventsPerSubscriber = 200;
   const chunkSize = 50;
 
+  const queueMessages: { body: unknown }[] = [];
+
   for (const sub of subs) {
     const eventIds = await listUnsentSubscriberEventIds(
       db,
@@ -57,13 +59,19 @@ async function enqueueDigestForCadence(
       const chunkIndex = Math.floor(start / chunkSize);
       const jobId = `spdigest:${windowKey}:${sub.id}:${chunkIndex}`;
 
-      await env.ALERT_JOBS.send({
-        type: "status_page_deliver_events",
-        job_id: jobId,
-        subscriber_id: sub.id,
-        event_ids: chunk,
-        is_digest: true,
+      queueMessages.push({
+        body: {
+          type: "status_page_deliver_events",
+          job_id: jobId,
+          subscriber_id: sub.id,
+          event_ids: chunk,
+          is_digest: true,
+        },
       });
     }
+  }
+
+  if (queueMessages.length) {
+    await env.ALERT_JOBS.sendBatch(queueMessages);
   }
 }

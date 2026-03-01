@@ -1,9 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { getMonitorMetricsFn } from "@/server/functions/monitors";
 import { useStableServerFn } from "@/hooks/useStableServerFn";
-import { UptimeChart } from "@/components/UptimeChart";
-import { LatencyChart } from "@/components/LatencyChart";
 import type { MetricDataPoint } from "@bitwobbly/shared";
+
+const UptimeChart = lazy(() =>
+  import("@/components/UptimeChart").then((m) => ({ default: m.UptimeChart }))
+);
+const LatencyChart = lazy(() =>
+  import("@/components/LatencyChart").then((m) => ({ default: m.LatencyChart }))
+);
 
 type MetricsData = {
   timestamp: string;
@@ -158,7 +163,7 @@ function MetricsContent({ data }: { data: MetricsResponse }) {
       </div>
 
       {dataPoints.length > 0 && (
-        <>
+        <Suspense fallback={<div>Loading charts...</div>}>
           <div style={{ marginTop: "1rem" }}>
             <h4 style={{ marginBottom: "0.5rem" }}>Uptime Trend</h4>
             <UptimeChart data={dataPoints} />
@@ -168,7 +173,7 @@ function MetricsContent({ data }: { data: MetricsResponse }) {
             <h4 style={{ marginBottom: "0.5rem" }}>Response Time Trend</h4>
             <LatencyChart data={dataPoints} />
           </div>
-        </>
+        </Suspense>
       )}
     </div>
   );

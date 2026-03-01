@@ -99,6 +99,8 @@ async function handleMonitorAlert(
     uniqueChannelIds.map((id, i) => [id, channels[i]])
   );
 
+  const sendPromises: Promise<void>[] = [];
+
   for (const rule of rules) {
     const channel = channelMap.get(rule.channelId);
     if (!channel) continue;
@@ -112,16 +114,18 @@ async function handleMonitorAlert(
     }
 
     if (channel.type === "webhook") {
-      await sendWebhook(cfg as { url?: string }, {
-        alert_id: job.alert_id,
-        type: "monitor",
-        team_id: job.team_id,
-        monitor_id: job.monitor_id,
-        status: job.status,
-        reason: job.reason,
-        incident_id: job.incident_id,
-        ts: new Date().toISOString(),
-      });
+      sendPromises.push(
+        sendWebhook(cfg as { url?: string }, {
+          alert_id: job.alert_id,
+          type: "monitor",
+          team_id: job.team_id,
+          monitor_id: job.monitor_id,
+          status: job.status,
+          reason: job.reason,
+          incident_id: job.incident_id,
+          ts: new Date().toISOString(),
+        })
+      );
     } else if (channel.type === "email") {
       const emailConfig = cfg as { to?: string };
       const to = emailConfig.to;
@@ -130,18 +134,22 @@ async function handleMonitorAlert(
       const statusText =
         job.status === "down" ? "Service Down" : "Service Recovered";
 
-      await sendAlertEmail({
-        email: to,
-        statusText,
-        alertId: job.alert_id,
-        monitorId: job.monitor_id,
-        status: job.status,
-        reason: job.reason,
-        incidentId: job.incident_id,
-        resendApiKey: env.RESEND_API_KEY,
-      });
+      sendPromises.push(
+        sendAlertEmail({
+          email: to,
+          statusText,
+          alertId: job.alert_id,
+          monitorId: job.monitor_id,
+          status: job.status,
+          reason: job.reason,
+          incidentId: job.incident_id,
+          resendApiKey: env.RESEND_API_KEY,
+        })
+      );
     }
   }
+
+  await Promise.allSettled(sendPromises);
 }
 
 async function handleIssueAlert(

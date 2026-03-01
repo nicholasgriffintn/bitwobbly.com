@@ -65,6 +65,8 @@ const handler = {
 
           if (!due.length) return;
 
+          const queueMessages: { body: CheckJob }[] = [];
+
           for (const m of due) {
             const lockUntil = nowSec + lockTtlSec;
             const claim = await claimMonitor(db, m.id, nowSec, lockUntil);
@@ -92,7 +94,7 @@ const handler = {
                 failure_threshold: Number(m.failureThreshold) || 3,
                 external_config: m.externalConfig || undefined,
               };
-              await env.CHECK_JOBS.send(msg);
+              queueMessages.push({ body: msg });
 
               const next =
                 nowSec +
@@ -104,6 +106,10 @@ const handler = {
               });
               ctx.waitUntil(unlockMonitor(db, m.id, lockUntil));
             }
+          }
+
+          if (queueMessages.length) {
+            await env.CHECK_JOBS.sendBatch(queueMessages);
           }
         }
       },

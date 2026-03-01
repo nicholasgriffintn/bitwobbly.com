@@ -36,7 +36,13 @@ const config = defineConfig(({ command, mode }) => {
         output: {
           manualChunks: {
             vendor: ["react", "react-dom"],
+            router: [
+              "@tanstack/react-router",
+              "@tanstack/react-start",
+              "@tanstack/react-cross-context",
+            ],
             ui: ["recharts"],
+            validation: ["zod"],
           },
           chunkFileNames: "js/[name]-[hash].js",
           entryFileNames: "js/[name]-[hash].js",

@@ -142,8 +142,7 @@ async function processEvent(
   }
 
   const isTransaction = job.item_type === "transaction";
-  const level =
-    isTransaction ? "info" : event.level || "error";
+  const level = isTransaction ? "info" : event.level || "error";
 
   const eventId = stableEventId || crypto.randomUUID();
 
@@ -181,31 +180,34 @@ async function processSession(
     sessionData.environment || sessionData.attrs?.environment || null;
 
   if (Array.isArray(sessionData.aggregates) && sessionData.aggregates.length) {
-    for (let index = 0; index < sessionData.aggregates.length; index += 1) {
-      const aggregate = sessionData.aggregates[index];
-      const started = toUnixSeconds(aggregate.started, job.received_at);
-      const errorsRaw =
-        aggregate.errors ?? aggregate.errored ?? aggregate.crashed;
-      const errors =
-        typeof errorsRaw === "number" && Number.isFinite(errorsRaw)
-          ? Math.max(0, Math.floor(errorsRaw))
-          : 0;
+    const sessionValues = sessionData.aggregates.map(
+      (aggregate: any, index: number) => {
+        const started = toUnixSeconds(aggregate.started, job.received_at);
+        const errorsRaw =
+          aggregate.errors ?? aggregate.errored ?? aggregate.crashed;
+        const errors =
+          typeof errorsRaw === "number" && Number.isFinite(errorsRaw)
+            ? Math.max(0, Math.floor(errorsRaw))
+            : 0;
 
-      await insertSession(db, {
-        projectId: job.project_id,
-        sessionId: `${job.manifest_id}:${job.item_index}:${index}`,
-        distinctId: typeof aggregate.did === "string" ? aggregate.did : null,
-        status: deriveAggregateStatus(aggregate),
-        errors,
-        started,
-        duration:
-          typeof aggregate.duration === "number" ? aggregate.duration : null,
-        release,
-        environment,
-        userAgent: null,
-        receivedAt: job.received_at,
-      });
-    }
+        return {
+          projectId: job.project_id,
+          sessionId: `${job.manifest_id}:${job.item_index}:${index}`,
+          distinctId: typeof aggregate.did === "string" ? aggregate.did : null,
+          status: deriveAggregateStatus(aggregate),
+          errors,
+          started,
+          duration:
+            typeof aggregate.duration === "number" ? aggregate.duration : null,
+          release,
+          environment,
+          userAgent: null,
+          receivedAt: job.received_at,
+        };
+      }
+    );
+
+    await Promise.all(sessionValues.map((v: any) => insertSession(db, v)));
     return;
   }
 
@@ -299,7 +301,8 @@ async function processOtlpTrace(
       db,
       event: item.event,
       eventType: item.eventType,
-      level: item.level || (item.eventType === "transaction" ? "info" : "error"),
+      level:
+        item.level || (item.eventType === "transaction" ? "info" : "error"),
       eventId,
       receivedAt: item.timestamp ?? job.received_at,
       shouldCreateIssue: item.shouldCreateIssue,

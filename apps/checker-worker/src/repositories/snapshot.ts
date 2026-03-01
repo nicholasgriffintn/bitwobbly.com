@@ -3,11 +3,22 @@ import { eq, and, ne, inArray, desc, lte, gt, or, isNull } from "drizzle-orm";
 
 const logger = createLogger({ service: "checker-snapshot" });
 
-export async function rebuildAllSnapshots(env: {
-  DB: D1Database;
-  KV: KVNamespace;
-}) {
+export async function rebuildAllSnapshots(
+  env: {
+    DB: D1Database;
+    KV: KVNamespace;
+  },
+  options?: { teamId?: string }
+) {
   const db = createDb(env.DB);
+
+  const conditions = [
+    inArray(schema.statusPages.accessMode, ["public", "private"]),
+  ];
+  if (options?.teamId) {
+    conditions.push(eq(schema.statusPages.teamId, options.teamId));
+  }
+
   const pages = await db
     .select({
       id: schema.statusPages.id,
@@ -19,7 +30,7 @@ export async function rebuildAllSnapshots(env: {
       customCss: schema.statusPages.customCss,
     })
     .from(schema.statusPages)
-    .where(inArray(schema.statusPages.accessMode, ["public", "private"]));
+    .where(and(...conditions));
 
   const results = await Promise.allSettled(
     pages.map((p) => rebuildStatusSnapshot(env, p))
@@ -350,33 +361,34 @@ export async function openIncident(
   const incidentId = `inc_${crypto.randomUUID()}`;
   const startedAt = Math.floor(Date.now() / 1000);
 
-  await db.insert(schema.incidents).values({
-    id: incidentId,
-    teamId,
-    statusPageId: null,
-    monitorId,
-    title: "Monitor down",
-    status: "investigating",
-    startedAt,
-    resolvedAt: null,
-    createdAt: nowIso(),
-  });
-
-  await db.insert(schema.incidentUpdates).values({
-    id: `up_${crypto.randomUUID()}`,
-    incidentId,
-    message: reason || "Automated monitoring detected an outage.",
-    status: "investigating",
-    createdAt: nowIso(),
-  });
-
-  await db
-    .update(schema.monitorState)
-    .set({
-      incidentOpen: 1,
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.monitorState.monitorId, monitorId));
+  const now = nowIso();
+  await Promise.all([
+    db.insert(schema.incidents).values({
+      id: incidentId,
+      teamId,
+      statusPageId: null,
+      monitorId,
+      title: "Monitor down",
+      status: "investigating",
+      startedAt,
+      resolvedAt: null,
+      createdAt: now,
+    }),
+    db.insert(schema.incidentUpdates).values({
+      id: `up_${crypto.randomUUID()}`,
+      incidentId,
+      message: reason || "Automated monitoring detected an outage.",
+      status: "investigating",
+      createdAt: now,
+    }),
+    db
+      .update(schema.monitorState)
+      .set({
+        incidentOpen: 1,
+        updatedAt: now,
+      })
+      .where(eq(schema.monitorState.monitorId, monitorId)),
+  ]);
 
   return incidentId;
 }
@@ -389,27 +401,28 @@ export async function resolveIncident(
   const db = createDb(env.DB);
   const resolvedAt = Math.floor(Date.now() / 1000);
 
-  await db
-    .update(schema.incidents)
-    .set({
+  const now = nowIso();
+  await Promise.all([
+    db
+      .update(schema.incidents)
+      .set({
+        status: "resolved",
+        resolvedAt,
+      })
+      .where(eq(schema.incidents.id, incidentId)),
+    db.insert(schema.incidentUpdates).values({
+      id: `up_${crypto.randomUUID()}`,
+      incidentId,
+      message: "Service has recovered.",
       status: "resolved",
-      resolvedAt,
-    })
-    .where(eq(schema.incidents.id, incidentId));
-
-  await db.insert(schema.incidentUpdates).values({
-    id: `up_${crypto.randomUUID()}`,
-    incidentId,
-    message: "Service has recovered.",
-    status: "resolved",
-    createdAt: nowIso(),
-  });
-
-  await db
-    .update(schema.monitorState)
-    .set({
-      incidentOpen: 0,
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.monitorState.monitorId, monitorId));
+      createdAt: now,
+    }),
+    db
+      .update(schema.monitorState)
+      .set({
+        incidentOpen: 0,
+        updatedAt: now,
+      })
+      .where(eq(schema.monitorState.monitorId, monitorId)),
+  ]);
 }

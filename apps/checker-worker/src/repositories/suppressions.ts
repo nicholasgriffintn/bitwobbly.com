@@ -15,30 +15,33 @@ export async function getMonitorSuppressionState(
   monitorId: string,
   nowSec: number
 ): Promise<MonitorSuppressionState> {
-  const monitor = await db
-    .select({ groupId: schema.monitors.groupId })
-    .from(schema.monitors)
-    .where(
-      and(eq(schema.monitors.teamId, teamId), eq(schema.monitors.id, monitorId))
-    )
-    .limit(1);
+  const [monitor, componentRows] = await Promise.all([
+    db
+      .select({ groupId: schema.monitors.groupId })
+      .from(schema.monitors)
+      .where(
+        and(
+          eq(schema.monitors.teamId, teamId),
+          eq(schema.monitors.id, monitorId)
+        )
+      )
+      .limit(1),
+    db
+      .select({ componentId: schema.components.id })
+      .from(schema.componentMonitors)
+      .innerJoin(
+        schema.components,
+        eq(schema.components.id, schema.componentMonitors.componentId)
+      )
+      .where(
+        and(
+          eq(schema.componentMonitors.monitorId, monitorId),
+          eq(schema.components.teamId, teamId)
+        )
+      ),
+  ]);
 
   const groupId = monitor[0]?.groupId ?? null;
-
-  const componentRows = await db
-    .select({ componentId: schema.components.id })
-    .from(schema.componentMonitors)
-    .innerJoin(
-      schema.components,
-      eq(schema.components.id, schema.componentMonitors.componentId)
-    )
-    .where(
-      and(
-        eq(schema.componentMonitors.monitorId, monitorId),
-        eq(schema.components.teamId, teamId)
-      )
-    );
-
   const componentIds = componentRows.map((r) => r.componentId);
 
   const scopePredicates = [

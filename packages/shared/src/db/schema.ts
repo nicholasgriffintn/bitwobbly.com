@@ -13,28 +13,38 @@ export const teams = sqliteTable("teams", {
   createdAt: text("created_at").notNull(),
 });
 
-export const monitors = sqliteTable("monitors", {
-  id: text("id").primaryKey(),
-  teamId: text("team_id")
-    .notNull()
-    .references(() => teams.id),
-  groupId: text("group_id").references(() => monitorGroups.id, {
-    onDelete: "set null",
-  }),
-  name: text("name").notNull(),
-  url: text("url"),
-  method: text("method").notNull().default("GET"),
-  timeoutMs: integer("timeout_ms").notNull().default(8000),
-  intervalSeconds: integer("interval_seconds").notNull().default(60),
-  failureThreshold: integer("failure_threshold").notNull().default(3),
-  enabled: integer("enabled").notNull().default(1),
-  nextRunAt: integer("next_run_at").notNull().default(0),
-  lockedUntil: integer("locked_until").notNull().default(0),
-  type: text("type").notNull().default("http"),
-  webhookToken: text("webhook_token"),
-  externalConfig: text("external_config"),
-  createdAt: text("created_at").notNull(),
-});
+export const monitors = sqliteTable(
+  "monitors",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    groupId: text("group_id").references(() => monitorGroups.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    url: text("url"),
+    method: text("method").notNull().default("GET"),
+    timeoutMs: integer("timeout_ms").notNull().default(8000),
+    intervalSeconds: integer("interval_seconds").notNull().default(60),
+    failureThreshold: integer("failure_threshold").notNull().default(3),
+    enabled: integer("enabled").notNull().default(1),
+    nextRunAt: integer("next_run_at").notNull().default(0),
+    lockedUntil: integer("locked_until").notNull().default(0),
+    type: text("type").notNull().default("http"),
+    webhookToken: text("webhook_token"),
+    externalConfig: text("external_config"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    schedulingIdx: index("monitors_scheduling_idx").on(
+      table.enabled,
+      table.nextRunAt,
+      table.lockedUntil
+    ),
+  })
+);
 
 export const monitorGroups = sqliteTable("monitor_groups", {
   id: text("id").primaryKey(),
@@ -173,19 +183,29 @@ export const suppressionScopes = sqliteTable(
   })
 );
 
-export const incidents = sqliteTable("incidents", {
-  id: text("id").primaryKey(),
-  teamId: text("team_id")
-    .notNull()
-    .references(() => teams.id),
-  statusPageId: text("status_page_id").references(() => statusPages.id),
-  monitorId: text("monitor_id").references(() => monitors.id),
-  title: text("title").notNull(),
-  status: text("status").notNull(),
-  startedAt: integer("started_at").notNull(),
-  resolvedAt: integer("resolved_at"),
-  createdAt: text("created_at").notNull(),
-});
+export const incidents = sqliteTable(
+  "incidents",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    statusPageId: text("status_page_id").references(() => statusPages.id),
+    monitorId: text("monitor_id").references(() => monitors.id),
+    title: text("title").notNull(),
+    status: text("status").notNull(),
+    startedAt: integer("started_at").notNull(),
+    resolvedAt: integer("resolved_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    teamPageStatusIdx: index("incidents_team_page_status_idx").on(
+      table.teamId,
+      table.statusPageId,
+      table.status
+    ),
+  })
+);
 
 export const incidentUpdates = sqliteTable("incident_updates", {
   id: text("id").primaryKey(),
@@ -257,7 +277,13 @@ export const statusPageSubscriberEvents = sqliteTable(
     ),
     createdAt: text("created_at").notNull(),
     sentAt: text("sent_at"),
-  }
+  },
+  (table) => ({
+    subscriberSentIdx: index("sub_events_subscriber_sent_idx").on(
+      table.subscriberId,
+      table.sentAt
+    ),
+  })
 );
 
 export const statusPageSubscriberAuditLogs = sqliteTable(
@@ -293,42 +319,67 @@ export const notificationChannels = sqliteTable("notification_channels", {
   createdAt: text("created_at").notNull(),
 });
 
-export const alertRules = sqliteTable("alert_rules", {
-  id: text("id").primaryKey(),
-  teamId: text("team_id")
-    .notNull()
-    .references(() => teams.id),
-  name: text("name").notNull(),
-  enabled: integer("enabled").notNull().default(1),
-  sourceType: text("source_type").notNull(),
-  projectId: text("project_id"),
-  monitorId: text("monitor_id").references(() => monitors.id),
-  environment: text("environment"),
-  triggerType: text("trigger_type").notNull(),
-  conditionsJson: text("conditions_json"),
-  thresholdJson: text("threshold_json"),
-  channelId: text("channel_id")
-    .notNull()
-    .references(() => notificationChannels.id),
-  actionIntervalSeconds: integer("action_interval_seconds")
-    .notNull()
-    .default(3600),
-  lastTriggeredAt: integer("last_triggered_at"),
-  ownerId: text("owner_id"),
+export const alertRules = sqliteTable(
+  "alert_rules",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    name: text("name").notNull(),
+    enabled: integer("enabled").notNull().default(1),
+    sourceType: text("source_type").notNull(),
+    projectId: text("project_id"),
+    monitorId: text("monitor_id").references(() => monitors.id),
+    environment: text("environment"),
+    triggerType: text("trigger_type").notNull(),
+    conditionsJson: text("conditions_json"),
+    thresholdJson: text("threshold_json"),
+    channelId: text("channel_id")
+      .notNull()
+      .references(() => notificationChannels.id),
+    actionIntervalSeconds: integer("action_interval_seconds")
+      .notNull()
+      .default(3600),
+    lastTriggeredAt: integer("last_triggered_at"),
+    ownerId: text("owner_id"),
 
-  createdAt: text("created_at").notNull(),
-});
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    monitorTriggerIdx: index("alert_rules_monitor_trigger_idx").on(
+      table.monitorId,
+      table.sourceType,
+      table.triggerType,
+      table.enabled
+    ),
+    projectSourceIdx: index("alert_rules_project_source_idx").on(
+      table.teamId,
+      table.sourceType,
+      table.enabled
+    ),
+  })
+);
 
-export const alertRuleStates = sqliteTable("alert_rule_states", {
-  id: text("id").primaryKey(),
-  ruleId: text("rule_id")
-    .notNull()
-    .references(() => alertRules.id),
-  issueId: text("issue_id").notNull(),
-  status: text("status").notNull(),
-  triggeredAt: integer("triggered_at").notNull(),
-  resolvedAt: integer("resolved_at"),
-});
+export const alertRuleStates = sqliteTable(
+  "alert_rule_states",
+  {
+    id: text("id").primaryKey(),
+    ruleId: text("rule_id")
+      .notNull()
+      .references(() => alertRules.id),
+    issueId: text("issue_id").notNull(),
+    status: text("status").notNull(),
+    triggeredAt: integer("triggered_at").notNull(),
+    resolvedAt: integer("resolved_at"),
+  },
+  (table) => ({
+    ruleIssueUnique: uniqueIndex("alert_rule_states_rule_issue_unique").on(
+      table.ruleId,
+      table.issueId
+    ),
+  })
+);
 
 export const alertRuleFires = sqliteTable("alert_rule_fires", {
   id: text("id").primaryKey(),
@@ -521,61 +572,70 @@ export const sentryIssueGroupingRules = sqliteTable(
   })
 );
 
-export const sentryEvents = sqliteTable("sentry_events", {
-  id: text("id").primaryKey(),
-  projectId: text("project_id")
-    .notNull()
-    .references(() => sentryProjects.id),
-  type: text("type").notNull(),
-  level: text("level"),
-  message: text("message"),
-  transaction: text("transaction"),
-  fingerprint: text("fingerprint"),
-  issueId: text("issue_id").references(() => sentryIssues.id),
-  release: text("release"),
-  environment: text("environment"),
-  r2Key: text("r2_key").notNull(),
-  receivedAt: integer("received_at").notNull(),
-  createdAt: text("created_at").notNull(),
-  user: text("user", { mode: "json" }).$type<{
-    id?: string;
-    username?: string;
-    email?: string;
-    ip_address?: string;
-  }>(),
-  tags: text("tags", { mode: "json" }).$type<Record<string, string>>(),
-  contexts: text("contexts", { mode: "json" }).$type<{
-    device?: { [key: string]: {} };
-    os?: { [key: string]: {} };
-    runtime?: { [key: string]: {} };
-    browser?: { [key: string]: {} };
-    app?: { [key: string]: {} };
-  }>(),
-  request: text("request", { mode: "json" }).$type<{
-    url?: string;
-    method?: string;
-    headers?: Record<string, string>;
-    data?: { [key: string]: {} };
-  }>(),
-  exception: text("exception", { mode: "json" }).$type<{
-    values?: Array<{
-      type?: string;
-      value?: string;
-      mechanism?: { [key: string]: {} };
-      stacktrace?: { [key: string]: {} };
-    }>;
-  }>(),
-  breadcrumbs: text("breadcrumbs", { mode: "json" }).$type<
-    Array<{
-      timestamp?: string;
-      type?: string;
-      category?: string;
-      message?: string;
-      level?: string;
+export const sentryEvents = sqliteTable(
+  "sentry_events",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => sentryProjects.id),
+    type: text("type").notNull(),
+    level: text("level"),
+    message: text("message"),
+    transaction: text("transaction"),
+    fingerprint: text("fingerprint"),
+    issueId: text("issue_id").references(() => sentryIssues.id),
+    release: text("release"),
+    environment: text("environment"),
+    r2Key: text("r2_key").notNull(),
+    receivedAt: integer("received_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    user: text("user", { mode: "json" }).$type<{
+      id?: string;
+      username?: string;
+      email?: string;
+      ip_address?: string;
+    }>(),
+    tags: text("tags", { mode: "json" }).$type<Record<string, string>>(),
+    contexts: text("contexts", { mode: "json" }).$type<{
+      device?: { [key: string]: {} };
+      os?: { [key: string]: {} };
+      runtime?: { [key: string]: {} };
+      browser?: { [key: string]: {} };
+      app?: { [key: string]: {} };
+    }>(),
+    request: text("request", { mode: "json" }).$type<{
+      url?: string;
+      method?: string;
+      headers?: Record<string, string>;
       data?: { [key: string]: {} };
-    }>
-  >(),
-});
+    }>(),
+    exception: text("exception", { mode: "json" }).$type<{
+      values?: Array<{
+        type?: string;
+        value?: string;
+        mechanism?: { [key: string]: {} };
+        stacktrace?: { [key: string]: {} };
+      }>;
+    }>(),
+    breadcrumbs: text("breadcrumbs", { mode: "json" }).$type<
+      Array<{
+        timestamp?: string;
+        type?: string;
+        category?: string;
+        message?: string;
+        level?: string;
+        data?: { [key: string]: {} };
+      }>
+    >(),
+  },
+  (table) => ({
+    issueReceivedIdx: index("sentry_events_issue_received_idx").on(
+      table.issueId,
+      table.receivedAt
+    ),
+  })
+);
 
 export const sentrySessions = sqliteTable("sentry_sessions", {
   id: text("id").primaryKey(),
