@@ -46,8 +46,8 @@ export const Route = createFileRoute("/app/issues/")({
   pendingMs: 150,
   staleTime: 30_000,
   loader: async () => {
-    const { projects } = await listSentryProjectsFn();
     const componentsPromise = listComponentsFn().then((r) => r.components);
+    const projects = await listSentryProjectsFn().then((r) => r.projects);
     return { projects, componentsPromise: defer(componentsPromise) };
   },
 });

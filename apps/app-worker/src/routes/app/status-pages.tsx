@@ -192,11 +192,12 @@ export default function StatusPages() {
           isEmpty={!pages.length}
           emptyMessage="No status pages yet."
         >
-          {pages.map((page) => {
+          {pages.map((page, index) => {
             const isExpanded = expandedPageId === page.id;
 
             return (
               <ListRow
+                 isOdd={index > 0}
                 key={page.id}
                 className="list-item-expanded"
                 title={page.name}

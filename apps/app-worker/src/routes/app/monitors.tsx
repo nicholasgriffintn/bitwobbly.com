@@ -285,7 +285,7 @@ function Monitors() {
                   </Badge>
                 </div>
                 <ListContainer isEmpty={false} emptyMessage="">
-                  {section.items.map((monitor) => {
+                  {section.items.map((monitor, index) => {
                     const rawStatus = monitor.state?.lastStatus ?? "unknown";
                     const status = isStatusType(rawStatus)
                       ? rawStatus
@@ -296,6 +296,7 @@ function Monitors() {
 
                     return (
                       <ListRow
+                         isOdd={index > 0}
                         key={monitor.id}
                         className="list-item-expanded"
                         title={monitor.name}

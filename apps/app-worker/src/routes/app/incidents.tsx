@@ -143,13 +143,14 @@ export default function Incidents() {
           isEmpty={!incidents.length}
           emptyMessage="No incidents recorded."
         >
-          {incidents.map((incident) => {
+          {incidents.map((incident, index) => {
             const status = isStatusType(incident.status)
               ? incident.status
               : "unknown";
 
             return (
               <ListRow
+                isOdd={index > 0}
                 key={incident.id}
                 className="list-item-expanded"
                 title={incident.title}

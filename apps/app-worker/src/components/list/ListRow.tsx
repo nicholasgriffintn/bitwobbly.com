@@ -10,6 +10,7 @@ interface ListRowProps {
   expanded?: boolean;
   expandedContent?: ReactNode;
   className?: string;
+  isOdd?: boolean;
 }
 
 export function ListRow({
@@ -22,6 +23,7 @@ export function ListRow({
   expanded = false,
   expandedContent,
   className = "",
+  isOdd = false,
 }: ListRowProps) {
   const hasExpandedContent = expanded && expandedContent;
 
@@ -30,7 +32,7 @@ export function ListRow({
   const resolvedSubtitleClassName = subtitleClassName ?? "muted";
 
   const rowContent = (
-    <div className="list-row">
+    <div className={`list-row ${isOdd ? "odd" : "even"}`.trim()}>
       <div className="flex-1">
         <div className={resolvedTitleClassName}>
           {title}
@@ -41,6 +43,9 @@ export function ListRow({
         )}
       </div>
       {actions && <div className="button-row">{actions}</div>}
+      {hasExpandedContent && (
+        <div className="list-row-expanded-content">{expandedContent}</div>
+      )}
     </div>
   );
 
@@ -48,7 +53,6 @@ export function ListRow({
     return (
       <div className={`list-item-expanded ${className}`.trim()}>
         {rowContent}
-        {expandedContent}
       </div>
     );
   }

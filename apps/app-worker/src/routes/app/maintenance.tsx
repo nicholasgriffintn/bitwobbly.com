@@ -135,10 +135,11 @@ function Maintenance() {
           isEmpty={!suppressions.length}
           emptyMessage="No maintenance windows or silences yet."
         >
-          {suppressions.map((s) => {
+          {suppressions.map((s, index) => {
             const scope = s.scopes[0];
             return (
               <ListRow
+                 isOdd={index > 0}
                 key={s.id}
                 title={
                   <>

@@ -67,10 +67,6 @@ export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
   pendingMs: 150,
   staleTime: 15_000,
   loader: async ({ params }) => {
-    const issue = await getSentryIssueFn({
-      data: { projectId: params.projectId, issueId: params.issueId },
-    }).then((r) => r.issue);
-
     const eventsPromise = listSentryEventsFn({
       data: {
         projectId: params.projectId,
@@ -80,6 +76,9 @@ export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
     }).then((r) => r.events);
 
     const membersPromise = listTeamMembersFn().then((r) => r.members);
+    const issue = await getSentryIssueFn({
+      data: { projectId: params.projectId, issueId: params.issueId },
+    }).then((r) => r.issue);
 
     return {
       issue,
@@ -489,10 +488,11 @@ function IssueDetail() {
                 isEmpty={!events.length}
                 emptyMessage="No events found for this issue."
               >
-                {events.map((event: Event) => (
+                {events.map((event: Event, index: number) => (
                   <ListRow
                     key={event.id}
                     className="list-item-expanded issue-event-row"
+                    isOdd={index > 0}
                     title={
                       <div className="issue-event-title-wrap">
                         <span className="issue-event-title">

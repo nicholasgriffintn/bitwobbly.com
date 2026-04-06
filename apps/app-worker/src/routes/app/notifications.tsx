@@ -257,10 +257,11 @@ export default function Notifications() {
             isEmpty={!channels.length}
             emptyMessage="No notification channels yet."
           >
-            {channels.map((channel) => {
+            {channels.map((channel, index) => {
               const display = getChannelDisplay(channel);
               return (
                 <ListRow
+                   isOdd={index > 0}
                   key={channel.id}
                   titleClassName="flex flex-wrap items-center gap-2"
                   title={
@@ -301,12 +302,13 @@ export default function Notifications() {
               isEmpty={!rules.length}
               emptyMessage="No alert rules yet."
             >
-              {rules.map((rule) => {
+              {rules.map((rule, index) => {
                 const config = JSON.parse(rule.channelConfig);
                 const channelLabel =
                   config.label || config.url || config.to || "Channel";
                 return (
                   <ListRow
+                     isOdd={index > 0}
                     key={rule.id}
                     title={
                       <>
@@ -384,13 +386,14 @@ export default function Notifications() {
                       isEmpty={!loadedRules.length}
                       emptyMessage="No alert rules yet."
                     >
-                      {loadedRules.map((rule) => {
+                      {loadedRules.map((rule, index) => {
                         const config = JSON.parse(rule.channelConfig);
                         const channelLabel =
                           config.label || config.url || config.to || "Channel";
                         return (
                           <ListRow
                             key={rule.id}
+                             isOdd={index > 0}
                             title={
                               <>
                                 <span

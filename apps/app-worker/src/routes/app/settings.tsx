@@ -265,9 +265,10 @@ export default function Settings() {
       <Card>
         <CardTitle>Team Members</CardTitle>
         <ListContainer isEmpty={!members.length} emptyMessage="No members yet.">
-          {members.map((member) => (
+          {members.map((member, index) => (
             <ListRow
               key={member.userId}
+               isOdd={index > 0}
               title={member.email}
               subtitleClassName="muted flex flex-wrap items-center gap-2"
               subtitle={
@@ -323,11 +324,12 @@ export default function Settings() {
           isEmpty={!activeInvites.length}
           emptyMessage="No active invitations."
         >
-          {activeInvites.map((invite) => {
+          {activeInvites.map((invite, index) => {
             const isExpired = new Date(invite.expiresAt) < new Date();
             return (
               <ListRow
                 key={invite.inviteCode}
+                 isOdd={index > 0}
                 title={
                   <>
                     Invite Code:{" "}

@@ -1,4 +1,12 @@
-import { useMemo, memo, lazy, Suspense, useReducer } from "react";
+import {
+  useMemo,
+  memo,
+  lazy,
+  Suspense,
+  useReducer,
+  useEffect,
+  useState,
+} from "react";
 import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -20,7 +28,7 @@ import {
 } from "@/server/functions/sentry";
 import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
-import type { Issue, Event } from "@/types/issues";
+import type { Issue, Event, TeamMember } from "@/types/issues";
 import { supportsResolution } from "@/types/issues";
 
 const logger = createLogger({ service: "app-worker" });
@@ -163,7 +171,7 @@ export const Route = createFileRoute("/app/issues/$projectId/")({
     const issuesPromise = listSentryIssuesFn({
       data: { projectId: params.projectId },
     });
-    const membersPromise = listTeamMembersFn();
+    const membersPromise = listTeamMembersFn().then((r) => r.members);
 
     const eventsPromise = listSentryEventsFn({
       data: { projectId: params.projectId },
@@ -173,13 +181,10 @@ export const Route = createFileRoute("/app/issues/$projectId/")({
       data: { projectId: params.projectId },
     }).then((r) => r.rules);
 
-    const [issuesRes, membersRes] = await Promise.all([
-      issuesPromise,
-      membersPromise,
-    ]);
+    const issuesRes = await issuesPromise;
     return {
       issues: issuesRes.issues,
-      members: membersRes.members,
+      membersPromise: defer(membersPromise),
       eventsPromise: defer(eventsPromise),
       groupingRulesPromise: defer(groupingRulesPromise),
     };
@@ -194,11 +199,24 @@ function TabLoadingFallback() {
   );
 }
 
+function MembersHydrator({
+  members,
+  onLoaded,
+}: {
+  members: TeamMember[];
+  onLoaded: (members: TeamMember[]) => void;
+}) {
+  useEffect(() => {
+    onLoaded(members);
+  }, [members, onLoaded]);
+  return null;
+}
+
 function ProjectIssues() {
   const { projectId } = Route.useParams();
   const {
     issues: initialIssues,
-    members: initialMembers,
+    membersPromise,
     eventsPromise,
     groupingRulesPromise,
   } = Route.useLoaderData();
@@ -216,7 +234,7 @@ function ProjectIssues() {
     sortBy: "recent",
     isRefreshingIssues: false,
   });
-  const members = initialMembers;
+  const [members, setMembers] = useState<TeamMember[]>([]);
 
   const updateIssue = useServerFn(updateSentryIssueFn);
   const listIssues = useServerFn(listSentryIssuesFn);
@@ -529,9 +547,10 @@ function ProjectIssues() {
                   : "No issues found."
               }
             >
-              {filteredAndSortedIssues.map((issue) => (
+              {filteredAndSortedIssues.map((issue, index) => (
                 <ListRow
                   key={issue.id}
+                   isOdd={index > 0}
                   className="list-item-expanded"
                   title={issue.title}
                   badges={
@@ -674,6 +693,14 @@ function ProjectIssues() {
           ) : null}
         </div>
       </Card>
+
+      <Suspense fallback={null}>
+        <Await promise={membersPromise}>
+          {(loaded: TeamMember[]) => (
+            <MembersHydrator members={loaded} onLoaded={setMembers} />
+          )}
+        </Await>
+      </Suspense>
     </div>
   );
 }

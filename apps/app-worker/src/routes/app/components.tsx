@@ -157,13 +157,14 @@ export default function Components() {
           isEmpty={!components.length}
           emptyMessage="No components yet."
         >
-          {components.map((component) => {
+          {components.map((component, index) => {
             const isLinkExpanded = expandedId === component.id;
             const isMetricsExpanded = expandedMetricsId === component.id;
             const isDepsExpanded = expandedDepsId === component.id;
 
             return (
               <ListRow
+                 isOdd={index > 0}
                 key={component.id}
                 className="list-item-expanded"
                 title={component.name}

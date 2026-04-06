@@ -514,7 +514,6 @@ button.button-danger {
 
 .list {
   display: grid;
-  gap: 14px;
 }
 
 .list-row {
@@ -523,6 +522,8 @@ button.button-danger {
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .list-row > * {
@@ -535,6 +536,16 @@ button.button-danger {
 
 .list-row .button-row {
   margin-left: auto;
+}
+
+.list-row-expanded-content {
+  flex: 0 0 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.list-row.odd {
+  border-top: 1px solid var(--stroke);
 }
 
 .list-title {

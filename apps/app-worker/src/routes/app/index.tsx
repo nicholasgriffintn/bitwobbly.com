@@ -261,8 +261,9 @@ function Overview() {
             Active incidents
           </CardTitle>
           <ListContainer isEmpty={false}>
-            {incidents.slice(0, 3).map((incident) => (
+            {incidents.slice(0, 3).map((incident, index) => (
               <ListRow
+                 isOdd={index > 0}
                 key={incident.id}
                 title={
                   <>
@@ -314,12 +315,13 @@ function Overview() {
             isEmpty={!monitors.length}
             emptyMessage="No monitors yet."
           >
-            {monitors.slice(0, 5).map((monitor) => {
+            {monitors.slice(0, 5).map((monitor, index) => {
               const rawStatus = monitor.state?.lastStatus ?? "unknown";
               const status = isStatusType(rawStatus) ? rawStatus : "unknown";
 
               return (
                 <ListRow
+                   isOdd={index > 0}
                   key={monitor.id}
                   title={
                     <>
@@ -361,8 +363,9 @@ function Overview() {
                   isEmpty={!pages.length}
                   emptyMessage="No status pages yet."
                 >
-                  {pages.slice(0, 5).map((page) => (
+                  {pages.slice(0, 5).map((page, index) => (
                     <ListRow
+                       isOdd={index > 0}
                       key={page.id}
                       title={page.name}
                       subtitle={`/${page.slug}`}
