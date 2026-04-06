@@ -47,7 +47,19 @@ export async function listSentryEvents(
   }
 
   return db
-    .select()
+    .select({
+      id: schema.sentryEvents.id,
+      type: schema.sentryEvents.type,
+      level: schema.sentryEvents.level,
+      message: schema.sentryEvents.message,
+      transaction: schema.sentryEvents.transaction,
+      receivedAt: schema.sentryEvents.receivedAt,
+      issueId: schema.sentryEvents.issueId,
+      release: schema.sentryEvents.release,
+      environment: schema.sentryEvents.environment,
+      user: schema.sentryEvents.user,
+      tags: schema.sentryEvents.tags,
+    })
     .from(schema.sentryEvents)
     .where(and(...conditions))
     .orderBy(desc(schema.sentryEvents.receivedAt))

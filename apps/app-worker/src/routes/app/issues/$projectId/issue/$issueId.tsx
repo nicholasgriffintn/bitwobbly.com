@@ -28,6 +28,7 @@ import {
   listSentryEventsFn,
   updateSentryIssueFn,
 } from "@/server/functions/sentry";
+import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
 import type { Event, Issue, TeamMember } from "@/types/issues";
 import { supportsResolution } from "@/types/issues";
@@ -70,21 +71,22 @@ export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
   pendingMs: 150,
   staleTime: 15_000,
   loader: async ({ params }) => {
-    const supportingDataPromise = getSentryIssueSupportingDataFn({
+    const eventsPromise = getSentryIssueSupportingDataFn({
       data: {
         projectId: params.projectId,
         issueId: params.issueId,
         eventsLimit: INITIAL_EVENT_LIMIT + EVENT_QUERY_BUFFER,
       },
-    });
+    }).then((r) => r.events);
+    const membersPromise = listTeamMembersFn().then((r) => r.members);
     const issue = await getSentryIssueFn({
       data: { projectId: params.projectId, issueId: params.issueId },
     }).then((r) => r.issue);
 
     return {
       issue,
-      eventsPromise: defer(supportingDataPromise.then((r) => r.events)),
-      membersPromise: defer(supportingDataPromise.then((r) => r.members)),
+      eventsPromise: defer(eventsPromise),
+      membersPromise: defer(membersPromise),
     };
   },
 });
@@ -113,6 +115,8 @@ function IssueDetail() {
   const [issueState, setIssueState] = useState<Issue>(issue);
   const issueSupportsResolution = supportsResolution(issueState.level);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedEventDetails, setSelectedEventDetails] =
+    useState<Event | null>(null);
   const [eventPayload, setEventPayload] = useState<string | null>(null);
   const [isLoadingPayload, setIsLoadingPayload] = useState(false);
   const [assigneeUserId, setAssigneeUserId] = useState<string>(
@@ -138,8 +142,19 @@ function IssueDetail() {
   const selectedEvent = events.find(
     (event: Event) => event.id === selectedEventId
   );
-  const investigatePrompt = buildInvestigatePrompt(issueState, selectedEvent);
-  const fixPrompt = buildFixPrompt(issueState, selectedEvent, eventPayload);
+  const selectedEventWithDetails =
+    selectedEventDetails?.id === selectedEventId
+      ? selectedEventDetails
+      : selectedEvent;
+  const investigatePrompt = buildInvestigatePrompt(
+    issueState,
+    selectedEventWithDetails
+  );
+  const fixPrompt = buildFixPrompt(
+    issueState,
+    selectedEventWithDetails,
+    eventPayload
+  );
   const now = Math.floor(Date.now() / 1000);
 
   const levelCounts = useMemo(() => {
@@ -191,11 +206,11 @@ function IssueDetail() {
   }, [events]);
 
   const selectedFrames = useMemo<StackFrameView[]>(() => {
-    if (!selectedEvent?.exception?.values?.length) return [];
+    if (!selectedEventWithDetails?.exception?.values?.length) return [];
 
     const frames: StackFrameView[] = [];
 
-    for (const value of selectedEvent.exception.values) {
+    for (const value of selectedEventWithDetails.exception.values) {
       if (
         !value.stacktrace ||
         typeof value.stacktrace !== "object" ||
@@ -246,18 +261,21 @@ function IssueDetail() {
     }
 
     return [...frames].reverse().slice(0, 20);
-  }, [selectedEvent]);
+  }, [selectedEventWithDetails]);
 
   const latestEvent = events[0];
   const oldestEvent = events.length > 0 ? events[events.length - 1] : null;
 
   const handleViewPayload = async (eventId: string) => {
     setSelectedEventId(eventId);
+    setSelectedEventDetails(null);
+    setEventPayload(null);
     setIsLoadingPayload(true);
     try {
       const result = await getEventPayload({
         data: { projectId, eventId },
       });
+      setSelectedEventDetails(result.event);
       setEventPayload(result.payload);
     } catch (err) {
       logger.error("Failed to load payload:", { error: serialiseError(err) });
@@ -269,11 +287,16 @@ function IssueDetail() {
 
   const closePayload = () => {
     setSelectedEventId(null);
+    setSelectedEventDetails(null);
     setEventPayload(null);
   };
 
   const loadMoreEvents = async () => {
-    if (isLoadingMoreEvents || !eventsHasMore || eventsFetchLimit >= MAX_EVENT_LIMIT) {
+    if (
+      isLoadingMoreEvents ||
+      !eventsHasMore ||
+      eventsFetchLimit >= MAX_EVENT_LIMIT
+    ) {
       return;
     }
 
@@ -532,310 +555,345 @@ function IssueDetail() {
                   isEmpty={!events.length}
                   emptyMessage="No events found for this issue."
                 >
-                  {events.map((event: Event, index: number) => (
-                    <ListRow
-                      key={event.id}
-                      className="list-item-expanded issue-event-row"
-                      isOdd={index > 0}
-                      title={
-                        <div className="issue-event-title-wrap">
-                          <span className="issue-event-title">
-                            {event.message ||
-                              event.transaction ||
-                              `${event.type} event`}
-                          </span>
-                          <span className="issue-event-id font-mono">
-                            {event.id}
-                          </span>
-                        </div>
-                      }
-                      badges={
-                        <div className="issue-chip-row">
-                          {event.level && isStatusType(event.level) ? (
-                            <StatusBadge status={event.level}>
-                              {event.level}
-                            </StatusBadge>
-                          ) : event.level ? (
-                            <Badge size="small">{event.level}</Badge>
-                          ) : null}
-                          {event.release ? (
-                            <Badge size="small">{event.release}</Badge>
-                          ) : null}
-                          {event.environment ? (
-                            <Badge size="small" variant="muted">
-                              {event.environment}
-                            </Badge>
-                          ) : null}
-                        </div>
-                      }
-                      subtitle={
-                        <div className="issue-event-meta">
-                          <div className="issue-event-meta-line">
-                            <span>{formatRelativeTime(event.receivedAt)}</span>
-                            <span>{formatTimestamp(event.receivedAt)}</span>
-                            {event.user?.email ? (
-                              <span>User: {event.user.email}</span>
+                  {events.map((event: Event, index: number) => {
+                    const expandedEvent =
+                      selectedEventDetails?.id === event.id
+                        ? selectedEventDetails
+                        : null;
+
+                    return (
+                      <ListRow
+                        key={event.id}
+                        className="list-item-expanded issue-event-row"
+                        isOdd={index > 0}
+                        title={
+                          <div className="issue-event-title-wrap">
+                            <span className="issue-event-title">
+                              {event.message ||
+                                event.transaction ||
+                                `${event.type} event`}
+                            </span>
+                            <span className="issue-event-id font-mono">
+                              {event.id}
+                            </span>
+                          </div>
+                        }
+                        badges={
+                          <div className="issue-chip-row">
+                            {event.level && isStatusType(event.level) ? (
+                              <StatusBadge status={event.level}>
+                                {event.level}
+                              </StatusBadge>
+                            ) : event.level ? (
+                              <Badge size="small">{event.level}</Badge>
                             ) : null}
-                            {event.user?.id ? (
-                              <span>User ID: {event.user.id}</span>
+                            {event.release ? (
+                              <Badge size="small">{event.release}</Badge>
                             ) : null}
-                            {event.transaction ? (
-                              <span className="font-mono">
-                                {event.transaction}
-                              </span>
+                            {event.environment ? (
+                              <Badge size="small" variant="muted">
+                                {event.environment}
+                              </Badge>
                             ) : null}
                           </div>
-                          {event.request?.url ? (
+                        }
+                        subtitle={
+                          <div className="issue-event-meta">
                             <div className="issue-event-meta-line">
                               <span>
-                                Request: {event.request.method || "GET"}{" "}
-                                {event.request.url}
+                                {formatRelativeTime(event.receivedAt)}
                               </span>
+                              <span>{formatTimestamp(event.receivedAt)}</span>
+                              {event.user?.email ? (
+                                <span>User: {event.user.email}</span>
+                              ) : null}
+                              {event.user?.id ? (
+                                <span>User ID: {event.user.id}</span>
+                              ) : null}
+                              {event.transaction ? (
+                                <span className="font-mono">
+                                  {event.transaction}
+                                </span>
+                              ) : null}
                             </div>
-                          ) : null}
-                          {event.tags && Object.keys(event.tags).length > 0 ? (
-                            <div className="issue-chip-row">
-                              {Object.entries(event.tags)
-                                .slice(0, 8)
-                                .map(([key, value]) => (
-                                  <Badge
-                                    key={key}
-                                    size="small"
-                                    variant="muted"
+                            {event.tags &&
+                            Object.keys(event.tags).length > 0 ? (
+                              <div className="issue-chip-row">
+                                {Object.entries(event.tags)
+                                  .slice(0, 8)
+                                  .map(([key, value]) => (
+                                    <Badge
+                                      key={key}
+                                      size="small"
+                                      variant="muted"
+                                    >
+                                      {key}: {value}
+                                    </Badge>
+                                  ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        }
+                        subtitleClassName="muted mt-1"
+                        actions={
+                          <button
+                            type="button"
+                            onClick={() => handleViewPayload(event.id)}
+                            className="outline text-sm"
+                          >
+                            {selectedEventId === event.id
+                              ? "Refresh details"
+                              : "View details"}
+                          </button>
+                        }
+                        expanded={selectedEventId === event.id}
+                        expandedContent={
+                          selectedEventId === event.id && (
+                            <div className="issue-event-expanded">
+                              <div className="issue-event-expanded-toolbar">
+                                <strong>Event Diagnostics</strong>
+                                <div className="button-row">
+                                  <CopyButton
+                                    text={eventPayload || ""}
+                                    label="Copy payload"
+                                    disabled={isLoadingPayload || !eventPayload}
+                                  />
+                                  <CopyButton
+                                    text={buildInvestigatePrompt(
+                                      issueState,
+                                      expandedEvent ?? event
+                                    )}
+                                    label="Copy investigate prompt"
+                                    disabled={isLoadingPayload}
+                                  />
+                                  <CopyButton
+                                    text={buildFixPrompt(
+                                      issueState,
+                                      expandedEvent ?? event,
+                                      eventPayload
+                                    )}
+                                    label="Copy fix prompt"
+                                    disabled={isLoadingPayload}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={closePayload}
+                                    className="outline button-mini"
                                   >
-                                    {key}: {value}
-                                  </Badge>
-                                ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      }
-                      subtitleClassName="muted mt-1"
-                      actions={
-                        <button
-                          type="button"
-                          onClick={() => handleViewPayload(event.id)}
-                          className="outline text-sm"
-                        >
-                          {selectedEventId === event.id
-                            ? "Refresh details"
-                            : "View details"}
-                        </button>
-                      }
-                      expanded={selectedEventId === event.id}
-                      expandedContent={
-                        selectedEventId === event.id && (
-                          <div className="issue-event-expanded">
-                            <div className="issue-event-expanded-toolbar">
-                              <strong>Event Diagnostics</strong>
-                              <div className="button-row">
-                                <CopyButton
-                                  text={eventPayload || ""}
-                                  label="Copy payload"
-                                  disabled={isLoadingPayload || !eventPayload}
-                                />
-                                <CopyButton
-                                  text={buildInvestigatePrompt(
-                                    issueState,
-                                    event
-                                  )}
-                                  label="Copy investigate prompt"
-                                  disabled={isLoadingPayload}
-                                />
-                                <CopyButton
-                                  text={buildFixPrompt(
-                                    issueState,
-                                    event,
-                                    eventPayload
-                                  )}
-                                  label="Copy fix prompt"
-                                  disabled={isLoadingPayload}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={closePayload}
-                                  className="outline button-mini"
-                                >
-                                  Close
-                                </button>
+                                    Close
+                                  </button>
+                                </div>
                               </div>
-                            </div>
 
-                          <div className="issue-expanded-grid">
-                            <section className="issue-expanded-section">
-                              <h4>Exception</h4>
-                              {event.exception?.values?.length ? (
-                                <div className="issue-expanded-list">
-                                  {event.exception.values.map((value, idx) => (
-                                    <div key={`${event.id}-ex-${idx}`}>
-                                      <div className="issue-expanded-key">
-                                        {value.type || "Error"}
+                              {expandedEvent ? (
+                                <div className="issue-expanded-grid">
+                                  <section className="issue-expanded-section">
+                                    <h4>Exception</h4>
+                                    {expandedEvent.exception?.values?.length ? (
+                                      <div className="issue-expanded-list">
+                                        {expandedEvent.exception.values.map(
+                                          (value, idx) => (
+                                            <div key={`${event.id}-ex-${idx}`}>
+                                              <div className="issue-expanded-key">
+                                                {value.type || "Error"}
+                                              </div>
+                                              <div className="issue-expanded-value">
+                                                {value.value || "No message"}
+                                              </div>
+                                            </div>
+                                          )
+                                        )}
                                       </div>
-                                      <div className="issue-expanded-value">
-                                        {value.value || "No message"}
+                                    ) : (
+                                      <div className="muted">
+                                        No exception values
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="muted">No exception values</div>
-                              )}
-                            </section>
+                                    )}
+                                  </section>
 
-                            <section className="issue-expanded-section">
-                              <h4>Stack trace</h4>
-                              {selectedFrames.length ? (
-                                <div className="issue-expanded-list">
-                                  {selectedFrames.map((frame, idx) => (
-                                    <div key={`${event.id}-frame-${idx}`}>
-                                      <div className="issue-expanded-key">
-                                        {frame.function || "anonymous"}
-                                        {typeof frame.lineno === "number" ? (
-                                          <span>
-                                            {" "}
-                                            line {frame.lineno}
-                                            {typeof frame.colno === "number"
-                                              ? `:${frame.colno}`
-                                              : ""}
-                                          </span>
-                                        ) : null}
+                                  <section className="issue-expanded-section">
+                                    <h4>Stack trace</h4>
+                                    {selectedFrames.length ? (
+                                      <div className="issue-expanded-list">
+                                        {selectedFrames.map((frame, idx) => (
+                                          <div key={`${event.id}-frame-${idx}`}>
+                                            <div className="issue-expanded-key">
+                                              {frame.function || "anonymous"}
+                                              {typeof frame.lineno ===
+                                              "number" ? (
+                                                <span>
+                                                  {" "}
+                                                  line {frame.lineno}
+                                                  {typeof frame.colno ===
+                                                  "number"
+                                                    ? `:${frame.colno}`
+                                                    : ""}
+                                                </span>
+                                              ) : null}
+                                            </div>
+                                            <div className="issue-expanded-value font-mono">
+                                              {frame.filename || "unknown file"}
+                                            </div>
+                                            {frame.context_line ? (
+                                              <pre className="issue-inline-pre">
+                                                {frame.context_line}
+                                              </pre>
+                                            ) : null}
+                                          </div>
+                                        ))}
                                       </div>
-                                      <div className="issue-expanded-value font-mono">
-                                        {frame.filename || "unknown file"}
+                                    ) : (
+                                      <div className="muted">
+                                        No stack trace frames
                                       </div>
-                                      {frame.context_line ? (
-                                        <pre className="issue-inline-pre">
-                                          {frame.context_line}
-                                        </pre>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="muted">
-                                  No stack trace frames
-                                </div>
-                              )}
-                            </section>
+                                    )}
+                                  </section>
 
-                            <section className="issue-expanded-section">
-                              <h4>Request</h4>
-                              <div className="issue-expanded-list">
-                                <div>
-                                  <div className="issue-expanded-key">
-                                    Method
-                                  </div>
-                                  <div className="issue-expanded-value">
-                                    {event.request?.method || "unknown"}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="issue-expanded-key">URL</div>
-                                  <div className="issue-expanded-value break-all">
-                                    {event.request?.url || "unknown"}
-                                  </div>
-                                </div>
-                                {event.request?.headers ? (
-                                  <div>
-                                    <div className="issue-expanded-key">
-                                      Headers
-                                    </div>
-                                    <pre className="issue-inline-pre">
-                                      {JSON.stringify(
-                                        event.request.headers,
-                                        null,
-                                        2
-                                      )}
-                                    </pre>
-                                  </div>
-                                ) : null}
-                                {event.request?.data ? (
-                                  <div>
-                                    <div className="issue-expanded-key">
-                                      Body
-                                    </div>
-                                    <pre className="issue-inline-pre">
-                                      {JSON.stringify(
-                                        event.request.data,
-                                        null,
-                                        2
-                                      )}
-                                    </pre>
-                                  </div>
-                                ) : null}
-                              </div>
-                            </section>
-
-                            <section className="issue-expanded-section">
-                              <h4>Contexts</h4>
-                              {event.contexts &&
-                              Object.keys(event.contexts).length ? (
-                                <div className="issue-expanded-list">
-                                  {Object.entries(event.contexts).map(
-                                    ([name, context]) => (
-                                      <div key={`${event.id}-ctx-${name}`}>
+                                  <section className="issue-expanded-section">
+                                    <h4>Request</h4>
+                                    <div className="issue-expanded-list">
+                                      <div>
                                         <div className="issue-expanded-key">
-                                          {name}
+                                          Method
                                         </div>
-                                        <pre className="issue-inline-pre">
-                                          {JSON.stringify(context, null, 2)}
-                                        </pre>
+                                        <div className="issue-expanded-value">
+                                          {expandedEvent.request?.method ||
+                                            "unknown"}
+                                        </div>
                                       </div>
-                                    )
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="muted">No context payloads</div>
-                              )}
-                            </section>
-
-                            <section className="issue-expanded-section">
-                              <h4>Breadcrumbs</h4>
-                              {event.breadcrumbs?.length ? (
-                                <div className="issue-expanded-list">
-                                  {event.breadcrumbs.map((crumb, idx) => (
-                                    <div key={`${event.id}-crumb-${idx}`}>
-                                      <div className="issue-expanded-key">
-                                        {crumb.category ||
-                                          crumb.type ||
-                                          "default"}
+                                      <div>
+                                        <div className="issue-expanded-key">
+                                          URL
+                                        </div>
+                                        <div className="issue-expanded-value break-all">
+                                          {expandedEvent.request?.url ||
+                                            "unknown"}
+                                        </div>
                                       </div>
-                                      <div className="issue-expanded-value">
-                                        {crumb.message || "No message"}
-                                      </div>
-                                      <div className="issue-expanded-value">
-                                        {formatIsoTimestamp(crumb.timestamp)}
-                                        {crumb.level ? ` | ${crumb.level}` : ""}
-                                      </div>
-                                      {crumb.data ? (
-                                        <pre className="issue-inline-pre">
-                                          {JSON.stringify(crumb.data, null, 2)}
-                                        </pre>
+                                      {expandedEvent.request?.headers ? (
+                                        <div>
+                                          <div className="issue-expanded-key">
+                                            Headers
+                                          </div>
+                                          <pre className="issue-inline-pre">
+                                            {JSON.stringify(
+                                              expandedEvent.request.headers,
+                                              null,
+                                              2
+                                            )}
+                                          </pre>
+                                        </div>
+                                      ) : null}
+                                      {expandedEvent.request?.data ? (
+                                        <div>
+                                          <div className="issue-expanded-key">
+                                            Body
+                                          </div>
+                                          <pre className="issue-inline-pre">
+                                            {JSON.stringify(
+                                              expandedEvent.request.data,
+                                              null,
+                                              2
+                                            )}
+                                          </pre>
+                                        </div>
                                       ) : null}
                                     </div>
-                                  ))}
+                                  </section>
+
+                                  <section className="issue-expanded-section">
+                                    <h4>Contexts</h4>
+                                    {expandedEvent.contexts &&
+                                    Object.keys(expandedEvent.contexts)
+                                      .length ? (
+                                      <div className="issue-expanded-list">
+                                        {Object.entries(
+                                          expandedEvent.contexts
+                                        ).map(([name, context]) => (
+                                          <div key={`${event.id}-ctx-${name}`}>
+                                            <div className="issue-expanded-key">
+                                              {name}
+                                            </div>
+                                            <pre className="issue-inline-pre">
+                                              {JSON.stringify(context, null, 2)}
+                                            </pre>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="muted">
+                                        No context payloads
+                                      </div>
+                                    )}
+                                  </section>
+
+                                  <section className="issue-expanded-section">
+                                    <h4>Breadcrumbs</h4>
+                                    {expandedEvent.breadcrumbs?.length ? (
+                                      <div className="issue-expanded-list">
+                                        {expandedEvent.breadcrumbs.map(
+                                          (crumb, idx) => (
+                                            <div
+                                              key={`${event.id}-crumb-${idx}`}
+                                            >
+                                              <div className="issue-expanded-key">
+                                                {crumb.category ||
+                                                  crumb.type ||
+                                                  "default"}
+                                              </div>
+                                              <div className="issue-expanded-value">
+                                                {crumb.message || "No message"}
+                                              </div>
+                                              <div className="issue-expanded-value">
+                                                {formatIsoTimestamp(
+                                                  crumb.timestamp
+                                                )}
+                                                {crumb.level
+                                                  ? ` | ${crumb.level}`
+                                                  : ""}
+                                              </div>
+                                              {crumb.data ? (
+                                                <pre className="issue-inline-pre">
+                                                  {JSON.stringify(
+                                                    crumb.data,
+                                                    null,
+                                                    2
+                                                  )}
+                                                </pre>
+                                              ) : null}
+                                            </div>
+                                          )
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="muted">
+                                        No breadcrumbs
+                                      </div>
+                                    )}
+                                  </section>
                                 </div>
                               ) : (
-                                <div className="muted">No breadcrumbs</div>
+                                <div className="p-2 muted">
+                                  Loading event details...
+                                </div>
                               )}
-                            </section>
-                          </div>
 
-                          <div className="issue-payload-panel">
-                            <h4>Raw payload</h4>
-                            {isLoadingPayload ? (
-                              <div>Loading payload...</div>
-                            ) : (
-                              <pre className="issue-payload-pre">
-                                {eventPayload}
-                              </pre>
-                            )}
-                          </div>
-                          </div>
-                        )
-                      }
-                    />
-                  ))}
+                              <div className="issue-payload-panel">
+                                <h4>Raw payload</h4>
+                                {isLoadingPayload ? (
+                                  <div>Loading payload...</div>
+                                ) : (
+                                  <pre className="issue-payload-pre">
+                                    {eventPayload}
+                                  </pre>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        }
+                      />
+                    );
+                  })}
                 </ListContainer>
                 {eventsHasMore && eventsFetchLimit < MAX_EVENT_LIMIT ? (
                   <div className="p-4 pt-3">
@@ -1066,41 +1124,41 @@ function IssueDetail() {
             </div>
             <div className="issue-ai-preview">
               <p className="issue-subtitle">Selected event context</p>
-              {selectedEvent ? (
+              {selectedEventWithDetails ? (
                 <div className="issue-kv-grid">
                   <div className="issue-kv-row">
                     <span>Event ID</span>
                     <span className="font-mono text-xs">
-                      {selectedEvent.id}
+                      {selectedEventWithDetails.id}
                     </span>
                   </div>
                   <div className="issue-kv-row">
                     <span>Type</span>
-                    <span>{selectedEvent.type}</span>
+                    <span>{selectedEventWithDetails.type}</span>
                   </div>
                   <div className="issue-kv-row">
                     <span>Level</span>
-                    <span>{selectedEvent.level || "unknown"}</span>
+                    <span>{selectedEventWithDetails.level || "unknown"}</span>
                   </div>
                   <div className="issue-kv-row">
                     <span>Message</span>
                     <span className="break-all">
-                      {selectedEvent.message || "-"}
+                      {selectedEventWithDetails.message || "-"}
                     </span>
                   </div>
                   <div className="issue-kv-row">
                     <span>Transaction</span>
                     <span className="font-mono text-xs break-all">
-                      {selectedEvent.transaction || "-"}
+                      {selectedEventWithDetails.transaction || "-"}
                     </span>
                   </div>
                   <div className="issue-kv-row">
                     <span>User</span>
                     <span>
                       {formatValue(
-                        selectedEvent.user?.email ||
-                          selectedEvent.user?.username ||
-                          selectedEvent.user?.id
+                        selectedEventWithDetails.user?.email ||
+                          selectedEventWithDetails.user?.username ||
+                          selectedEventWithDetails.user?.id
                       )}
                     </span>
                   </div>
@@ -1119,7 +1177,9 @@ function IssueDetail() {
         <Await promise={eventsPromise}>
           {(loaded: Event[]) => {
             if (eventsFetchLimit !== INITIAL_EVENT_LIMIT) return null;
-            return <EventsHydrator events={loaded} onLoaded={handleEventsLoaded} />;
+            return (
+              <EventsHydrator events={loaded} onLoaded={handleEventsLoaded} />
+            );
           }}
         </Await>
       </Suspense>

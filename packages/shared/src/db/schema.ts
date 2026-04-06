@@ -634,6 +634,10 @@ export const sentryEvents = sqliteTable(
       table.issueId,
       table.receivedAt
     ),
+    projectReceivedIdx: index("sentry_events_project_received_idx").on(
+      table.projectId,
+      table.receivedAt
+    ),
   })
 );
 

@@ -1,0 +1,1 @@
+CREATE INDEX `sentry_events_project_received_idx` ON `sentry_events` (`project_id`,`received_at`);

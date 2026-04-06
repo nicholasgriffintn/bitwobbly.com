@@ -30,7 +30,6 @@ import {
   listSentryIssueGroupingRules,
   updateSentryIssueGroupingRule,
 } from "../repositories/sentry-issue-grouping-rules";
-import { listTeamMembers } from "../repositories/teams";
 
 const CreateProjectSchema = z.object({
   name: z.string().min(1),
@@ -528,13 +527,10 @@ export const getSentryIssueSupportingDataFn = createServerFn({
     const project = await getSentryProject(db, teamId, data.projectId);
     if (!project) throw new Error("Project not found");
 
-    const [events, members] = await Promise.all([
-      listSentryEvents(db, data.projectId, {
-        issueId: data.issueId,
-        limit: data.eventsLimit,
-      }),
-      listTeamMembers(db, teamId),
-    ]);
+    const events = await listSentryEvents(db, data.projectId, {
+      issueId: data.issueId,
+      limit: data.eventsLimit,
+    });
 
-    return { events, members };
+    return { events };
   });
