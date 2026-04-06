@@ -30,6 +30,7 @@ import {
   listSentryIssueGroupingRules,
   updateSentryIssueGroupingRule,
 } from "../repositories/sentry-issue-grouping-rules";
+import { listTeamMembers } from "../repositories/teams";
 
 const CreateProjectSchema = z.object({
   name: z.string().min(1),
@@ -104,6 +105,11 @@ const ListIssueGroupingRulesSchema = z.object({
   projectId: z.string().min(1),
 });
 
+const GetProjectSecondaryDataSchema = z.object({
+  projectId: z.string().min(1),
+  eventsLimit: z.number().int().min(1).max(500).optional(),
+});
+
 const CreateIssueGroupingRuleSchema = z.object({
   projectId: z.string().min(1),
   name: z.string().min(1),
@@ -152,6 +158,12 @@ const UpdateSentryIssueSchema = z.object({
 const GetSentryIssueSchema = z.object({
   projectId: z.string().min(1),
   issueId: z.string().min(1),
+});
+
+const GetSentryIssueSupportingDataSchema = z.object({
+  projectId: z.string().min(1),
+  issueId: z.string().min(1),
+  eventsLimit: z.number().int().min(1).max(500).optional(),
 });
 
 export const listSentryProjectsFn = createServerFn({ method: "GET" }).handler(
@@ -289,6 +301,25 @@ export const listSentryIssueGroupingRulesFn = createServerFn({ method: "GET" })
 
     const rules = await listSentryIssueGroupingRules(db, data.projectId);
     return { rules };
+  });
+
+export const getSentryProjectSecondaryDataFn = createServerFn({
+  method: "GET",
+})
+  .inputValidator((data: unknown) => GetProjectSecondaryDataSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const [events, rules] = await Promise.all([
+      listSentryEvents(db, data.projectId, { limit: data.eventsLimit }),
+      listSentryIssueGroupingRules(db, data.projectId),
+    ]);
+
+    return { events, rules };
   });
 
 export const createSentryIssueGroupingRuleFn = createServerFn({
@@ -482,4 +513,28 @@ export const getSentryIssueFn = createServerFn({ method: "GET" })
     if (!issue) throw new Error("Issue not found");
 
     return { issue };
+  });
+
+export const getSentryIssueSupportingDataFn = createServerFn({
+  method: "GET",
+})
+  .inputValidator((data: unknown) =>
+    GetSentryIssueSupportingDataSchema.parse(data)
+  )
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+
+    const project = await getSentryProject(db, teamId, data.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const [events, members] = await Promise.all([
+      listSentryEvents(db, data.projectId, {
+        issueId: data.issueId,
+        limit: data.eventsLimit,
+      }),
+      listTeamMembers(db, teamId),
+    ]);
+
+    return { events, members };
   });

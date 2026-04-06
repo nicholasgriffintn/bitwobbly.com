@@ -178,10 +178,13 @@ export const updateStatusPageFn = createServerFn({ method: "POST" })
 
     if (updates.slug && updates.slug !== page.slug) {
       await vars.KV.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug));
+      await vars.KV.delete(`${getTeamStatusSnapshotCacheKey(teamId, page.slug)}:core`);
       await vars.KV.delete(getPublicStatusSnapshotCacheKey(page.slug));
+      await vars.KV.delete(`${getPublicStatusSnapshotCacheKey(page.slug)}:core`);
     }
 
     await vars.KV.delete(getPublicStatusSnapshotCacheKey(newSlug));
+    await vars.KV.delete(`${getPublicStatusSnapshotCacheKey(newSlug)}:core`);
     return { ok: true };
   });
 
@@ -197,7 +200,9 @@ export const deleteStatusPageFn = createServerFn({ method: "POST" })
 
     await deleteStatusPage(db, teamId, data.id);
     await vars.KV.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug));
+    await vars.KV.delete(`${getTeamStatusSnapshotCacheKey(teamId, page.slug)}:core`);
     await vars.KV.delete(getPublicStatusSnapshotCacheKey(page.slug));
+    await vars.KV.delete(`${getPublicStatusSnapshotCacheKey(page.slug)}:core`);
 
     return { ok: true };
   });

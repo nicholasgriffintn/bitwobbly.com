@@ -78,23 +78,38 @@ export const Route = createFileRoute("/app/notifications")({
   component: Notifications,
   loader: async () => {
     const channelsPromise = listChannelsFn();
-    const monitorsPromise = listMonitorsFn();
-    const projectsPromise = listSentryProjectsFn();
-    const rulesPromise = listAlertRulesFn().then((r) => r.rules);
-
-    const [channelsRes, monitorsRes, projectsRes] = await Promise.all([
-      channelsPromise,
-      monitorsPromise,
-      projectsPromise,
-    ]);
-    return {
-      channels: channelsRes.channels,
+    const ruleContextPromise = Promise.all([
+      listMonitorsFn(),
+      listSentryProjectsFn(),
+    ]).then(([monitorsRes, projectsRes]) => ({
       monitors: monitorsRes.monitors,
       projects: projectsRes.projects,
+    }));
+    const rulesPromise = listAlertRulesFn().then((r) => r.rules);
+
+    const channelsRes = await channelsPromise;
+    return {
+      channels: channelsRes.channels,
+      ruleContextPromise: defer(ruleContextPromise),
       rulesPromise: defer(rulesPromise),
     };
   },
 });
+
+function RuleContextHydrator({
+  monitors,
+  projects,
+  onLoaded,
+}: {
+  monitors: Monitor[];
+  projects: Project[];
+  onLoaded: (data: { monitors: Monitor[]; projects: Project[] }) => void;
+}) {
+  useEffect(() => {
+    onLoaded({ monitors, projects });
+  }, [monitors, onLoaded, projects]);
+  return null;
+}
 
 function RulesHydrator({
   rules,
@@ -112,15 +127,15 @@ function RulesHydrator({
 export default function Notifications() {
   const {
     channels: initialChannels,
-    monitors: initialMonitors,
-    projects: initialProjects,
+    ruleContextPromise,
     rulesPromise,
   } = Route.useLoaderData();
 
   const [activeTab, setActiveTab] = useState<Tab>("channels");
   const [channels, setChannels] = useState<Channel[]>(initialChannels);
-  const [monitors] = useState<Monitor[]>(initialMonitors);
-  const [projects] = useState<Project[]>(initialProjects);
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isRuleContextLoaded, setIsRuleContextLoaded] = useState(false);
   const [rules, setRules] = useState<AlertRule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,6 +244,12 @@ export default function Notifications() {
           {activeTab === "rules" && (
             <button
               onClick={() => {
+                if (!isRuleContextLoaded) {
+                  setError(
+                    "Rule options are still loading. Please try again in a moment."
+                  );
+                  return;
+                }
                 setEditingRule(null);
                 setIsRuleModalOpen(true);
               }}
@@ -346,6 +367,12 @@ export default function Notifications() {
                           type="button"
                           variant="outline"
                           onClick={() => {
+                            if (!isRuleContextLoaded) {
+                              setError(
+                                "Rule options are still loading. Please try again in a moment."
+                              );
+                              return;
+                            }
                             setEditingRule(rule);
                             setIsRuleModalOpen(true);
                           }}
@@ -457,6 +484,22 @@ export default function Notifications() {
         projects={projects}
         channels={channels}
       />
+
+      <Suspense fallback={null}>
+        <Await promise={ruleContextPromise}>
+          {(loaded: { monitors: Monitor[]; projects: Project[] }) => (
+            <RuleContextHydrator
+              monitors={loaded.monitors}
+              projects={loaded.projects}
+              onLoaded={({ monitors, projects }) => {
+                setMonitors(monitors);
+                setProjects(projects);
+                setIsRuleContextLoaded(true);
+              }}
+            />
+          )}
+        </Await>
+      </Suspense>
     </Page>
   );
 }

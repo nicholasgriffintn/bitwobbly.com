@@ -24,6 +24,7 @@ import {
   getPublicStatusSnapshotCacheKey,
   getTeamStatusSnapshotCacheKey,
 } from "../lib/status-snapshot-cache";
+import { isStatusSnapshot } from "../lib/type-guards";
 import { listActiveSuppressionMatches } from "../repositories/suppressions";
 
 type ComponentStatus = {
@@ -85,20 +86,48 @@ export async function rebuildStatusSnapshot(
   slug: string,
   accountId?: string,
   apiToken?: string,
-  options?: { teamId?: string; includePrivate?: boolean }
+  options?: {
+    teamId?: string;
+    includePrivate?: boolean;
+    includeHistoricalData?: boolean;
+    includePastIncidents?: boolean;
+    useCache?: boolean;
+  }
 ): Promise<StatusSnapshot | null> {
+  const includeHistoricalData = options?.includeHistoricalData ?? true;
+  const includePastIncidents = options?.includePastIncidents ?? true;
+  const useCache = options?.useCache ?? true;
+
   const page = options?.teamId
     ? await getStatusPageBySlug(db, options.teamId, slug)
     : await getExternalStatusPageBySlug(db, slug);
 
   if (!page) return null;
 
-  const cacheKey = options?.teamId
+  const baseCacheKey = options?.teamId
     ? getTeamStatusSnapshotCacheKey(options.teamId, slug)
     : getPublicStatusSnapshotCacheKey(slug);
+  const cacheKey =
+    useCache && !includeHistoricalData
+      ? `${baseCacheKey}:core`
+      : useCache
+        ? baseCacheKey
+        : null;
 
-  const existing = inFlightRebuilds.get(cacheKey);
+  const inFlightKey =
+    cacheKey ??
+    `${baseCacheKey}:nocache:h${includeHistoricalData ? "1" : "0"}:p${
+      includePastIncidents ? "1" : "0"
+    }`;
+  const existing = inFlightRebuilds.get(inFlightKey);
   if (existing) return await existing;
+
+  if (cacheKey) {
+    const cached = await kv.get(cacheKey, "json");
+    if (isStatusSnapshot(cached)) {
+      return cached;
+    }
+  }
 
   const promise = (async () => {
     const components = await listComponentsForStatusPage(db, page.id);
@@ -205,14 +234,16 @@ export async function rebuildStatusSnapshot(
 
     const incidentPromises = Promise.all([
       listOpenIncidents(db, page.teamId, page.id),
-      listRecentResolvedIncidents(db, page.teamId, page.id, 30),
+      includePastIncidents
+        ? listRecentResolvedIncidents(db, page.teamId, page.id, 30)
+        : Promise.resolve([]),
     ]);
 
     const historicalBucketsPromise: Promise<Map<
       string,
       Map<string, DayBucketCounts>
     > | null> =
-      accountId && apiToken && monitorIds.length
+      includeHistoricalData && accountId && apiToken && monitorIds.length
         ? getHistoricalBucketsForMonitors(accountId, apiToken, monitorIds, 90)
         : Promise.resolve(new Map<string, Map<string, DayBucketCounts>>());
 
@@ -265,7 +296,7 @@ export async function rebuildStatusSnapshot(
     const [historicalBuckets, [openIncidents, pastIncidents]] =
       await Promise.all([historicalBucketsPromise, incidentPromises]);
 
-    if (accountId && apiToken) {
+    if (includeHistoricalData && accountId && apiToken) {
       for (const c of compsWithStatus) {
         const ids = componentIdToMonitorIds.get(c.id) || [];
         if (!ids.length) {
@@ -361,15 +392,17 @@ export async function rebuildStatusSnapshot(
       })),
     };
 
-    await kv.put(cacheKey, JSON.stringify(snapshot), { expirationTtl: 60 });
+    if (cacheKey) {
+      await kv.put(cacheKey, JSON.stringify(snapshot), { expirationTtl: 60 });
+    }
     return snapshot;
   })();
 
-  inFlightRebuilds.set(cacheKey, promise);
+  inFlightRebuilds.set(inFlightKey, promise);
   try {
     return await promise;
   } finally {
-    inFlightRebuilds.delete(cacheKey);
+    inFlightRebuilds.delete(inFlightKey);
   }
 }
 
@@ -383,8 +416,10 @@ export async function clearStatusPageCache(
   if (!page) return;
 
   await kv.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug));
+  await kv.delete(`${getTeamStatusSnapshotCacheKey(teamId, page.slug)}:core`);
   if (page.accessMode !== "internal") {
     await kv.delete(getPublicStatusSnapshotCacheKey(page.slug));
+    await kv.delete(`${getPublicStatusSnapshotCacheKey(page.slug)}:core`);
   }
 }
 
@@ -396,9 +431,13 @@ export async function clearAllStatusPageCaches(
   const pages = await listStatusPages(db, teamId);
   await Promise.all(
     pages.flatMap((page) => {
-      const ops = [kv.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug))];
+      const ops = [
+        kv.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug)),
+        kv.delete(`${getTeamStatusSnapshotCacheKey(teamId, page.slug)}:core`),
+      ];
       if (page.accessMode !== "internal") {
         ops.push(kv.delete(getPublicStatusSnapshotCacheKey(page.slug)));
+        ops.push(kv.delete(`${getPublicStatusSnapshotCacheKey(page.slug)}:core`));
       }
       return ops;
     })

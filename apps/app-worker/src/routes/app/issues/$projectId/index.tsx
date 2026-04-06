@@ -22,13 +22,17 @@ import { Badge, StatusBadge, isStatusType } from "@/components/ui";
 import { formatRelativeTime } from "@/utils/time";
 import {
   listSentryIssuesFn,
-  listSentryEventsFn,
   updateSentryIssueFn,
-  listSentryIssueGroupingRulesFn,
+  getSentryProjectSecondaryDataFn,
 } from "@/server/functions/sentry";
 import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
-import type { Issue, Event, TeamMember } from "@/types/issues";
+import type {
+  Issue,
+  Event,
+  TeamMember,
+  IssueGroupingRule,
+} from "@/types/issues";
 import { supportsResolution } from "@/types/issues";
 
 const logger = createLogger({ service: "app-worker" });
@@ -173,20 +177,10 @@ export const Route = createFileRoute("/app/issues/$projectId/")({
     });
     const membersPromise = listTeamMembersFn().then((r) => r.members);
 
-    const eventsPromise = listSentryEventsFn({
-      data: { projectId: params.projectId },
-    }).then((r) => r.events);
-
-    const groupingRulesPromise = listSentryIssueGroupingRulesFn({
-      data: { projectId: params.projectId },
-    }).then((r) => r.rules);
-
     const issuesRes = await issuesPromise;
     return {
       issues: issuesRes.issues,
       membersPromise: defer(membersPromise),
-      eventsPromise: defer(eventsPromise),
-      groupingRulesPromise: defer(groupingRulesPromise),
     };
   },
 });
@@ -214,12 +208,7 @@ function MembersHydrator({
 
 function ProjectIssues() {
   const { projectId } = Route.useParams();
-  const {
-    issues: initialIssues,
-    membersPromise,
-    eventsPromise,
-    groupingRulesPromise,
-  } = Route.useLoaderData();
+  const { issues: initialIssues, membersPromise } = Route.useLoaderData();
 
   const [state, dispatch] = useReducer(issuesReducer, {
     activeTab: "issues",
@@ -235,9 +224,59 @@ function ProjectIssues() {
     isRefreshingIssues: false,
   });
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [secondaryData, setSecondaryData] = useState<{
+    events: Event[];
+    rules: IssueGroupingRule[];
+  } | null>(null);
+  const [isSecondaryDataLoading, setIsSecondaryDataLoading] = useState(false);
+  const [secondaryDataError, setSecondaryDataError] = useState<string | null>(
+    null
+  );
 
   const updateIssue = useServerFn(updateSentryIssueFn);
   const listIssues = useServerFn(listSentryIssuesFn);
+  const getProjectSecondaryData = useServerFn(getSentryProjectSecondaryDataFn);
+
+  useEffect(() => {
+    if (
+      state.activeTab !== "events" &&
+      state.activeTab !== "grouping"
+    ) {
+      return;
+    }
+    if (secondaryData || isSecondaryDataLoading) {
+      return;
+    }
+
+    let cancelled = false;
+    setSecondaryDataError(null);
+    setIsSecondaryDataLoading(true);
+    void getProjectSecondaryData({
+      data: { projectId, eventsLimit: 100 },
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setSecondaryData({ events: res.events, rules: res.rules });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSecondaryDataError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsSecondaryDataLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    getProjectSecondaryData,
+    isSecondaryDataLoading,
+    projectId,
+    secondaryData,
+    state.activeTab,
+  ]);
 
   const memberEmailById = useMemo(() => {
     const map = new Map<string, string>();
@@ -658,37 +697,39 @@ function ProjectIssues() {
               ))}
             </ListContainer>
           ) : state.activeTab === "events" ? (
-            <Suspense fallback={<TabLoadingFallback />}>
-              <Await promise={eventsPromise}>
-                {(events) =>
-                  events.length ? (
-                    events.map((event) => (
-                      <EventItem
-                        key={event.id}
-                        event={event}
-                        projectId={projectId}
-                      />
-                    ))
-                  ) : (
-                    <div className="muted">No events found.</div>
-                  )
-                }
-              </Await>
-            </Suspense>
+            isSecondaryDataLoading ? (
+              <TabLoadingFallback />
+            ) : secondaryDataError ? (
+              <div className="muted">{secondaryDataError}</div>
+            ) : secondaryData ? (
+              secondaryData.events.length ? (
+                secondaryData.events.map((event) => (
+                  <EventItem key={event.id} event={event} projectId={projectId} />
+                ))
+              ) : (
+                <div className="muted">No events found.</div>
+              )
+            ) : (
+              <TabLoadingFallback />
+            )
           ) : state.activeTab === "analytics" ? (
             <Suspense fallback={<TabLoadingFallback />}>
               <AnalyticsTab projectId={projectId} />
             </Suspense>
           ) : state.activeTab === "grouping" ? (
             <Suspense fallback={<TabLoadingFallback />}>
-              <Await promise={groupingRulesPromise}>
-                {(groupingRules) => (
-                  <GroupingTab
-                    projectId={projectId}
-                    initialRules={groupingRules}
-                  />
-                )}
-              </Await>
+              {isSecondaryDataLoading ? (
+                <TabLoadingFallback />
+              ) : secondaryDataError ? (
+                <div className="p-4 muted">{secondaryDataError}</div>
+              ) : secondaryData ? (
+                <GroupingTab
+                  projectId={projectId}
+                  initialRules={secondaryData.rules}
+                />
+              ) : (
+                <TabLoadingFallback />
+              )}
             </Suspense>
           ) : null}
         </div>

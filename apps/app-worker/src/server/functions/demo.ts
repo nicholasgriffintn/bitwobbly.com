@@ -85,7 +85,9 @@ export const seedDemoDataFn = createServerFn({ method: "POST" }).handler(
     await Promise.all(
       existingStatusPages.flatMap((page) => [
         env.KV.delete(getTeamStatusSnapshotCacheKey(teamId, page.slug)),
+        env.KV.delete(`${getTeamStatusSnapshotCacheKey(teamId, page.slug)}:core`),
         env.KV.delete(getPublicStatusSnapshotCacheKey(page.slug)),
+        env.KV.delete(`${getPublicStatusSnapshotCacheKey(page.slug)}:core`),
       ])
     );
 

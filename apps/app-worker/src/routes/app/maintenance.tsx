@@ -17,6 +17,8 @@ import {
 } from "@/server/functions/suppressions";
 
 type Component = { id: string; name: string };
+type Monitor = { id: string; name: string };
+type MonitorGroup = { id: string; name: string };
 
 type Suppression = {
   id: string;
@@ -31,20 +33,38 @@ type Suppression = {
 export const Route = createFileRoute("/app/maintenance")({
   component: Maintenance,
   loader: async () => {
-    const componentsPromise = listComponentsFn().then((r) => r.components);
-    const [suppRes, monitorsRes, groupsRes] = await Promise.all([
-      listSuppressionsFn(),
+    const suppressionsPromise = listSuppressionsFn().then((r) => r.suppressions);
+    const scopeDataPromise = Promise.all([
       listMonitorsFn(),
       listMonitorGroupsFn(),
-    ]);
-    return {
-      suppressions: suppRes.suppressions,
+    ]).then(([monitorsRes, groupsRes]) => ({
       monitors: monitorsRes.monitors,
       groups: groupsRes.groups,
+    }));
+    const componentsPromise = listComponentsFn().then((r) => r.components);
+    const suppressions = await suppressionsPromise;
+    return {
+      suppressions,
+      scopeDataPromise: defer(scopeDataPromise),
       componentsPromise: defer(componentsPromise),
     };
   },
 });
+
+function ScopeDataHydrator({
+  monitors,
+  groups,
+  onLoaded,
+}: {
+  monitors: Monitor[];
+  groups: MonitorGroup[];
+  onLoaded: (data: { monitors: Monitor[]; groups: MonitorGroup[] }) => void;
+}) {
+  useEffect(() => {
+    onLoaded({ monitors, groups });
+  }, [groups, monitors, onLoaded]);
+  return null;
+}
 
 function ComponentsHydrator({
   components,
@@ -64,7 +84,10 @@ function Maintenance() {
   const [suppressions, setSuppressions] = useState<Suppression[]>(
     data.suppressions
   );
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [groups, setGroups] = useState<MonitorGroup[]>([]);
   const [components, setComponents] = useState<Component[]>([]);
+  const [isScopeDataLoaded, setIsScopeDataLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -73,12 +96,12 @@ function Maintenance() {
   const deleteSuppression = useServerFn(deleteSuppressionFn);
 
   const monitorById = useMemo(() => {
-    return new Map<string, string>(data.monitors.map((m) => [m.id, m.name]));
-  }, [data.monitors]);
+    return new Map<string, string>(monitors.map((m) => [m.id, m.name]));
+  }, [monitors]);
 
   const groupById = useMemo(() => {
-    return new Map<string, string>(data.groups.map((g) => [g.id, g.name]));
-  }, [data.groups]);
+    return new Map<string, string>(groups.map((g) => [g.id, g.name]));
+  }, [groups]);
 
   const componentById = useMemo(() => {
     return new Map<string, string>(components.map((c) => [c.id, c.name]));
@@ -116,13 +139,22 @@ function Maintenance() {
     }
   };
 
+  const openCreateModal = () => {
+    if (!isScopeDataLoaded) {
+      setError("Monitor and group options are still loading.");
+      return;
+    }
+    setError(null);
+    setIsCreateOpen(true);
+  };
+
   return (
     <Page className="page-stack">
       <PageHeader
         title="Maintenance and silences"
         description="Schedule maintenance windows and suppress monitor alert noise with scoped silences."
       >
-        <button type="button" onClick={() => setIsCreateOpen(true)}>
+        <button type="button" onClick={openCreateModal}>
           Create
         </button>
       </PageHeader>
@@ -183,11 +215,27 @@ function Maintenance() {
       <CreateSuppressionModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        monitors={data.monitors}
-        groups={data.groups}
+        monitors={monitors}
+        groups={groups}
         components={components}
         onSuccess={refresh}
       />
+
+      <Suspense fallback={null}>
+        <Await promise={data.scopeDataPromise}>
+          {(loaded: { monitors: Monitor[]; groups: MonitorGroup[] }) => (
+            <ScopeDataHydrator
+              monitors={loaded.monitors}
+              groups={loaded.groups}
+              onLoaded={({ monitors, groups }) => {
+                setMonitors(monitors);
+                setGroups(groups);
+                setIsScopeDataLoaded(true);
+              }}
+            />
+          )}
+        </Await>
+      </Suspense>
 
       <Suspense fallback={null}>
         <Await promise={data.componentsPromise}>

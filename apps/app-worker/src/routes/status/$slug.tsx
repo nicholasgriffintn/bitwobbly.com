@@ -1,10 +1,11 @@
-import { useState, useMemo, type FormEvent } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Suspense, useState, useMemo, type FormEvent } from "react";
+import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import {
-  getPublicStatusFn,
-  type PublicStatusResult,
+  getPublicStatusCoreFn,
+  getPublicStatusDeferredDetailsFn,
+  type PublicStatusDeferredDetails,
 } from "@/server/functions/public";
 import { subscribeToStatusPageFn } from "@/server/functions/status-page-subscribers";
 import { HistoricalUptimeBar } from "@/components/HistoricalUptimeBar";
@@ -89,8 +90,17 @@ export const Route = createFileRoute("/status/$slug")({
   pendingComponent: StatusPagePending,
   pendingMs: 200,
   staleTime: 30_000,
-  loader: async ({ params }): Promise<PublicStatusResult> => {
-    return await getPublicStatusFn({ data: { slug: params.slug } });
+  loader: async ({ params }) => {
+    const core = await getPublicStatusCoreFn({ data: { slug: params.slug } });
+    if (core.kind === "password_required") {
+      return { core, detailsPromise: null };
+    }
+
+    const detailsPromise = getPublicStatusDeferredDetailsFn({
+      data: { slug: params.slug },
+    });
+
+    return { core, detailsPromise: defer(detailsPromise) };
   },
   notFoundComponent: () => {
     return (
@@ -128,11 +138,11 @@ function StatusPage() {
     | { kind: "error"; message: string }
   >(null);
 
-  if (data.kind === "password_required") {
-    return <PrivateStatusPasswordGate slug={slug} page={data.page} />;
+  if (data.core.kind === "password_required") {
+    return <PrivateStatusPasswordGate slug={slug} page={data.core.page} />;
   }
 
-  const snapshot = data.snapshot;
+  const snapshot = data.core.snapshot;
   const { page, components, incidents } = snapshot;
   const brandColor = page.brand_color || "#007bff";
   const origin =
@@ -143,14 +153,12 @@ function StatusPage() {
   const availabilityApiBase = `${origin}/api/status/${encodedSlug}`;
   const exampleComponentId = components[0]?.id;
 
-  const { activeIncidents, pastIncidents } = useMemo(() => {
+  const activeIncidents = useMemo(() => {
     const active: typeof incidents = [];
-    const past: typeof incidents = [];
     for (const i of incidents) {
-      if (i.status === "resolved") past.push(i);
-      else active.push(i);
+      active.push(i);
     }
-    return { activeIncidents: active, pastIncidents: past };
+    return active;
   }, [incidents]);
 
   const statusIcon = (status: "up" | "down" | "unknown" | "maintenance") => {
@@ -860,42 +868,6 @@ function StatusPage() {
               </div>
             </div>
 
-            {components.some(
-              (c) => c.historical_data && c.historical_data.length > 0
-            ) && (
-              <div className="status-section">
-                <div className="uptime-header-section">
-                  <h2 className="status-section-title">
-                    Uptime over the past 90 days
-                  </h2>
-                  <p className="uptime-subtitle">View historical uptime.</p>
-                </div>
-                <div className="historical-uptime-container">
-                  {components.map((component) => {
-                    if (
-                      !component.historical_data ||
-                      component.historical_data.length === 0
-                    ) {
-                      return null;
-                    }
-                    return (
-                      <HistoricalUptimeBar
-                        key={component.id}
-                        data={component.historical_data}
-                        componentName={component.name}
-                        overallUptime={component.overall_uptime || 100}
-                      />
-                    );
-                  })}
-                </div>
-                <div className="uptime-footer">
-                  <div className="time-labels">
-                    <span>90 days ago</span>
-                    <span>Today</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -940,59 +912,143 @@ function StatusPage() {
           </div>
         )}
 
-        {pastIncidents.length > 0 && (
-          <div className="status-section">
-            <h2 className="status-section-title">Past incidents</h2>
-            {pastIncidents.map((incident) => (
-              <div
-                key={incident.id}
-                className={`incident-item ${incident.status}`}
-              >
-                <h3 className="incident-title">
-                  {incident.title}
-                  <StatusBadge
-                    status={
-                      isStatusType(incident.status)
-                        ? incident.status
-                        : "unknown"
-                    }
-                  />
-                </h3>
-                <div className="incident-meta">
-                  Started: {formatDate(incident.started_at)}
-                  {incident.resolved_at && (
-                    <> • Resolved: {formatDate(incident.resolved_at)}</>
-                  )}
-                </div>
-                {incident.updates.length > 0 && (
-                  <div className="incident-updates">
-                    {incident.updates.map((update) => (
-                      <div key={update.id} className="incident-update">
-                        <div className="update-header">
-                          <span className="update-status">{update.status}</span>
-                          <span className="update-time">
-                            {formatDate(update.created_at)}
-                          </span>
-                        </div>
-                        <div className="update-message">{update.message}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+        {data.detailsPromise ? (
+          <Suspense
+            fallback={
+              <div className="status-section">
+                <p style={{ textAlign: "center", color: "#6b7280" }}>
+                  Loading recent history...
+                </p>
               </div>
-            ))}
-          </div>
-        )}
+            }
+          >
+            <Await promise={data.detailsPromise}>
+              {(details: PublicStatusDeferredDetails) => {
+                const detailById = new Map(
+                  details.components.map((component) => [component.id, component])
+                );
+                const componentsWithHistory = components.map((component) => {
+                  const detail = detailById.get(component.id);
+                  return {
+                    ...component,
+                    historical_data: detail?.historical_data,
+                    overall_uptime: detail?.overall_uptime,
+                  };
+                });
 
-        {components.length === 0 &&
-          activeIncidents.length === 0 &&
-          pastIncidents.length === 0 && (
+                return (
+                  <>
+                    {componentsWithHistory.some(
+                      (c) => c.historical_data && c.historical_data.length > 0
+                    ) && (
+                      <div className="status-section">
+                        <div className="uptime-header-section">
+                          <h2 className="status-section-title">
+                            Uptime over the past 90 days
+                          </h2>
+                          <p className="uptime-subtitle">
+                            View historical uptime.
+                          </p>
+                        </div>
+                        <div className="historical-uptime-container">
+                          {componentsWithHistory.map((component) => {
+                            if (
+                              !component.historical_data ||
+                              component.historical_data.length === 0
+                            ) {
+                              return null;
+                            }
+                            return (
+                              <HistoricalUptimeBar
+                                key={component.id}
+                                data={component.historical_data}
+                                componentName={component.name}
+                                overallUptime={component.overall_uptime || 100}
+                              />
+                            );
+                          })}
+                        </div>
+                        <div className="uptime-footer">
+                          <div className="time-labels">
+                            <span>90 days ago</span>
+                            <span>Today</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {details.pastIncidents.length > 0 && (
+                      <div className="status-section">
+                        <h2 className="status-section-title">Past incidents</h2>
+                        {details.pastIncidents.map((incident) => (
+                          <div
+                            key={incident.id}
+                            className={`incident-item ${incident.status}`}
+                          >
+                            <h3 className="incident-title">
+                              {incident.title}
+                              <StatusBadge
+                                status={
+                                  isStatusType(incident.status)
+                                    ? incident.status
+                                    : "unknown"
+                                }
+                              />
+                            </h3>
+                            <div className="incident-meta">
+                              Started: {formatDate(incident.started_at)}
+                              {incident.resolved_at && (
+                                <> • Resolved: {formatDate(incident.resolved_at)}</>
+                              )}
+                            </div>
+                            {incident.updates.length > 0 && (
+                              <div className="incident-updates">
+                                {incident.updates.map((update) => (
+                                  <div key={update.id} className="incident-update">
+                                    <div className="update-header">
+                                      <span className="update-status">
+                                        {update.status}
+                                      </span>
+                                      <span className="update-time">
+                                        {formatDate(update.created_at)}
+                                      </span>
+                                    </div>
+                                    <div className="update-message">
+                                      {update.message}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {components.length === 0 &&
+                      activeIncidents.length === 0 &&
+                      details.pastIncidents.length === 0 && (
+                        <div className="status-section">
+                          <p style={{ textAlign: "center", color: "#6b7280" }}>
+                            No components or incidents to display
+                          </p>
+                        </div>
+                      )}
+                  </>
+                );
+              }}
+            </Await>
+          </Suspense>
+        ) : (
+          components.length === 0 &&
+          activeIncidents.length === 0 && (
             <div className="status-section">
               <p style={{ textAlign: "center", color: "#6b7280" }}>
                 No components or incidents to display
               </p>
             </div>
-          )}
+          )
+        )}
 
         <Modal
           isOpen={isSubscribeOpen}

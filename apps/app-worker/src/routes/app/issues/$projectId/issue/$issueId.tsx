@@ -22,17 +22,20 @@ import {
   getTopEntries,
 } from "@/utils/issues";
 import {
-  listSentryEventsFn,
   getSentryEventPayloadFn,
   getSentryIssueFn,
+  getSentryIssueSupportingDataFn,
+  listSentryEventsFn,
   updateSentryIssueFn,
 } from "@/server/functions/sentry";
-import { listTeamMembersFn } from "@/server/functions/teams";
 import { toTitleCase } from "@/utils/format";
 import type { Event, Issue, TeamMember } from "@/types/issues";
 import { supportsResolution } from "@/types/issues";
 
 const logger = createLogger({ service: "app-worker" });
+const INITIAL_EVENT_LIMIT = 30;
+const MAX_EVENT_LIMIT = 100;
+const EVENT_QUERY_BUFFER = 1;
 
 type StackFrameView = {
   filename?: string;
@@ -67,23 +70,21 @@ export const Route = createFileRoute("/app/issues/$projectId/issue/$issueId")({
   pendingMs: 150,
   staleTime: 15_000,
   loader: async ({ params }) => {
-    const eventsPromise = listSentryEventsFn({
+    const supportingDataPromise = getSentryIssueSupportingDataFn({
       data: {
         projectId: params.projectId,
         issueId: params.issueId,
-        limit: 100,
+        eventsLimit: INITIAL_EVENT_LIMIT + EVENT_QUERY_BUFFER,
       },
-    }).then((r) => r.events);
-
-    const membersPromise = listTeamMembersFn().then((r) => r.members);
+    });
     const issue = await getSentryIssueFn({
       data: { projectId: params.projectId, issueId: params.issueId },
     }).then((r) => r.issue);
 
     return {
       issue,
-      eventsPromise: defer(eventsPromise),
-      membersPromise: defer(membersPromise),
+      eventsPromise: defer(supportingDataPromise.then((r) => r.events)),
+      membersPromise: defer(supportingDataPromise.then((r) => r.members)),
     };
   },
 });
@@ -106,6 +107,9 @@ function IssueDetail() {
   const { issue, eventsPromise, membersPromise } = Route.useLoaderData();
   const [events, setEvents] = useState<Event[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [eventsFetchLimit, setEventsFetchLimit] = useState(INITIAL_EVENT_LIMIT);
+  const [eventsHasMore, setEventsHasMore] = useState(false);
+  const [isLoadingMoreEvents, setIsLoadingMoreEvents] = useState(false);
   const [issueState, setIssueState] = useState<Issue>(issue);
   const issueSupportsResolution = supportsResolution(issueState.level);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -117,11 +121,18 @@ function IssueDetail() {
   const [isUpdatingIssue, setIsUpdatingIssue] = useState(false);
 
   const handleEventsLoaded = useCallback((loadedEvents: Event[]) => {
-    setEvents(loadedEvents);
+    const hasMore = loadedEvents.length > INITIAL_EVENT_LIMIT;
+    const visibleEvents = hasMore
+      ? loadedEvents.slice(0, INITIAL_EVENT_LIMIT)
+      : loadedEvents;
+    setEvents(visibleEvents);
     setEventsLoaded(true);
+    setEventsFetchLimit(visibleEvents.length);
+    setEventsHasMore(hasMore);
   }, []);
 
   const getEventPayload = useServerFn(getSentryEventPayloadFn);
+  const listEvents = useServerFn(listSentryEventsFn);
   const updateIssue = useServerFn(updateSentryIssueFn);
   const getIssue = useServerFn(getSentryIssueFn);
   const selectedEvent = events.find(
@@ -259,6 +270,38 @@ function IssueDetail() {
   const closePayload = () => {
     setSelectedEventId(null);
     setEventPayload(null);
+  };
+
+  const loadMoreEvents = async () => {
+    if (isLoadingMoreEvents || !eventsHasMore || eventsFetchLimit >= MAX_EVENT_LIMIT) {
+      return;
+    }
+
+    setIsLoadingMoreEvents(true);
+    try {
+      const nextLimit = MAX_EVENT_LIMIT + EVENT_QUERY_BUFFER;
+      const res = await listEvents({
+        data: {
+          projectId,
+          issueId: issueState.id,
+          limit: nextLimit,
+        },
+      });
+      const hasMore = res.events.length > MAX_EVENT_LIMIT;
+      const visibleEvents = hasMore
+        ? res.events.slice(0, MAX_EVENT_LIMIT)
+        : res.events;
+      setEvents(visibleEvents);
+      setEventsLoaded(true);
+      setEventsFetchLimit(visibleEvents.length);
+      setEventsHasMore(hasMore);
+    } catch (err) {
+      logger.error("Failed to load additional events:", {
+        error: serialiseError(err),
+      });
+    } finally {
+      setIsLoadingMoreEvents(false);
+    }
   };
 
   const applyIssueUpdate = async (patch: {
@@ -484,131 +527,139 @@ function IssueDetail() {
               </div>
             ) : null}
             {eventsLoaded && (
-              <ListContainer
-                isEmpty={!events.length}
-                emptyMessage="No events found for this issue."
-              >
-                {events.map((event: Event, index: number) => (
-                  <ListRow
-                    key={event.id}
-                    className="list-item-expanded issue-event-row"
-                    isOdd={index > 0}
-                    title={
-                      <div className="issue-event-title-wrap">
-                        <span className="issue-event-title">
-                          {event.message ||
-                            event.transaction ||
-                            `${event.type} event`}
-                        </span>
-                        <span className="issue-event-id font-mono">
-                          {event.id}
-                        </span>
-                      </div>
-                    }
-                    badges={
-                      <div className="issue-chip-row">
-                        {event.level && isStatusType(event.level) ? (
-                          <StatusBadge status={event.level}>
-                            {event.level}
-                          </StatusBadge>
-                        ) : event.level ? (
-                          <Badge size="small">{event.level}</Badge>
-                        ) : null}
-                        {event.release ? (
-                          <Badge size="small">{event.release}</Badge>
-                        ) : null}
-                        {event.environment ? (
-                          <Badge size="small" variant="muted">
-                            {event.environment}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    }
-                    subtitle={
-                      <div className="issue-event-meta">
-                        <div className="issue-event-meta-line">
-                          <span>{formatRelativeTime(event.receivedAt)}</span>
-                          <span>{formatTimestamp(event.receivedAt)}</span>
-                          {event.user?.email ? (
-                            <span>User: {event.user.email}</span>
+              <>
+                <ListContainer
+                  isEmpty={!events.length}
+                  emptyMessage="No events found for this issue."
+                >
+                  {events.map((event: Event, index: number) => (
+                    <ListRow
+                      key={event.id}
+                      className="list-item-expanded issue-event-row"
+                      isOdd={index > 0}
+                      title={
+                        <div className="issue-event-title-wrap">
+                          <span className="issue-event-title">
+                            {event.message ||
+                              event.transaction ||
+                              `${event.type} event`}
+                          </span>
+                          <span className="issue-event-id font-mono">
+                            {event.id}
+                          </span>
+                        </div>
+                      }
+                      badges={
+                        <div className="issue-chip-row">
+                          {event.level && isStatusType(event.level) ? (
+                            <StatusBadge status={event.level}>
+                              {event.level}
+                            </StatusBadge>
+                          ) : event.level ? (
+                            <Badge size="small">{event.level}</Badge>
                           ) : null}
-                          {event.user?.id ? (
-                            <span>User ID: {event.user.id}</span>
+                          {event.release ? (
+                            <Badge size="small">{event.release}</Badge>
                           ) : null}
-                          {event.transaction ? (
-                            <span className="font-mono">
-                              {event.transaction}
-                            </span>
+                          {event.environment ? (
+                            <Badge size="small" variant="muted">
+                              {event.environment}
+                            </Badge>
                           ) : null}
                         </div>
-                        {event.request?.url ? (
+                      }
+                      subtitle={
+                        <div className="issue-event-meta">
                           <div className="issue-event-meta-line">
-                            <span>
-                              Request: {event.request.method || "GET"}{" "}
-                              {event.request.url}
-                            </span>
+                            <span>{formatRelativeTime(event.receivedAt)}</span>
+                            <span>{formatTimestamp(event.receivedAt)}</span>
+                            {event.user?.email ? (
+                              <span>User: {event.user.email}</span>
+                            ) : null}
+                            {event.user?.id ? (
+                              <span>User ID: {event.user.id}</span>
+                            ) : null}
+                            {event.transaction ? (
+                              <span className="font-mono">
+                                {event.transaction}
+                              </span>
+                            ) : null}
                           </div>
-                        ) : null}
-                        {event.tags && Object.keys(event.tags).length > 0 ? (
-                          <div className="issue-chip-row">
-                            {Object.entries(event.tags)
-                              .slice(0, 8)
-                              .map(([key, value]) => (
-                                <Badge key={key} size="small" variant="muted">
-                                  {key}: {value}
-                                </Badge>
-                              ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    }
-                    subtitleClassName="muted mt-1"
-                    actions={
-                      <button
-                        type="button"
-                        onClick={() => handleViewPayload(event.id)}
-                        className="outline text-sm"
-                      >
-                        {selectedEventId === event.id
-                          ? "Refresh details"
-                          : "View details"}
-                      </button>
-                    }
-                    expanded={selectedEventId === event.id}
-                    expandedContent={
-                      selectedEventId === event.id && (
-                        <div className="issue-event-expanded">
-                          <div className="issue-event-expanded-toolbar">
-                            <strong>Event Diagnostics</strong>
-                            <div className="button-row">
-                              <CopyButton
-                                text={eventPayload || ""}
-                                label="Copy payload"
-                                disabled={isLoadingPayload || !eventPayload}
-                              />
-                              <CopyButton
-                                text={buildInvestigatePrompt(issueState, event)}
-                                label="Copy investigate prompt"
-                                disabled={isLoadingPayload}
-                              />
-                              <CopyButton
-                                text={buildFixPrompt(
-                                  issueState,
-                                  event,
-                                  eventPayload
-                                )}
-                                label="Copy fix prompt"
-                                disabled={isLoadingPayload}
-                              />
-                              <button
-                                type="button"
-                                onClick={closePayload}
-                                className="outline button-mini"
-                              >
-                                Close
-                              </button>
+                          {event.request?.url ? (
+                            <div className="issue-event-meta-line">
+                              <span>
+                                Request: {event.request.method || "GET"}{" "}
+                                {event.request.url}
+                              </span>
                             </div>
-                          </div>
+                          ) : null}
+                          {event.tags && Object.keys(event.tags).length > 0 ? (
+                            <div className="issue-chip-row">
+                              {Object.entries(event.tags)
+                                .slice(0, 8)
+                                .map(([key, value]) => (
+                                  <Badge
+                                    key={key}
+                                    size="small"
+                                    variant="muted"
+                                  >
+                                    {key}: {value}
+                                  </Badge>
+                                ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      }
+                      subtitleClassName="muted mt-1"
+                      actions={
+                        <button
+                          type="button"
+                          onClick={() => handleViewPayload(event.id)}
+                          className="outline text-sm"
+                        >
+                          {selectedEventId === event.id
+                            ? "Refresh details"
+                            : "View details"}
+                        </button>
+                      }
+                      expanded={selectedEventId === event.id}
+                      expandedContent={
+                        selectedEventId === event.id && (
+                          <div className="issue-event-expanded">
+                            <div className="issue-event-expanded-toolbar">
+                              <strong>Event Diagnostics</strong>
+                              <div className="button-row">
+                                <CopyButton
+                                  text={eventPayload || ""}
+                                  label="Copy payload"
+                                  disabled={isLoadingPayload || !eventPayload}
+                                />
+                                <CopyButton
+                                  text={buildInvestigatePrompt(
+                                    issueState,
+                                    event
+                                  )}
+                                  label="Copy investigate prompt"
+                                  disabled={isLoadingPayload}
+                                />
+                                <CopyButton
+                                  text={buildFixPrompt(
+                                    issueState,
+                                    event,
+                                    eventPayload
+                                  )}
+                                  label="Copy fix prompt"
+                                  disabled={isLoadingPayload}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={closePayload}
+                                  className="outline button-mini"
+                                >
+                                  Close
+                                </button>
+                              </div>
+                            </div>
 
                           <div className="issue-expanded-grid">
                             <section className="issue-expanded-section">
@@ -780,12 +831,27 @@ function IssueDetail() {
                               </pre>
                             )}
                           </div>
-                        </div>
-                      )
-                    }
-                  />
-                ))}
-              </ListContainer>
+                          </div>
+                        )
+                      }
+                    />
+                  ))}
+                </ListContainer>
+                {eventsHasMore && eventsFetchLimit < MAX_EVENT_LIMIT ? (
+                  <div className="p-4 pt-3">
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={loadMoreEvents}
+                      disabled={isLoadingMoreEvents}
+                    >
+                      {isLoadingMoreEvents
+                        ? "Loading more events..."
+                        : `Load more events (${MAX_EVENT_LIMIT} max)`}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
           </Card>
         </div>
@@ -1051,9 +1117,10 @@ function IssueDetail() {
 
       <Suspense fallback={null}>
         <Await promise={eventsPromise}>
-          {(loaded: Event[]) => (
-            <EventsHydrator events={loaded} onLoaded={handleEventsLoaded} />
-          )}
+          {(loaded: Event[]) => {
+            if (eventsFetchLimit !== INITIAL_EVENT_LIMIT) return null;
+            return <EventsHydrator events={loaded} onLoaded={handleEventsLoaded} />;
+          }}
         </Await>
       </Suspense>
     </div>
