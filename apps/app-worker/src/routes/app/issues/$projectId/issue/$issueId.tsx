@@ -198,7 +198,7 @@ function IssueDetail() {
     for (const event of events) {
       if (!event.tags) continue;
       for (const [key, value] of Object.entries(event.tags)) {
-        const normalised = `${key}:${value}`;
+        const normalised = `${key}:${formatValue(value)}`;
         map.set(normalised, (map.get(normalised) || 0) + 1);
       }
     }
@@ -627,7 +627,7 @@ function IssueDetail() {
                                       size="small"
                                       variant="muted"
                                     >
-                                      {key}: {value}
+                                      {key}: {formatValue(value)}
                                     </Badge>
                                   ))}
                               </div>

@@ -45,7 +45,7 @@ export type Event = {
     email?: string;
     ip_address?: string;
   } | null;
-  tags?: Record<string, string> | null;
+  tags?: Record<string, unknown> | null;
   contexts?: Record<string, Record<string, unknown>> | null;
   request?: {
     url?: string;

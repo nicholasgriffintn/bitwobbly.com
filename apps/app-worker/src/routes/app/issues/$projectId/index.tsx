@@ -5,6 +5,7 @@ import {
   Suspense,
   useReducer,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { Await, createFileRoute, defer, Link } from "@tanstack/react-router";
@@ -232,50 +233,47 @@ function ProjectIssues() {
   const [secondaryDataError, setSecondaryDataError] = useState<string | null>(
     null
   );
+  const secondaryDataRequestRef = useRef(0);
 
   const updateIssue = useServerFn(updateSentryIssueFn);
   const listIssues = useServerFn(listSentryIssuesFn);
   const getProjectSecondaryData = useServerFn(getSentryProjectSecondaryDataFn);
 
   useEffect(() => {
-    if (
-      state.activeTab !== "events" &&
-      state.activeTab !== "grouping"
-    ) {
+    if (state.activeTab !== "events" && state.activeTab !== "grouping") {
       return;
     }
     if (secondaryData || isSecondaryDataLoading) {
       return;
     }
 
-    let cancelled = false;
+    const requestId = secondaryDataRequestRef.current + 1;
+    secondaryDataRequestRef.current = requestId;
+
     setSecondaryDataError(null);
     setIsSecondaryDataLoading(true);
+
     void getProjectSecondaryData({
       data: { projectId, eventsLimit: 100 },
     })
       .then((res) => {
-        if (cancelled) return;
+        if (secondaryDataRequestRef.current !== requestId) return;
         setSecondaryData({ events: res.events, rules: res.rules });
       })
       .catch((err) => {
-        if (cancelled) return;
+        if (secondaryDataRequestRef.current !== requestId) return;
         setSecondaryDataError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
-        if (cancelled) return;
+        if (secondaryDataRequestRef.current !== requestId) return;
         setIsSecondaryDataLoading(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [
     getProjectSecondaryData,
-    isSecondaryDataLoading,
     projectId,
     secondaryData,
     state.activeTab,
+    isSecondaryDataLoading,
   ]);
 
   const memberEmailById = useMemo(() => {

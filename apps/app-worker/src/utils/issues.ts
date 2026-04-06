@@ -65,7 +65,7 @@ export function buildInvestigatePrompt(
   const tagSummary = event?.tags
     ? Object.entries(event.tags)
         .slice(0, 12)
-        .map(([key, value]) => `${key}:${value}`)
+        .map(([key, value]) => `${key}:${formatValue(value)}`)
         .join(", ")
     : "n/a";
   const userSummary = event?.user
@@ -109,7 +109,7 @@ export function buildFixPrompt(
   const tagSummary = event?.tags
     ? Object.entries(event.tags)
         .slice(0, 12)
-        .map(([key, value]) => `${key}:${value}`)
+        .map(([key, value]) => `${key}:${formatValue(value)}`)
         .join(", ")
     : "n/a";
   const userSummary = event?.user
