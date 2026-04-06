@@ -44,5 +44,8 @@
         "queue": "bitwobbly-check-jobs"
       }
     ]
+  },
+  "ai": {
+    "binding": "AI"
   }
 }

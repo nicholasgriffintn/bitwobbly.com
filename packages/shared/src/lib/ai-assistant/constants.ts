@@ -1,0 +1,9 @@
+export const TEAM_AI_ASSISTANT_DEFAULT_MODEL = "@cf/moonshotai/kimi-k2.5";
+
+export const DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES = 1440;
+export const MIN_AUTO_AUDIT_INTERVAL_MINUTES = 15;
+export const MAX_AUTO_AUDIT_INTERVAL_MINUTES = 10_080;
+
+export const DEFAULT_MAX_CONTEXT_ITEMS = 30;
+export const MIN_MAX_CONTEXT_ITEMS = 5;
+export const MAX_MAX_CONTEXT_ITEMS = 100;

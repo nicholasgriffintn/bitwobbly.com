@@ -35,6 +35,7 @@ import { Route as StatusSlugUnsubscribeRouteImport } from './routes/status/$slug
 import { Route as StatusSlugConfirmRouteImport } from './routes/status/$slug/confirm'
 import { Route as ApiWebhooksMonitorIdRouteImport } from './routes/api.webhooks.$monitorId'
 import { Route as ApiHeartbeatsMonitorIdRouteImport } from './routes/api.heartbeats.$monitorId'
+import { Route as ApiAiAssistantStreamRouteImport } from './routes/api.ai-assistant.stream'
 import { Route as AppIssuesProjectIdIndexRouteImport } from './routes/app/issues/$projectId/index'
 import { Route as ApiStatusSlugAvailabilityRouteImport } from './routes/api.status.$slug.availability'
 import { Route as AppIssuesProjectIdIssueIssueIdRouteImport } from './routes/app/issues/$projectId/issue/$issueId'
@@ -170,6 +171,11 @@ const ApiHeartbeatsMonitorIdRoute = ApiHeartbeatsMonitorIdRouteImport.update({
   path: '/api/heartbeats/$monitorId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiAssistantStreamRoute = ApiAiAssistantStreamRouteImport.update({
+  id: '/api/ai-assistant/stream',
+  path: '/api/ai-assistant/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppIssuesProjectIdIndexRoute = AppIssuesProjectIdIndexRouteImport.update({
   id: '/issues/$projectId/',
   path: '/issues/$projectId/',
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
+  '/api/ai-assistant/stream': typeof ApiAiAssistantStreamRoute
   '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
   '/status/$slug/confirm': typeof StatusSlugConfirmRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByTo {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRouteWithChildren
   '/app': typeof AppIndexRoute
+  '/api/ai-assistant/stream': typeof ApiAiAssistantStreamRoute
   '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
   '/status/$slug/confirm': typeof StatusSlugConfirmRoute
@@ -280,6 +288,7 @@ export interface FileRoutesById {
   '/app/status-pages': typeof AppStatusPagesRoute
   '/status/$slug': typeof StatusSlugRouteWithChildren
   '/app/': typeof AppIndexRoute
+  '/api/ai-assistant/stream': typeof ApiAiAssistantStreamRoute
   '/api/heartbeats/$monitorId': typeof ApiHeartbeatsMonitorIdRoute
   '/api/webhooks/$monitorId': typeof ApiWebhooksMonitorIdRoute
   '/status/$slug/confirm': typeof StatusSlugConfirmRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app/'
+    | '/api/ai-assistant/stream'
     | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
     | '/status/$slug/confirm'
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app'
+    | '/api/ai-assistant/stream'
     | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
     | '/status/$slug/confirm'
@@ -377,6 +388,7 @@ export interface FileRouteTypes {
     | '/app/status-pages'
     | '/status/$slug'
     | '/app/'
+    | '/api/ai-assistant/stream'
     | '/api/heartbeats/$monitorId'
     | '/api/webhooks/$monitorId'
     | '/status/$slug/confirm'
@@ -402,6 +414,7 @@ export interface RootRouteChildren {
   SetupMfaRoute: typeof SetupMfaRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   StatusSlugRoute: typeof StatusSlugRouteWithChildren
+  ApiAiAssistantStreamRoute: typeof ApiAiAssistantStreamRoute
   ApiHeartbeatsMonitorIdRoute: typeof ApiHeartbeatsMonitorIdRoute
   ApiWebhooksMonitorIdRoute: typeof ApiWebhooksMonitorIdRoute
   ApiStatusSlugAvailabilityRoute: typeof ApiStatusSlugAvailabilityRoute
@@ -592,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHeartbeatsMonitorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai-assistant/stream': {
+      id: '/api/ai-assistant/stream'
+      path: '/api/ai-assistant/stream'
+      fullPath: '/api/ai-assistant/stream'
+      preLoaderRoute: typeof ApiAiAssistantStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/issues/$projectId/': {
       id: '/app/issues/$projectId/'
       path: '/issues/$projectId'
@@ -681,6 +701,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupMfaRoute: SetupMfaRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   StatusSlugRoute: StatusSlugRouteWithChildren,
+  ApiAiAssistantStreamRoute: ApiAiAssistantStreamRoute,
   ApiHeartbeatsMonitorIdRoute: ApiHeartbeatsMonitorIdRoute,
   ApiWebhooksMonitorIdRoute: ApiWebhooksMonitorIdRoute,
   ApiStatusSlugAvailabilityRoute: ApiStatusSlugAvailabilityRoute,

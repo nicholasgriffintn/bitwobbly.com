@@ -7,6 +7,7 @@ import { ErrorCard } from "@/components/feedback";
 import { ListContainer, ListRow } from "@/components/list";
 import { Badge, Button } from "@/components/ui";
 import { SettingsModals } from "@/components/modals/settings";
+import { AiAssistantSettingsCard } from "@/components/settings/AiAssistantSettingsCard";
 import {
   listTeamMembersFn,
   removeTeamMemberFn,
@@ -15,6 +16,7 @@ import {
   revokeTeamInviteFn,
   getCurrentTeamFn,
 } from "@/server/functions/teams";
+import { getAiAssistantSettingsFn } from "@/server/functions/ai-assistant";
 import { seedDemoDataFn } from "@/server/functions/demo";
 import { toTitleCase } from "@/utils/format";
 
@@ -38,14 +40,16 @@ export const Route = createFileRoute("/app/settings")({
   component: Settings,
   loader: async () => {
     const invitesPromise = listTeamInvitesFn().then((r) => r.invites);
-    const [currentTeam, membersResponse] = await Promise.all([
+    const [currentTeam, membersResponse, aiResponse] = await Promise.all([
       getCurrentTeamFn(),
       listTeamMembersFn(),
+      getAiAssistantSettingsFn(),
     ]);
 
     return {
       currentTeam,
       members: membersResponse.members,
+      aiSettings: aiResponse.settings,
       invitesPromise: defer(invitesPromise),
     };
   },
@@ -68,6 +72,7 @@ export default function Settings() {
   const {
     currentTeam: initialTeam,
     members: initialMembers,
+    aiSettings,
     invitesPromise,
   } = Route.useLoaderData();
   const { user, teams } = useRouteContext({ from: "/app" });
@@ -379,6 +384,8 @@ export default function Settings() {
           })}
         </ListContainer>
       </Card>
+
+      <AiAssistantSettingsCard initialSettings={aiSettings} />
 
       <SettingsModals
         isCreateTeamOpen={isCreateTeamModalOpen}

@@ -4,6 +4,7 @@ import { getCurrentUserFn } from "@/server/functions/auth";
 import { getUserTeamsFn } from "@/server/functions/teams";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
+import { FloatingAiAssistant } from "@/components/assistant/FloatingAiAssistant";
 
 export const Route = createFileRoute("/app")({
   beforeLoad: async () => {
@@ -24,14 +25,17 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   return (
-    <div className="shell">
-      <Sidebar />
-      <main className="content">
-        <TopBar />
-        <div className="content-body">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+    <>
+      <div className="shell">
+        <Sidebar />
+        <main className="content">
+          <TopBar />
+          <div className="content-body">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+      <FloatingAiAssistant />
+    </>
   );
 }

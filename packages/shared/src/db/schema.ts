@@ -13,6 +13,57 @@ export const teams = sqliteTable("teams", {
   createdAt: text("created_at").notNull(),
 });
 
+export const teamAiAssistantSettings = sqliteTable("team_ai_assistant_settings", {
+  teamId: text("team_id")
+    .primaryKey()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  enabled: integer("enabled").notNull().default(0),
+  model: text("model").notNull().default("@cf/moonshotai/kimi-k2.5"),
+  autoAuditEnabled: integer("auto_audit_enabled").notNull().default(0),
+  autoAuditIntervalMinutes: integer("auto_audit_interval_minutes")
+    .notNull()
+    .default(1440),
+  maxContextItems: integer("max_context_items").notNull().default(30),
+  includeIssues: integer("include_issues").notNull().default(1),
+  includeMonitors: integer("include_monitors").notNull().default(1),
+  includeComponents: integer("include_components").notNull().default(1),
+  includeStatusPages: integer("include_status_pages").notNull().default(1),
+  includeNotifications: integer("include_notifications").notNull().default(1),
+  includeGroupingRules: integer("include_grouping_rules").notNull().default(1),
+  customInstructions: text("custom_instructions"),
+  lastAutoAuditAt: integer("last_auto_audit_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const teamAiAssistantRuns = sqliteTable(
+  "team_ai_assistant_runs",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    runType: text("run_type").notNull(), // "manual_query" | "manual_audit" | "auto_audit"
+    question: text("question"),
+    answer: text("answer").notNull(),
+    model: text("model").notNull(),
+    contextSummary: text("context_summary", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    teamCreatedIdx: index("team_ai_assistant_runs_team_created_idx").on(
+      table.teamId,
+      table.createdAt
+    ),
+    teamRunTypeCreatedIdx: index(
+      "team_ai_assistant_runs_team_run_type_created_idx"
+    ).on(table.teamId, table.runType, table.createdAt),
+  })
+);
+
 export const monitors = sqliteTable(
   "monitors",
   {
@@ -674,6 +725,10 @@ export const sentryClientReports = sqliteTable("sentry_client_reports", {
 
 export type Team = typeof teams.$inferSelect;
 export type NewTeam = typeof teams.$inferInsert;
+export type TeamAiAssistantSettings = typeof teamAiAssistantSettings.$inferSelect;
+export type NewTeamAiAssistantSettings = typeof teamAiAssistantSettings.$inferInsert;
+export type TeamAiAssistantRun = typeof teamAiAssistantRuns.$inferSelect;
+export type NewTeamAiAssistantRun = typeof teamAiAssistantRuns.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
 export type NewMonitor = typeof monitors.$inferInsert;
 export type MonitorGroup = typeof monitorGroups.$inferSelect;

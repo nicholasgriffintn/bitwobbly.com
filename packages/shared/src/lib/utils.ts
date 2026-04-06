@@ -2,6 +2,24 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
+export function clampInt(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.floor(value)));
+}
+
+export function safeJsonParse(value: string | null | undefined): unknown {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+export function objectKeys(value: unknown): string[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.keys(value).sort();
+}
+
 export function randomId(prefix: string): string {
   const bytes = crypto.getRandomValues(new Uint8Array(10));
   const b64 = btoa(String.fromCharCode(...bytes))

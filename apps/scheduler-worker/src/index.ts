@@ -10,6 +10,7 @@ import * as Sentry from "@sentry/cloudflare";
 import type { Env } from "./types/env";
 import { assertEnv } from "./types/env";
 import { getDb } from "@bitwobbly/shared";
+import { runTeamAiAutoAudits } from "./lib/ai-auto-audits";
 import { runStatusPageDigests } from "./lib/status-page-digests";
 import {
   getDueMonitors,
@@ -56,6 +57,14 @@ const handler = {
           await runStatusPageDigests(db, env, ctx);
         } catch (error) {
           logger.error("status page digest failed", {
+            error: serialiseError(error),
+          });
+        }
+
+        try {
+          await runTeamAiAutoAudits(db, env, nowSec);
+        } catch (error) {
+          logger.error("automated AI audits failed", {
             error: serialiseError(error),
           });
         }

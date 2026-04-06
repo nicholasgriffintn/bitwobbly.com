@@ -1087,6 +1087,377 @@ textarea {
   min-height: 80px;
 }
 
+.assistant-fab-wrapper {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 50;
+}
+
+.assistant-panel {
+  width: min(94vw, 32rem);
+  max-height: calc(100dvh - 24px);
+  border: 1px solid var(--stroke);
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.assistant-panel-body {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.assistant-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--stroke);
+  background: linear-gradient(180deg, #fffdf9 0%, #fff5e8 100%);
+}
+
+.assistant-panel-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.assistant-panel-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.assistant-panel-tabs {
+  padding: 10px 14px 0;
+  border-bottom: 1px solid var(--stroke);
+  background: #fff7ef;
+}
+
+.assistant-tab-nav {
+  margin-bottom: 10px;
+}
+
+.assistant-tab-nav button {
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem !important;
+  font-size: 0.8rem !important;
+}
+
+.assistant-panel-error {
+  padding: 10px 14px 0;
+}
+
+.assistant-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px 14px;
+}
+
+.assistant-chat-content {
+  grid-template-rows: minmax(120px, 1fr) auto;
+  overflow: hidden;
+}
+
+.assistant-chat-log {
+  min-height: 120px;
+  overflow: auto;
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 10px;
+  background: linear-gradient(180deg, #fff 0%, #fbf6ef 100%);
+  display: grid;
+  gap: 8px;
+}
+
+.assistant-empty-state {
+  border: 1px dashed var(--stroke);
+  border-radius: 12px;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.assistant-bubble {
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.assistant-bubble-user {
+  background: rgba(240, 74, 47, 0.1);
+  border: 1px solid rgba(240, 74, 47, 0.25);
+  justify-self: end;
+}
+
+.assistant-bubble-assistant {
+  background: #fff;
+  border: 1px solid var(--stroke);
+}
+
+.assistant-message-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.assistant-thinking {
+  border: 1px dashed rgba(111, 98, 85, 0.35);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(111, 98, 85, 0.05);
+  color: var(--muted);
+  font-size: 12px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.assistant-thinking-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.assistant-answer {
+  display: grid;
+  gap: 4px;
+}
+
+.assistant-answer-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.assistant-composer {
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 10px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow: visible;
+}
+
+.assistant-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.assistant-input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  color: var(--ink);
+  padding: 10px 12px;
+}
+
+.assistant-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.assistant-suggestions {
+  display: grid;
+  gap: 8px;
+}
+
+.assistant-suggestions-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.assistant-suggestions-list {
+  display: grid;
+  gap: 8px;
+  max-height: 180px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.assistant-suggestion-chip {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid var(--stroke);
+  color: var(--ink);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.assistant-suggestion-chip:hover {
+  background: #fff6ec;
+  transform: none;
+}
+
+.assistant-suggestion-chip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.assistant-ops {
+  gap: 10px;
+  overflow: auto;
+}
+
+.assistant-meta-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.assistant-meta-item {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+
+.assistant-meta-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.assistant-meta-value {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.assistant-ops-section {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+}
+
+.assistant-section-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.assistant-run-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.assistant-run-item {
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 8px;
+  background: #fcfaf7;
+}
+
+.assistant-run-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.assistant-run-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.assistant-pre {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: #fcfaf7;
+  font-size: 12px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .assistant-fab-wrapper {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .assistant-panel {
+    width: 100%;
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .assistant-panel-header {
+    padding: 12px;
+  }
+
+  .assistant-panel-title {
+    font-size: 18px;
+  }
+
+  .assistant-content {
+    padding: 10px 12px 12px;
+    display: block;
+    overflow: visible;
+    min-height: auto;
+  }
+
+  .assistant-chat-content {
+    display: block;
+    overflow: visible;
+  }
+
+  .assistant-chat-log {
+    min-height: 96px;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .assistant-composer {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .assistant-suggestions-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .assistant-ops {
+    overflow: visible;
+  }
+
+  .assistant-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 :focus-visible {
   outline: 3px solid rgba(240, 74, 47, 0.45);
   outline-offset: 2px;

@@ -19,7 +19,7 @@ const DevTools = import.meta.env.DEV
       return {
         default: () => (
           <TanStackDevtools
-            config={{ position: "bottom-right" }}
+            config={{ position: "bottom-left" }}
             plugins={[
               {
                 name: "Tanstack Router",
