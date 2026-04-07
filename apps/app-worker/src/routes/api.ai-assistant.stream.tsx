@@ -17,7 +17,7 @@ import { createAssistantQueryStreamResponse } from "@/server/lib/ai-assistant-ru
 const MAX_REQUEST_BODY_BYTES = 32 * 1024;
 
 const AskAiAssistantRequestSchema = z.object({
-  question: z.string().min(3).max(6_000),
+  question: z.string().min(0).max(6_000),
   mode: z.enum(["query", "audit"]).optional(),
 });
 
