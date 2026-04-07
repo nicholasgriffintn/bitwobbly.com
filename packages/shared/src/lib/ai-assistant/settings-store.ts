@@ -1,19 +1,23 @@
-import { and, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 
 import type { DB } from "../../db/index.ts";
 import { schema } from "../../db/index.ts";
 import { clampInt, nowIso, randomId } from "../utils.ts";
 import {
   DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
+  DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   DEFAULT_MAX_CONTEXT_ITEMS,
   MAX_AUTO_AUDIT_INTERVAL_MINUTES,
+  MAX_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   MAX_MAX_CONTEXT_ITEMS,
   MIN_AUTO_AUDIT_INTERVAL_MINUTES,
+  MIN_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   MIN_MAX_CONTEXT_ITEMS,
   TEAM_AI_ASSISTANT_DEFAULT_MODEL,
 } from "./constants.ts";
 import type {
   TeamAiAssistantRun,
+  TeamAiAssistantRunStatus,
   TeamAiAssistantRunType,
   TeamAiAssistantSettings,
   TeamAiAssistantSettingsUpdate,
@@ -25,6 +29,14 @@ function toRunType(value: string): TeamAiAssistantRunType {
   if (value === "manual_audit") return value;
   if (value === "auto_audit") return value;
   throw new Error(`Invalid AI run type: ${value}`);
+}
+
+function toRunStatus(value: string): TeamAiAssistantRunStatus {
+  if (value === "running") return value;
+  if (value === "completed") return value;
+  if (value === "failed") return value;
+  if (value === "cancelled") return value;
+  throw new Error(`Invalid AI run status: ${value}`);
 }
 
 function toBoolFlag(value: number | null | undefined): boolean {
@@ -51,6 +63,7 @@ export function buildDefaultTeamAiAssistantSettings(
     model: TEAM_AI_ASSISTANT_DEFAULT_MODEL,
     autoAuditEnabled: false,
     autoAuditIntervalMinutes: DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
+    manualAuditRateLimitPerHour: DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
     maxContextItems: DEFAULT_MAX_CONTEXT_ITEMS,
     includeIssues: true,
     includeMonitors: true,
@@ -84,6 +97,11 @@ function toSettings(
       row.autoAuditIntervalMinutes ?? DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
       MIN_AUTO_AUDIT_INTERVAL_MINUTES,
       MAX_AUTO_AUDIT_INTERVAL_MINUTES
+    ),
+    manualAuditRateLimitPerHour: clampInt(
+      row.manualAuditRateLimitPerHour ?? DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
+      MIN_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
+      MAX_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR
     ),
     maxContextItems: clampInt(
       row.maxContextItems ?? DEFAULT_MAX_CONTEXT_ITEMS,
@@ -121,6 +139,14 @@ function toSettingsInsert(
             MAX_AUTO_AUDIT_INTERVAL_MINUTES
           )
         : DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
+    manualAuditRateLimitPerHour:
+      input.manualAuditRateLimitPerHour !== undefined
+        ? clampInt(
+            input.manualAuditRateLimitPerHour,
+            MIN_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
+            MAX_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR
+          )
+        : DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
     maxContextItems:
       input.maxContextItems !== undefined
         ? clampInt(
@@ -161,6 +187,13 @@ function toSettingsUpdate(
       input.autoAuditIntervalMinutes,
       MIN_AUTO_AUDIT_INTERVAL_MINUTES,
       MAX_AUTO_AUDIT_INTERVAL_MINUTES
+    );
+  }
+  if (input.manualAuditRateLimitPerHour !== undefined) {
+    updates.manualAuditRateLimitPerHour = clampInt(
+      input.manualAuditRateLimitPerHour,
+      MIN_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
+      MAX_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR
     );
   }
   if (input.maxContextItems !== undefined) {
@@ -265,9 +298,17 @@ export async function listTeamAiAssistantRuns(
     id: row.id,
     teamId: row.teamId,
     runType: toRunType(row.runType),
+    status: toRunStatus(row.status),
     question: row.question ?? null,
     answer: row.answer,
     model: row.model,
+    error: row.error ?? null,
+    cancelledAt: row.cancelledAt ?? null,
+    partialAnswer: row.partialAnswer ?? null,
+    latencyMs: row.latencyMs ?? null,
+    tokenUsage: row.tokenUsageJson ?? null,
+    previousRunId: row.previousRunId ?? null,
+    diffSummary: row.diffSummaryJson ?? null,
     contextSummary: row.contextSummary ?? null,
     createdAt: row.createdAt,
   }));
@@ -278,20 +319,37 @@ export async function createTeamAiAssistantRun(
   input: {
     teamId: string;
     runType: TeamAiAssistantRunType;
+    status?: TeamAiAssistantRunStatus;
     question?: string | null;
     answer: string;
     model: string;
+    error?: string | null;
+    cancelledAt?: string | null;
+    partialAnswer?: string | null;
+    latencyMs?: number | null;
+    tokenUsage?: Record<string, unknown> | null;
+    previousRunId?: string | null;
+    diffSummary?: Record<string, unknown> | null;
     contextSummary?: Record<string, unknown> | null;
   }
 ): Promise<TeamAiAssistantRun> {
   const now = nowIso();
+  const status: TeamAiAssistantRunStatus = input.status ?? "completed";
   const run: typeof schema.teamAiAssistantRuns.$inferInsert = {
     id: randomId("tai"),
     teamId: input.teamId,
     runType: input.runType,
+    status,
     question: input.question ?? null,
     answer: input.answer,
     model: input.model,
+    error: input.error ?? null,
+    cancelledAt: input.cancelledAt ?? null,
+    partialAnswer: input.partialAnswer ?? null,
+    latencyMs: input.latencyMs ?? null,
+    tokenUsageJson: input.tokenUsage ?? null,
+    previousRunId: input.previousRunId ?? null,
+    diffSummaryJson: input.diffSummary ?? null,
     contextSummary: input.contextSummary ?? null,
     createdAt: now,
   };
@@ -302,12 +360,42 @@ export async function createTeamAiAssistantRun(
     id: run.id,
     teamId: run.teamId,
     runType: toRunType(run.runType),
+    status,
     question: run.question ?? null,
     answer: run.answer,
     model: run.model,
+    error: run.error ?? null,
+    cancelledAt: run.cancelledAt ?? null,
+    partialAnswer: run.partialAnswer ?? null,
+    latencyMs: run.latencyMs ?? null,
+    tokenUsage: run.tokenUsageJson ?? null,
+    previousRunId: run.previousRunId ?? null,
+    diffSummary: run.diffSummaryJson ?? null,
     contextSummary: run.contextSummary ?? null,
     createdAt: run.createdAt,
   };
+}
+
+export async function countTeamAiAssistantRunsSince(
+  db: DB,
+  input: {
+    teamId: string;
+    runType: TeamAiAssistantRunType;
+    createdAfterIso: string;
+  }
+): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`cast(count(*) as integer)` })
+    .from(schema.teamAiAssistantRuns)
+    .where(
+      and(
+        eq(schema.teamAiAssistantRuns.teamId, input.teamId),
+        eq(schema.teamAiAssistantRuns.runType, input.runType),
+        gte(schema.teamAiAssistantRuns.createdAt, input.createdAfterIso)
+      )
+    );
+
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function listTeamsDueForAutoAudit(

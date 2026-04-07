@@ -23,6 +23,9 @@ export const teamAiAssistantSettings = sqliteTable("team_ai_assistant_settings",
   autoAuditIntervalMinutes: integer("auto_audit_interval_minutes")
     .notNull()
     .default(1440),
+  manualAuditRateLimitPerHour: integer("manual_audit_rate_limit_per_hour")
+    .notNull()
+    .default(6),
   maxContextItems: integer("max_context_items").notNull().default(30),
   includeIssues: integer("include_issues").notNull().default(1),
   includeMonitors: integer("include_monitors").notNull().default(1),
@@ -44,9 +47,23 @@ export const teamAiAssistantRuns = sqliteTable(
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
     runType: text("run_type").notNull(), // "manual_query" | "manual_audit" | "auto_audit"
+    status: text("status").notNull().default("completed"),
     question: text("question"),
     answer: text("answer").notNull(),
     model: text("model").notNull(),
+    error: text("error"),
+    cancelledAt: text("cancelled_at"),
+    partialAnswer: text("partial_answer"),
+    latencyMs: integer("latency_ms"),
+    tokenUsageJson: text("token_usage_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    previousRunId: text("previous_run_id"),
+    diffSummaryJson: text("diff_summary_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
     contextSummary: text("context_summary", { mode: "json" }).$type<Record<
       string,
       unknown

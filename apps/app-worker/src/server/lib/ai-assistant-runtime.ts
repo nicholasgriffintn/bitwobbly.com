@@ -5,10 +5,14 @@ import {
   buildTeamAiAssistantContextSnapshot,
   buildTeamAiAssistantContextSummary,
   buildTeamAiAssistantMessages,
+  countTeamAiAssistantRunsSince,
   createTeamAiAssistantRun,
+  extractAiUsageFromResponsePayload,
   extractAiTextResponse,
   getTeamAiAssistantSettings,
   getDb,
+  nowIso,
+  parseAiUsageFromSsePayload,
   type TeamAiAssistantRun,
 } from "@bitwobbly/shared";
 import {
@@ -19,6 +23,7 @@ import {
   parseAiSsePayload,
 } from "@/lib/ai-sse";
 import { isAbortError } from "@/lib/abort-utils";
+import { toErrorMessage } from "@/server/lib/error-utils";
 import { isReadableByteStream } from "./stream-utils";
 
 const SupportedModelSchema = z.enum(["@cf/moonshotai/kimi-k2.5"]);
@@ -44,15 +49,13 @@ type AssistantExecutionContext = {
   aiInput: Record<string, unknown>;
 };
 
-export type AiAssistantClientRun = {
-  id: string;
-  teamId: string;
-  runType: "manual_query" | "manual_audit" | "auto_audit";
-  question: string | null;
-  answer: string;
-  model: string;
+export type AiAssistantClientRun = Omit<
+  TeamAiAssistantRun,
+  "contextSummary" | "tokenUsage" | "diffSummary"
+> & {
   contextSummary: null;
-  createdAt: string;
+  tokenUsage: null;
+  diffSummary: null;
 };
 
 function toSupportedModel(input: string): SupportedModel {
@@ -70,12 +73,66 @@ function invokeAiRun(
   return ai.run(model, input);
 }
 
+async function enforceManualAuditRateLimit(
+  db: ReturnType<typeof getDb>,
+  input: {
+    teamId: string;
+    runType: AssistantRunType;
+    manualAuditRateLimitPerHour: number;
+  }
+): Promise<void> {
+  if (input.runType !== "manual_audit") return;
+  const windowStartedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const runCount = await countTeamAiAssistantRunsSince(db, {
+    teamId: input.teamId,
+    runType: "manual_audit",
+    createdAfterIso: windowStartedAt,
+  });
+  if (runCount >= input.manualAuditRateLimitPerHour) {
+    throw new Error("Rate limit exceeded");
+  }
+}
+
+async function persistAssistantRun(
+  execution: AssistantExecutionContext,
+  input: {
+    status: "completed" | "failed" | "cancelled";
+    answer: string;
+    error?: string | null;
+    cancelledAt?: string | null;
+    partialAnswer?: string | null;
+    latencyMs?: number | null;
+    tokenUsage?: Record<string, unknown> | null;
+    previousRunId?: string | null;
+    diffSummary?: Record<string, unknown> | null;
+  }
+): Promise<void> {
+  await createTeamAiAssistantRun(execution.db, {
+    teamId: execution.teamId,
+    runType: execution.runType,
+    question: execution.question,
+    answer: input.answer,
+    model: execution.model,
+    status: input.status,
+    error: input.error ?? null,
+    cancelledAt: input.cancelledAt ?? null,
+    partialAnswer: input.partialAnswer ?? null,
+    latencyMs: input.latencyMs ?? null,
+    tokenUsage: input.tokenUsage ?? null,
+    previousRunId: input.previousRunId ?? null,
+    diffSummary: input.diffSummary ?? null,
+    contextSummary: execution.contextSummary,
+  });
+}
+
 export function toAiAssistantClientRun(
   run: TeamAiAssistantRun
 ): AiAssistantClientRun {
   return {
     ...run,
     contextSummary: null,
+    tokenUsage: null,
+    diffSummary: null,
   };
 }
 
@@ -87,6 +144,11 @@ async function buildExecutionContext(
   if (!settings.enabled) {
     throw new Error("AI assistant is disabled. Enable it in Settings.");
   }
+  await enforceManualAuditRateLimit(db, {
+    teamId: input.teamId,
+    runType: input.runType,
+    manualAuditRateLimitPerHour: settings.manualAuditRateLimitPerHour,
+  });
 
   const model = toSupportedModel(settings.model);
   const question = input.question.trim();
@@ -121,23 +183,37 @@ export async function runAssistantOnce(
   input: AssistantExecutionInput,
   ai: Ai
 ): Promise<{ answer: string; run: AiAssistantClientRun }> {
+  const startedAtMs = Date.now();
   const execution = await buildExecutionContext(input);
-  const rawResponse = await invokeAiRun(ai, execution.model, execution.aiInput);
-  const answer = extractAiTextResponse(rawResponse).trim();
-  if (!answer) {
-    throw new Error("Workers AI returned an empty response");
+  try {
+    const rawResponse = await invokeAiRun(ai, execution.model, execution.aiInput);
+    const answer = extractAiTextResponse(rawResponse).trim();
+    if (!answer) {
+      throw new Error("Workers AI returned an empty response");
+    }
+
+    const run = await createTeamAiAssistantRun(execution.db, {
+      teamId: execution.teamId,
+      runType: execution.runType,
+      question: execution.question,
+      answer,
+      model: execution.model,
+      status: "completed",
+      latencyMs: Date.now() - startedAtMs,
+      tokenUsage: extractAiUsageFromResponsePayload(rawResponse),
+      contextSummary: execution.contextSummary,
+    });
+
+    return { answer, run: toAiAssistantClientRun(run) };
+  } catch (error) {
+    await persistAssistantRun(execution, {
+      status: "failed",
+      answer: "",
+      error: toErrorMessage(error, String(error)),
+      latencyMs: Date.now() - startedAtMs,
+    });
+    throw error;
   }
-
-  const run = await createTeamAiAssistantRun(execution.db, {
-    teamId: execution.teamId,
-    runType: execution.runType,
-    question: execution.question,
-    answer,
-    model: execution.model,
-    contextSummary: execution.contextSummary,
-  });
-
-  return { answer, run: toAiAssistantClientRun(run) };
 }
 
 export async function createAssistantQueryStreamResponse(input: {
@@ -148,6 +224,7 @@ export async function createAssistantQueryStreamResponse(input: {
   requestSignal?: AbortSignal;
   ai: Ai;
 }): Promise<Response> {
+  const startedAtMs = Date.now();
   const mode = input.mode ?? "query";
   const runType = input.runType ?? "manual_query";
   const execution = await buildExecutionContext({
@@ -157,10 +234,21 @@ export async function createAssistantQueryStreamResponse(input: {
     question: input.question,
   });
 
-  const rawResponse = await invokeAiRun(input.ai, execution.model, {
-    ...execution.aiInput,
-    stream: true,
-  });
+  let rawResponse: unknown;
+  try {
+    rawResponse = await invokeAiRun(input.ai, execution.model, {
+      ...execution.aiInput,
+      stream: true,
+    });
+  } catch (error) {
+    await persistAssistantRun(execution, {
+      status: "failed",
+      answer: "",
+      error: toErrorMessage(error, String(error)),
+      latencyMs: Date.now() - startedAtMs,
+    });
+    throw error;
+  }
 
   if (isReadableByteStream(rawResponse)) {
     const streamAbortController = new AbortController();
@@ -175,6 +263,7 @@ export async function createAssistantQueryStreamResponse(input: {
       async start(controller) {
         let sawDone = false;
         let answer = "";
+        let tokenUsage: Record<string, unknown> | null = null;
 
         try {
           await consumeSseByteStream(
@@ -182,6 +271,10 @@ export async function createAssistantQueryStreamResponse(input: {
             (payload) => {
               if (streamAbortController.signal.aborted) {
                 return;
+              }
+              const usage = parseAiUsageFromSsePayload(payload);
+              if (usage) {
+                tokenUsage = usage;
               }
               const parsed = parseAiSsePayload(payload);
               if (parsed.done) {
@@ -198,6 +291,15 @@ export async function createAssistantQueryStreamResponse(input: {
           );
 
           if (streamAbortController.signal.aborted) {
+            const partial = answer.trim();
+            await persistAssistantRun(execution, {
+              status: "cancelled",
+              answer: partial,
+              cancelledAt: nowIso(),
+              partialAnswer: partial || null,
+              latencyMs: Date.now() - startedAtMs,
+              tokenUsage,
+            });
             return;
           }
 
@@ -210,20 +312,36 @@ export async function createAssistantQueryStreamResponse(input: {
             throw new Error("Workers AI returned an empty response");
           }
 
-          await createTeamAiAssistantRun(execution.db, {
-            teamId: execution.teamId,
-            runType: execution.runType,
-            question: execution.question,
+          await persistAssistantRun(execution, {
+            status: "completed",
             answer: trimmedAnswer,
-            model: execution.model,
-            contextSummary: execution.contextSummary,
+            latencyMs: Date.now() - startedAtMs,
+            tokenUsage,
           });
 
           controller.close();
         } catch (error) {
           if (isAbortError(error)) {
+            const partial = answer.trim();
+            await persistAssistantRun(execution, {
+              status: "cancelled",
+              answer: partial,
+              cancelledAt: nowIso(),
+              partialAnswer: partial || null,
+              latencyMs: Date.now() - startedAtMs,
+              tokenUsage,
+            });
             return;
           }
+          const partial = answer.trim();
+          await persistAssistantRun(execution, {
+            status: "failed",
+            answer: partial,
+            error: toErrorMessage(error, String(error)),
+            partialAnswer: partial || null,
+            latencyMs: Date.now() - startedAtMs,
+            tokenUsage,
+          });
           controller.error(
             error instanceof Error ? error : new Error(String(error))
           );
@@ -257,18 +375,27 @@ export async function createAssistantQueryStreamResponse(input: {
   }
 
   const answer = extractAiTextResponse(rawResponse).trim();
-  if (!answer) {
-    throw new Error("Workers AI returned an empty response");
-  }
+  try {
+    if (!answer) {
+      throw new Error("Workers AI returned an empty response");
+    }
 
-  await createTeamAiAssistantRun(execution.db, {
-    teamId: execution.teamId,
-    runType: execution.runType,
-    question: execution.question,
-    answer,
-    model: execution.model,
-    contextSummary: execution.contextSummary,
-  });
+    await persistAssistantRun(execution, {
+      status: "completed",
+      answer,
+      latencyMs: Date.now() - startedAtMs,
+      tokenUsage: extractAiUsageFromResponsePayload(rawResponse),
+    });
+  } catch (error) {
+    await persistAssistantRun(execution, {
+      status: "failed",
+      answer: "",
+      error: toErrorMessage(error, String(error)),
+      latencyMs: Date.now() - startedAtMs,
+      tokenUsage: extractAiUsageFromResponsePayload(rawResponse),
+    });
+    throw error;
+  }
 
   const fallbackStream = new ReadableStream<Uint8Array>({
     start(controller) {

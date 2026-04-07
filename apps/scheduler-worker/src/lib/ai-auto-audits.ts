@@ -27,6 +27,7 @@ export async function runTeamAiAutoAudits(
   if (!dueTeams.length) return;
 
   for (const { teamId, settings } of dueTeams) {
+    const startedAtMs = Date.now();
     try {
       const dueBeforeSec = nowSec - settings.autoAuditIntervalMinutes * 60;
       const claimed = await claimTeamAiAssistantAutoAudit(
@@ -67,6 +68,8 @@ export async function runTeamAiAutoAudits(
         question: AUTO_AUDIT_QUESTION,
         answer,
         model: settings.model,
+        status: "completed",
+        latencyMs: Date.now() - startedAtMs,
         contextSummary: buildTeamAiAssistantContextSummary(snapshot),
       });
 
@@ -75,6 +78,20 @@ export async function runTeamAiAutoAudits(
         model: settings.model,
       });
     } catch (error) {
+      try {
+        await createTeamAiAssistantRun(db, {
+          teamId,
+          runType: "auto_audit",
+          question: AUTO_AUDIT_QUESTION,
+          answer: "",
+          model: settings.model,
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+          latencyMs: Date.now() - startedAtMs,
+        });
+      } catch {
+        // keep failure logging best-effort
+      }
       logger.error("automated AI audit failed", {
         teamId,
         error: serialiseError(error),

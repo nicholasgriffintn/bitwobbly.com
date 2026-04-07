@@ -4,7 +4,7 @@ import {
   getString,
   isRecord,
   safeJsonParse,
-} from "./guards";
+} from "./guards.ts";
 import type { SentryEvent } from "./sentry-payloads";
 
 export type OtlpMappedEvent = {

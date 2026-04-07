@@ -9,7 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --experimental-strip-types --test src/**/*.test.ts",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"

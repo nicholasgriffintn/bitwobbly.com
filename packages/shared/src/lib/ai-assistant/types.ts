@@ -3,6 +3,12 @@ export type TeamAiAssistantRunType =
   | "manual_audit"
   | "auto_audit";
 
+export type TeamAiAssistantRunStatus =
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
 export type MonitorContextItem = {
   id: string;
   name: string;
@@ -90,6 +96,7 @@ export interface TeamAiAssistantSettings {
   model: string;
   autoAuditEnabled: boolean;
   autoAuditIntervalMinutes: number;
+  manualAuditRateLimitPerHour: number;
   maxContextItems: number;
   includeIssues: boolean;
   includeMonitors: boolean;
@@ -108,6 +115,7 @@ export interface TeamAiAssistantSettingsUpdate {
   model?: string;
   autoAuditEnabled?: boolean;
   autoAuditIntervalMinutes?: number;
+  manualAuditRateLimitPerHour?: number;
   maxContextItems?: number;
   includeIssues?: boolean;
   includeMonitors?: boolean;
@@ -123,9 +131,17 @@ export interface TeamAiAssistantRun {
   id: string;
   teamId: string;
   runType: TeamAiAssistantRunType;
+  status: TeamAiAssistantRunStatus;
   question: string | null;
   answer: string;
   model: string;
+  error: string | null;
+  cancelledAt: string | null;
+  partialAnswer: string | null;
+  latencyMs: number | null;
+  tokenUsage: Record<string, unknown> | null;
+  previousRunId: string | null;
+  diffSummary: Record<string, unknown> | null;
   contextSummary: Record<string, unknown> | null;
   createdAt: string;
 }

@@ -120,6 +120,13 @@
       "when": 1775515238925,
       "tag": "0016_deep_lake",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1775596681936,
+      "tag": "0017_small_goliath",
+      "breakpoints": true
     }
   ]
 }
