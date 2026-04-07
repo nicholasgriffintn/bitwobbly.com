@@ -15,16 +15,16 @@
     "db:studio": "drizzle-kit studio"
   },
   "peerDependencies": {
-    "@sentry/cloudflare": "^10.36.0"
+    "@sentry/cloudflare": "catalog:"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "catalog:",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260219.0",
-    "@types/node": "^25.2.0",
+    "@cloudflare/workers-types": "catalog:",
+    "@types/node": "catalog:",
     "drizzle-kit": "^0.31.8",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   }
 }

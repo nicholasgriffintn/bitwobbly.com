@@ -33,17 +33,17 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260219.0",
+    "@cloudflare/workers-types": "catalog:",
     "@tanstack/devtools-vite": "^0.4.1",
-    "@types/node": "^25.2.0",
+    "@types/node": "catalog:",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "catalog:",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3",
+    "typescript": "catalog:",
     "vite": "^7.3.1",
     "vite-tsconfig-paths": "^6.0.5",
-    "wrangler": "^4.60.0"
+    "wrangler": "catalog:"
   }
 }

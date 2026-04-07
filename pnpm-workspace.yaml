@@ -1,3 +1,11 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+catalog:
+  wrangler: "^4.81.0"
+  typescript: "^6.0.2"
+  "drizzle-orm": "^0.45.2"
+  "@types/node": "^25.5.2"
+  "@cloudflare/workers-types": "^4.20260405.1"
+  "@sentry/cloudflare": "^10.47.0"
