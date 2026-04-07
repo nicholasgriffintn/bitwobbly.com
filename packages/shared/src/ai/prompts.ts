@@ -1,4 +1,7 @@
-import type { TeamAiAssistantPromptInput } from "./types.ts";
+import type {
+  TeamAiActionPlannerPromptInput,
+  TeamAiAssistantPromptInput,
+} from "./types.ts";
 
 export function buildTeamAiAssistantMessages(
   input: TeamAiAssistantPromptInput
@@ -34,5 +37,39 @@ export function buildTeamAiAssistantMessages(
   return [
     { role: "system", content: system },
     { role: "user", content: userSegments.join("\n\n") },
+  ];
+}
+
+export function buildTeamAiActionPlanMessages(
+  input: TeamAiActionPlannerPromptInput
+): Array<{ role: "system" | "user"; content: string }> {
+  const customInstructions = (input.customInstructions || "").trim();
+  const customBlock = customInstructions
+    ? `\nTeam-specific instructions:\n${customInstructions}`
+    : "";
+
+  const system = [
+    "You are BitWobbly AI, an operations action planner.",
+    "Return ONLY strict JSON and no Markdown fences.",
+    "JSON schema:",
+    '{"summary":"string","actions":[{"actionType":"monitor_tuning|notification_routing|sentry_grouping_update|incident_runbook_update|github_autofix|run_sql|shell_command","riskTier":"low|medium|high|critical","title":"string","description":"string","rationale":"string","payload":{},"rollback":{"strategy":"string","payload":{}}}]}',
+    "Do not include actions blocked by policy unless no alternative exists; if included, still provide best payload and rationale.",
+    "Prefer low-risk, reversible actions.",
+  ].join(" ");
+
+  const user = [
+    "Generate an action plan from the following trigger, snapshot, and policy.",
+    "Trigger JSON:",
+    JSON.stringify(input.trigger),
+    "Policy JSON:",
+    JSON.stringify(input.policy),
+    "Snapshot JSON:",
+    JSON.stringify(input.snapshot),
+    customBlock,
+  ].filter(Boolean);
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: user.join("\n\n") },
   ];
 }

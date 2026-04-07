@@ -81,6 +81,228 @@ export const teamAiAssistantRuns = sqliteTable(
   })
 );
 
+export const teamAiActionPolicies = sqliteTable("team_ai_action_policies", {
+  teamId: text("team_id")
+    .primaryKey()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  autoActionsEnabled: integer("auto_actions_enabled").notNull().default(1),
+  executionMode: text("execution_mode").notNull().default("risk_based"), // "risk_based" | "approval_required" | "auto"
+  lowRiskAutoEnabled: integer("low_risk_auto_enabled").notNull().default(1),
+  blockedActionTypesJson: text("blocked_action_types_json", { mode: "json" }).$type<
+    string[] | null
+  >(),
+  egressAllowlistJson: text("egress_allowlist_json", { mode: "json" }).$type<
+    string[] | null
+  >(),
+  githubAutofixEnabled: integer("github_autofix_enabled").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const teamAiActionRuns = sqliteTable(
+  "team_ai_action_runs",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    triggerSource: text("trigger_source").notNull(),
+    triggerType: text("trigger_type").notNull(),
+    triggerId: text("trigger_id").notNull(),
+    status: text("status").notNull().default("planning"),
+    snapshotJson: text("snapshot_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    planJson: text("plan_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    policyJson: text("policy_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    blockedReason: text("blocked_reason"),
+    error: text("error"),
+    cancelledAt: text("cancelled_at"),
+    completedAt: text("completed_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    teamCreatedIdx: index("team_ai_action_runs_team_created_idx").on(
+      table.teamId,
+      table.createdAt
+    ),
+    teamStatusCreatedIdx: index("team_ai_action_runs_team_status_created_idx").on(
+      table.teamId,
+      table.status,
+      table.createdAt
+    ),
+    triggerUnique: uniqueIndex("team_ai_action_runs_trigger_unique").on(
+      table.teamId,
+      table.triggerSource,
+      table.triggerType,
+      table.triggerId
+    ),
+  })
+);
+
+export const teamAiActions = sqliteTable(
+  "team_ai_actions",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => teamAiActionRuns.id, { onDelete: "cascade" }),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    actionType: text("action_type").notNull(),
+    riskTier: text("risk_tier").notNull(), // "low" | "medium" | "high" | "critical"
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    payloadJson: text("payload_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    gateDecision: text("gate_decision").notNull(), // "auto" | "approval_required" | "blocked"
+    status: text("status").notNull().default("pending"),
+    blockedReason: text("blocked_reason"),
+    requiresApproval: integer("requires_approval").notNull().default(0),
+    approvedByUserId: text("approved_by_user_id"),
+    approvedAt: text("approved_at"),
+    executedAt: text("executed_at"),
+    failedAt: text("failed_at"),
+    rolledBackAt: text("rolled_back_at"),
+    rollbackActionId: text("rollback_action_id"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    runCreatedIdx: index("team_ai_actions_run_created_idx").on(
+      table.runId,
+      table.createdAt
+    ),
+    teamStatusCreatedIdx: index("team_ai_actions_team_status_created_idx").on(
+      table.teamId,
+      table.status,
+      table.createdAt
+    ),
+    idempotencyUnique: uniqueIndex("team_ai_actions_idempotency_unique").on(
+      table.idempotencyKey
+    ),
+  })
+);
+
+export const teamAiActionEvents = sqliteTable(
+  "team_ai_action_events",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => teamAiActionRuns.id, { onDelete: "cascade" }),
+    actionId: text("action_id").references(() => teamAiActions.id, {
+      onDelete: "cascade",
+    }),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull(),
+    level: text("level").notNull().default("info"),
+    message: text("message").notNull(),
+    dataJson: text("data_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    runCreatedIdx: index("team_ai_action_events_run_created_idx").on(
+      table.runId,
+      table.createdAt
+    ),
+    actionCreatedIdx: index("team_ai_action_events_action_created_idx").on(
+      table.actionId,
+      table.createdAt
+    ),
+    teamCreatedIdx: index("team_ai_action_events_team_created_idx").on(
+      table.teamId,
+      table.createdAt
+    ),
+  })
+);
+
+export const teamAiActionAttempts = sqliteTable(
+  "team_ai_action_attempts",
+  {
+    id: text("id").primaryKey(),
+    actionId: text("action_id")
+      .notNull()
+      .references(() => teamAiActions.id, { onDelete: "cascade" }),
+    attemptNumber: integer("attempt_number").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    executor: text("executor").notNull().default("dynamic_worker"),
+    status: text("status").notNull(),
+    requestJson: text("request_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    responseJson: text("response_json", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    error: text("error"),
+    startedAt: text("started_at").notNull(),
+    finishedAt: text("finished_at"),
+    durationMs: integer("duration_ms"),
+  },
+  (table) => ({
+    actionAttemptUnique: uniqueIndex("team_ai_action_attempts_action_attempt_unique").on(
+      table.actionId,
+      table.attemptNumber
+    ),
+    idempotencyUnique: uniqueIndex("team_ai_action_attempts_idempotency_unique").on(
+      table.idempotencyKey
+    ),
+  })
+);
+
+export const teamAiGithubRepoMappings = sqliteTable(
+  "team_ai_github_repo_mappings",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    projectId: text("project_id"),
+    repositoryOwner: text("repository_owner").notNull(),
+    repositoryName: text("repository_name").notNull(),
+    defaultBranch: text("default_branch").notNull().default("main"),
+    pathAllowlistJson: text("path_allowlist_json", { mode: "json" }).$type<
+      string[] | null
+    >(),
+    maxFilesChanged: integer("max_files_changed").notNull().default(12),
+    maxPatchBytes: integer("max_patch_bytes").notNull().default(50_000),
+    enabled: integer("enabled").notNull().default(1),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    teamProjectRepoUnique: uniqueIndex("team_ai_github_repo_mapping_unique").on(
+      table.teamId,
+      table.projectId,
+      table.repositoryOwner,
+      table.repositoryName
+    ),
+    teamProjectIdx: index("team_ai_github_repo_mapping_team_project_idx").on(
+      table.teamId,
+      table.projectId
+    ),
+  })
+);
+
 export const monitors = sqliteTable(
   "monitors",
   {
@@ -746,6 +968,20 @@ export type TeamAiAssistantSettings = typeof teamAiAssistantSettings.$inferSelec
 export type NewTeamAiAssistantSettings = typeof teamAiAssistantSettings.$inferInsert;
 export type TeamAiAssistantRun = typeof teamAiAssistantRuns.$inferSelect;
 export type NewTeamAiAssistantRun = typeof teamAiAssistantRuns.$inferInsert;
+export type TeamAiActionPolicy = typeof teamAiActionPolicies.$inferSelect;
+export type NewTeamAiActionPolicy = typeof teamAiActionPolicies.$inferInsert;
+export type TeamAiActionRun = typeof teamAiActionRuns.$inferSelect;
+export type NewTeamAiActionRun = typeof teamAiActionRuns.$inferInsert;
+export type TeamAiAction = typeof teamAiActions.$inferSelect;
+export type NewTeamAiAction = typeof teamAiActions.$inferInsert;
+export type TeamAiActionEvent = typeof teamAiActionEvents.$inferSelect;
+export type NewTeamAiActionEvent = typeof teamAiActionEvents.$inferInsert;
+export type TeamAiActionAttempt = typeof teamAiActionAttempts.$inferSelect;
+export type NewTeamAiActionAttempt = typeof teamAiActionAttempts.$inferInsert;
+export type TeamAiGithubRepoMapping =
+  typeof teamAiGithubRepoMappings.$inferSelect;
+export type NewTeamAiGithubRepoMapping =
+  typeof teamAiGithubRepoMappings.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
 export type NewMonitor = typeof monitors.$inferInsert;
 export type MonitorGroup = typeof monitorGroups.$inferSelect;

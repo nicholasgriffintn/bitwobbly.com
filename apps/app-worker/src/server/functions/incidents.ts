@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { randomId } from "@bitwobbly/shared";
+import {
+  makeAiActionTriggerEvent,
+  randomId,
+  toAiActionTriggerMessage,
+} from "@bitwobbly/shared";
 
 import { getDb } from "@bitwobbly/shared";
 import {
@@ -73,6 +77,11 @@ export const createIncidentFn = createServerFn({ method: "POST" })
     const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
+    const actionQueue = (
+      vars as unknown as {
+        ACTION_TRIGGER_JOBS?: { send: (body: unknown) => Promise<void> };
+      }
+    ).ACTION_TRIGGER_JOBS;
     const created = await createIncident(db, teamId, data);
 
     if (data.affectedComponents && data.affectedComponents.length > 0) {
@@ -138,6 +147,25 @@ export const createIncidentFn = createServerFn({ method: "POST" })
       });
     }
 
+    if (actionQueue) {
+      await actionQueue.send(
+        toAiActionTriggerMessage(
+          makeAiActionTriggerEvent({
+            source: "incident",
+            type: "incident_opened",
+            teamId,
+            idempotencyKey: `incident_opened:${created.id}`,
+            metadata: {
+              incidentId: created.id,
+              status: data.status,
+              title: data.title,
+              monitorId: data.monitorId ?? null,
+            },
+          })
+        )
+      );
+    }
+
     return { ok: true, ...created };
   });
 
@@ -147,6 +175,11 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
     const { teamId } = await requireTeam();
     const vars = env;
     const db = getDb(vars.DB);
+    const actionQueue = (
+      vars as unknown as {
+        ACTION_TRIGGER_JOBS?: { send: (body: unknown) => Promise<void> };
+      }
+    ).ACTION_TRIGGER_JOBS;
     const result = await addIncidentUpdate(db, teamId, data.incidentId, {
       message: data.message,
       status: data.status,
@@ -216,6 +249,24 @@ export const updateIncidentFn = createServerFn({ method: "POST" })
           event_type: eventType,
         },
       });
+    }
+
+    if (data.status === "resolved" && actionQueue) {
+      await actionQueue.send(
+        toAiActionTriggerMessage(
+          makeAiActionTriggerEvent({
+            source: "incident",
+            type: "incident_resolved",
+            teamId,
+            idempotencyKey: `incident_resolved:${data.incidentId}:${result.id}`,
+            metadata: {
+              incidentId: data.incidentId,
+              incidentUpdateId: result.id,
+              status: data.status,
+            },
+          })
+        )
+      );
     }
 
     return { ok: true, ...result };

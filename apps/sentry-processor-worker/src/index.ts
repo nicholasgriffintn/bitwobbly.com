@@ -3,7 +3,9 @@ import {
   CACHE_TTL,
   createLogger,
   getDb,
+  makeAiActionTriggerEvent,
   serialiseError,
+  toAiActionTriggerMessage,
 } from "@bitwobbly/shared";
 import { extractJsonFromEnvelope } from "./lib/envelope";
 import {
@@ -445,6 +447,30 @@ async function insertDerivedEvent({
 
   const projectTeamId = await getProjectTeamId(db, job.project_id);
   if (!projectTeamId) return;
+
+  if (isNewIssue || wasResolved) {
+    const triggerType = isNewIssue
+      ? "sentry_issue_created"
+      : "sentry_issue_regressed";
+    await env.ACTION_TRIGGER_JOBS.send(
+      toAiActionTriggerMessage(
+        makeAiActionTriggerEvent({
+          source: "sentry",
+          type: triggerType,
+          teamId: projectTeamId,
+          idempotencyKey: `sentry:${triggerType}:${issueId}:${eventId}`,
+          metadata: {
+            issueId,
+            eventId,
+            projectId: job.project_id,
+            level,
+            environment: event.environment ?? null,
+            release: event.release ?? null,
+          },
+        })
+      )
+    );
+  }
 
   await evaluateAlertRules(env, db, {
     eventId,

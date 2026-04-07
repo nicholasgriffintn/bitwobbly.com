@@ -8,6 +8,7 @@ test("assertEnv returns env when required fields are present", () => {
     DB: {} as D1Database,
     SENTRY_RAW: {} as R2Bucket,
     ALERT_JOBS: {} as Queue,
+    ACTION_TRIGGER_JOBS: {} as Queue,
     SENTRY_DSN: "dsn",
   };
 
@@ -19,6 +20,7 @@ test("assertEnv throws with missing fields", () => {
     DB: {} as D1Database,
     SENTRY_RAW: {} as R2Bucket,
     ALERT_JOBS: {} as Queue,
+    ACTION_TRIGGER_JOBS: {} as Queue,
     SENTRY_DSN: "",
   } as Env;
 

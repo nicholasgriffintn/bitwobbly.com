@@ -11,8 +11,10 @@ import {
   extractAiTextResponse,
   getTeamAiAssistantSettings,
   getDb,
+  makeAiActionTriggerEvent,
   nowIso,
   parseAiUsageFromSsePayload,
+  toAiActionTriggerMessage,
   type TeamAiAssistantRun,
 } from "@bitwobbly/shared";
 import {
@@ -107,7 +109,7 @@ async function persistAssistantRun(
     diffSummary?: Record<string, unknown> | null;
   }
 ): Promise<void> {
-  await createTeamAiAssistantRun(execution.db, {
+  const run = await createTeamAiAssistantRun(execution.db, {
     teamId: execution.teamId,
     runType: execution.runType,
     question: execution.question,
@@ -123,6 +125,30 @@ async function persistAssistantRun(
     diffSummary: input.diffSummary ?? null,
     contextSummary: execution.contextSummary,
   });
+
+  if (execution.runType === "manual_audit" && input.status === "completed") {
+    const queue = (
+      env as unknown as {
+        ACTION_TRIGGER_JOBS?: { send: (body: unknown) => Promise<void> };
+      }
+    ).ACTION_TRIGGER_JOBS;
+    if (queue) {
+      await queue.send(
+        toAiActionTriggerMessage(
+          makeAiActionTriggerEvent({
+            source: "assistant_audit",
+            type: "audit_completed",
+            teamId: execution.teamId,
+            idempotencyKey: `manual_audit:${run.id}`,
+            metadata: {
+              runId: run.id,
+              runType: run.runType,
+            },
+          })
+        )
+      );
+    }
+  }
 }
 
 export function toAiAssistantClientRun(

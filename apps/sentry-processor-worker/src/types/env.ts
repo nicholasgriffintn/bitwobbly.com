@@ -1,9 +1,10 @@
-import type { IssueAlertJob } from "@bitwobbly/shared";
+import type { AiActionWorkerMessage, IssueAlertJob } from "@bitwobbly/shared";
 
 export interface Env {
   DB: D1Database;
   SENTRY_RAW: R2Bucket;
   ALERT_JOBS: Queue<IssueAlertJob>;
+  ACTION_TRIGGER_JOBS: Queue<AiActionWorkerMessage>;
   SENTRY_DSN: string;
 }
 
@@ -12,6 +13,7 @@ export function assertEnv(env: Env): Env {
   if (!env.DB) missing.push("DB");
   if (!env.SENTRY_RAW) missing.push("SENTRY_RAW");
   if (!env.ALERT_JOBS) missing.push("ALERT_JOBS");
+  if (!env.ACTION_TRIGGER_JOBS) missing.push("ACTION_TRIGGER_JOBS");
   if (!env.SENTRY_DSN) missing.push("SENTRY_DSN");
 
   if (missing.length) {

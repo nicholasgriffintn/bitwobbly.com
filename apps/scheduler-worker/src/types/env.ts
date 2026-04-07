@@ -1,4 +1,5 @@
 import type { Queue } from "@cloudflare/workers-types";
+import type { AiActionWorkerMessage } from "@bitwobbly/shared";
 
 export interface AiBinding {
   run: (model: string, input: Record<string, unknown>) => Promise<unknown>;
@@ -8,6 +9,7 @@ export interface Env {
   DB: D1Database;
   ALERT_JOBS: Queue;
   CHECK_JOBS: Queue;
+  ACTION_TRIGGER_JOBS: Queue<AiActionWorkerMessage>;
   SENTRY_DSN: string;
   AI: AiBinding;
 }
@@ -17,6 +19,7 @@ export function assertEnv(env: Env): Env {
   if (!env.DB) missing.push("DB");
   if (!env.ALERT_JOBS) missing.push("ALERT_JOBS");
   if (!env.CHECK_JOBS) missing.push("CHECK_JOBS");
+  if (!env.ACTION_TRIGGER_JOBS) missing.push("ACTION_TRIGGER_JOBS");
   if (!env.SENTRY_DSN) missing.push("SENTRY_DSN");
   if (!env.AI) missing.push("AI");
 

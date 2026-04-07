@@ -4,11 +4,13 @@ import {
   buildTeamAiAssistantContextSummary,
   buildTeamAiAssistantMessages,
   claimTeamAiAssistantAutoAudit,
+  makeAiActionTriggerEvent,
   createLogger,
   createTeamAiAssistantRun,
   extractAiTextResponse,
   listTeamsDueForAutoAudit,
   serialiseError,
+  toAiActionTriggerMessage,
 } from "@bitwobbly/shared";
 
 import type { Env } from "../types/env";
@@ -62,7 +64,7 @@ export async function runTeamAiAutoAudits(
         throw new Error("Workers AI returned an empty audit response");
       }
 
-      await createTeamAiAssistantRun(db, {
+      const run = await createTeamAiAssistantRun(db, {
         teamId,
         runType: "auto_audit",
         question: AUTO_AUDIT_QUESTION,
@@ -72,6 +74,21 @@ export async function runTeamAiAutoAudits(
         latencyMs: Date.now() - startedAtMs,
         contextSummary: buildTeamAiAssistantContextSummary(snapshot),
       });
+
+      await env.ACTION_TRIGGER_JOBS.send(
+        toAiActionTriggerMessage(
+          makeAiActionTriggerEvent({
+            source: "assistant_audit",
+            type: "audit_completed",
+            teamId,
+            idempotencyKey: `auto_audit:${run.id}`,
+            metadata: {
+              runId: run.id,
+              runType: run.runType,
+            },
+          })
+        )
+      );
 
       logger.info("generated automated AI audit", {
         teamId,

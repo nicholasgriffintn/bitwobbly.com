@@ -18,6 +18,38 @@ export type AiAssistantRun = {
 
 export type AssistantTab = "chat" | "ops";
 
+export type AiActionRunSummary = {
+  id: string;
+  triggerSource: string;
+  triggerType: string;
+  status:
+    | "planning"
+    | "awaiting_approval"
+    | "executing"
+    | "completed"
+    | "failed"
+    | "blocked"
+    | "cancelled";
+  createdAt: string;
+};
+
+export type AiActionItem = {
+  id: string;
+  title: string;
+  actionType: string;
+  riskTier: string;
+  status:
+    | "pending"
+    | "approved"
+    | "executing"
+    | "completed"
+    | "failed"
+    | "blocked"
+    | "cancelled"
+    | "rolled_back";
+  requiresApproval: boolean;
+};
+
 export const ASSISTANT_SUGGESTED_PROMPTS = [
   "Summarise current risks in our monitoring setup.",
   "How should we improve alert routing and notification noise?",

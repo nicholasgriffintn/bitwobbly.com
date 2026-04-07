@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui";
-import { runTypeLabel, type AiAssistantRun } from "@/lib/ai-assistant-chat";
+import {
+  runTypeLabel,
+  type AiActionItem,
+  type AiActionRunSummary,
+  type AiAssistantRun,
+} from "@/lib/ai-assistant-chat";
 import { AssistantMarkdown } from "./AssistantMarkdown";
 
 type AssistantOpsTabProps = {
@@ -10,11 +15,20 @@ type AssistantOpsTabProps = {
   isRunningAudit: boolean;
   isLoading: boolean;
   auditRuns: AiAssistantRun[];
+  actionRuns: AiActionRunSummary[];
+  activeRunId: string | null;
+  activeRunActions: AiActionItem[];
+  isActionLoading: boolean;
   auditPreviewThinking: string;
   auditPreviewAnswer: string;
   onAuditFocusChange: (value: string) => void;
   onRunAudit: () => Promise<void>;
   onCancelAudit: () => void;
+  onSelectRun: (runId: string) => Promise<void>;
+  onActionApprove: (actionId: string) => Promise<void>;
+  onActionReject: (actionId: string) => Promise<void>;
+  onActionRetry: (actionId: string) => Promise<void>;
+  onActionRollback: (actionId: string) => Promise<void>;
 };
 
 export function AssistantOpsTab({
@@ -25,11 +39,20 @@ export function AssistantOpsTab({
   isRunningAudit,
   isLoading,
   auditRuns,
+  actionRuns,
+  activeRunId,
+  activeRunActions,
+  isActionLoading,
   auditPreviewThinking,
   auditPreviewAnswer,
   onAuditFocusChange,
   onRunAudit,
   onCancelAudit,
+  onSelectRun,
+  onActionApprove,
+  onActionReject,
+  onActionRetry,
+  onActionRollback,
 }: AssistantOpsTabProps) {
   return (
     <div className="assistant-content assistant-ops">
@@ -121,6 +144,99 @@ export function AssistantOpsTab({
                       <div className="assistant-run-meta">{run.question}</div>
                     ) : null}
                     <AssistantMarkdown content={run.answer} />
+                  </details>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="assistant-ops-section">
+            <div className="assistant-section-title">Action runs</div>
+            {actionRuns.length === 0 ? (
+              <div className="muted">
+                No action runs yet. Runs are created from audits, monitor
+                transitions, and Sentry events.
+              </div>
+            ) : (
+              <div className="assistant-audit-history">
+                {actionRuns.map((run) => (
+                  <details
+                    key={run.id}
+                    className="assistant-ops-section"
+                    open={run.id === activeRunId}
+                    onToggle={(event) => {
+                      const element = event.currentTarget;
+                      if (!element.open) return;
+                      void onSelectRun(run.id);
+                    }}
+                  >
+                    <summary className="assistant-section-title">
+                      {run.triggerSource}:{run.triggerType} · {run.status} ·{" "}
+                      {new Date(run.createdAt).toLocaleString()}
+                    </summary>
+                    {run.id === activeRunId ? (
+                      isActionLoading ? (
+                        <div className="muted">Loading actions…</div>
+                      ) : activeRunActions.length ? (
+                        <div className="assistant-audit-history">
+                          {activeRunActions.map((action) => (
+                            <div key={action.id} className="assistant-run-meta">
+                              <div>
+                                <strong>{action.title}</strong> ·{" "}
+                                {action.actionType} · {action.riskTier} ·{" "}
+                                {action.status}
+                              </div>
+                              <div className="button-row mt-2">
+                                {action.requiresApproval &&
+                                action.status === "pending" ? (
+                                  <>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="xs"
+                                      onClick={() => void onActionApprove(action.id)}
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="xs"
+                                      color="danger"
+                                      onClick={() => void onActionReject(action.id)}
+                                    >
+                                      Reject
+                                    </Button>
+                                  </>
+                                ) : null}
+                                {action.status === "failed" ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={() => void onActionRetry(action.id)}
+                                  >
+                                    Retry
+                                  </Button>
+                                ) : null}
+                                {action.status === "completed" ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={() => void onActionRollback(action.id)}
+                                  >
+                                    Rollback
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="muted">No actions found for this run.</div>
+                      )
+                    ) : null}
                   </details>
                 ))}
               </div>

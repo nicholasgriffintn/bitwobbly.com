@@ -39,6 +39,31 @@ importers:
         specifier: ^8.54.0
         version: 8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
 
+  apps/ai-sandbox-worker:
+    dependencies:
+      '@bitwobbly/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@sentry/cloudflare':
+        specifier: ^10.36.0
+        version: 10.36.0(@cloudflare/workers-types@4.20260219.0)
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20260219.0
+        version: 4.20260219.0
+      '@types/node':
+        specifier: ^25.2.0
+        version: 25.2.0
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@cloudflare/workers-types@4.20260219.0)(@opentelemetry/api@1.9.0)(kysely@0.28.10)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      wrangler:
+        specifier: ^4.60.0
+        version: 4.60.0(@cloudflare/workers-types@4.20260219.0)
+
   apps/app-worker:
     dependencies:
       '@bitwobbly/auth':
@@ -303,6 +328,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@cloudflare/workers-types@4.20260219.0)(@opentelemetry/api@1.9.0)(kysely@0.28.10)
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260219.0

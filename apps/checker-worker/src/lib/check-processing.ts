@@ -1,5 +1,8 @@
 import type { AlertJob, CheckJob } from "@bitwobbly/shared";
-import { randomId } from "@bitwobbly/shared";
+import {
+  enqueueAiActionTrigger,
+  randomId,
+} from "@bitwobbly/shared";
 import { connect } from "cloudflare:sockets";
 import type { DB } from "@bitwobbly/shared";
 import { createLogger } from "@bitwobbly/shared";
@@ -388,6 +391,17 @@ async function handleStatusResult(
         incident_id: incidentId || undefined,
       });
     }
+    await enqueueAiActionTrigger(env.ACTION_TRIGGER_JOBS, {
+      source: "monitor_transition",
+      type: "monitor_down",
+      teamId: job.team_id,
+      idempotencyKey: `monitor_down:${job.monitor_id}:${incidentId || "none"}:${job.job_id || "no_job"}`,
+      metadata: {
+        monitorId: job.monitor_id,
+        incidentId: incidentId ?? null,
+        reason: result.reason ?? null,
+      },
+    });
 
     if (job.job_id) {
       await env.KV.put(`dedupe:alert:${job.job_id}:down`, "1", {
@@ -415,6 +429,16 @@ async function handleStatusResult(
         incident_id: incidentId || undefined,
       });
     }
+    await enqueueAiActionTrigger(env.ACTION_TRIGGER_JOBS, {
+      source: "monitor_transition",
+      type: "monitor_recovered",
+      teamId: job.team_id,
+      idempotencyKey: `monitor_recovered:${job.monitor_id}:${incidentId || "none"}:${job.job_id || "no_job"}`,
+      metadata: {
+        monitorId: job.monitor_id,
+        incidentId: incidentId ?? null,
+      },
+    });
 
     if (job.job_id) {
       await env.KV.put(`dedupe:alert:${job.job_id}:up`, "1", {

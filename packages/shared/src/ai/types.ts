@@ -9,6 +9,45 @@ export type TeamAiAssistantRunStatus =
   | "failed"
   | "cancelled";
 
+export type TeamAiActionExecutionMode =
+  | "risk_based"
+  | "approval_required"
+  | "auto";
+
+export type TeamAiActionRiskTier = "low" | "medium" | "high" | "critical";
+
+export type TeamAiActionType =
+  | "monitor_tuning"
+  | "notification_routing"
+  | "sentry_grouping_update"
+  | "incident_runbook_update"
+  | "github_autofix"
+  | "run_sql"
+  | "shell_command";
+
+export type TeamAiActionGateDecision = "auto" | "approval_required" | "blocked";
+
+export type TeamAiActionRunStatus =
+  | "planning"
+  | "awaiting_approval"
+  | "executing"
+  | "completed"
+  | "failed"
+  | "blocked"
+  | "cancelled";
+
+export type TeamAiActionStatus =
+  | "pending"
+  | "approved"
+  | "executing"
+  | "completed"
+  | "failed"
+  | "blocked"
+  | "cancelled"
+  | "rolled_back";
+
+export type TeamAiActionEventLevel = "info" | "warning" | "error";
+
 export type MonitorContextItem = {
   id: string;
   name: string;
@@ -97,6 +136,12 @@ export interface TeamAiAssistantSettings {
   autoAuditEnabled: boolean;
   autoAuditIntervalMinutes: number;
   manualAuditRateLimitPerHour: number;
+  autoActionsEnabled: boolean;
+  executionMode: TeamAiActionExecutionMode;
+  lowRiskAutoEnabled: boolean;
+  blockedActionTypes: string[];
+  egressAllowlist: string[];
+  githubAutofixEnabled: boolean;
   maxContextItems: number;
   includeIssues: boolean;
   includeMonitors: boolean;
@@ -116,6 +161,12 @@ export interface TeamAiAssistantSettingsUpdate {
   autoAuditEnabled?: boolean;
   autoAuditIntervalMinutes?: number;
   manualAuditRateLimitPerHour?: number;
+  autoActionsEnabled?: boolean;
+  executionMode?: TeamAiActionExecutionMode;
+  lowRiskAutoEnabled?: boolean;
+  blockedActionTypes?: string[];
+  egressAllowlist?: string[];
+  githubAutofixEnabled?: boolean;
   maxContextItems?: number;
   includeIssues?: boolean;
   includeMonitors?: boolean;
@@ -144,6 +195,176 @@ export interface TeamAiAssistantRun {
   diffSummary: Record<string, unknown> | null;
   contextSummary: Record<string, unknown> | null;
   createdAt: string;
+}
+
+export interface AiActionTriggerEvent {
+  id: string;
+  source: "assistant_audit" | "monitor_transition" | "incident" | "sentry";
+  type:
+    | "audit_completed"
+    | "monitor_down"
+    | "monitor_recovered"
+    | "incident_opened"
+    | "incident_resolved"
+    | "sentry_issue_created"
+    | "sentry_issue_regressed";
+  teamId: string;
+  occurredAt: string;
+  idempotencyKey: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface AiActionCommandEvent {
+  id: string;
+  teamId: string;
+  actionId: string;
+  operation: "approve" | "reject" | "cancel" | "retry" | "rollback";
+  requestedByUserId?: string | null;
+  occurredAt: string;
+}
+
+export type AiActionWorkerMessage =
+  | {
+      kind: "trigger";
+      trigger: AiActionTriggerEvent;
+    }
+  | {
+      kind: "command";
+      command: AiActionCommandEvent;
+    };
+
+export interface TeamAiActionPlanAction {
+  actionType: TeamAiActionType;
+  riskTier: TeamAiActionRiskTier;
+  title: string;
+  description: string;
+  rationale: string;
+  payload: Record<string, unknown>;
+  rollback?: {
+    strategy: string;
+    payload?: Record<string, unknown>;
+  } | null;
+}
+
+export interface TeamAiActionPlan {
+  summary: string;
+  actions: TeamAiActionPlanAction[];
+}
+
+export interface TeamAiActionPolicy {
+  teamId: string;
+  autoActionsEnabled: boolean;
+  executionMode: TeamAiActionExecutionMode;
+  lowRiskAutoEnabled: boolean;
+  blockedActionTypes: string[];
+  egressAllowlist: string[];
+  githubAutofixEnabled: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface TeamAiActionPolicyUpdate {
+  autoActionsEnabled?: boolean;
+  executionMode?: TeamAiActionExecutionMode;
+  lowRiskAutoEnabled?: boolean;
+  blockedActionTypes?: string[];
+  egressAllowlist?: string[];
+  githubAutofixEnabled?: boolean;
+}
+
+export interface TeamAiActionRun {
+  id: string;
+  teamId: string;
+  triggerSource: AiActionTriggerEvent["source"];
+  triggerType: AiActionTriggerEvent["type"];
+  triggerId: string;
+  status: TeamAiActionRunStatus;
+  snapshot: Record<string, unknown> | null;
+  plan: TeamAiActionPlan | null;
+  policy: TeamAiActionPolicy | null;
+  blockedReason: string | null;
+  error: string | null;
+  cancelledAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamAiAction {
+  id: string;
+  runId: string;
+  teamId: string;
+  actionType: TeamAiActionType;
+  riskTier: TeamAiActionRiskTier;
+  title: string;
+  description: string;
+  payload: Record<string, unknown> | null;
+  gateDecision: TeamAiActionGateDecision;
+  status: TeamAiActionStatus;
+  blockedReason: string | null;
+  requiresApproval: boolean;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  executedAt: string | null;
+  failedAt: string | null;
+  rolledBackAt: string | null;
+  rollbackActionId: string | null;
+  idempotencyKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamAiActionEvent {
+  id: string;
+  runId: string;
+  actionId: string | null;
+  teamId: string;
+  eventType: string;
+  level: TeamAiActionEventLevel;
+  message: string;
+  data: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface TeamAiActionAttempt {
+  id: string;
+  actionId: string;
+  attemptNumber: number;
+  idempotencyKey: string;
+  executor: string;
+  status: string;
+  request: Record<string, unknown> | null;
+  response: Record<string, unknown> | null;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+}
+
+export interface TeamAiGithubRepoMapping {
+  id: string;
+  teamId: string;
+  projectId: string | null;
+  repositoryOwner: string;
+  repositoryName: string;
+  defaultBranch: string;
+  pathAllowlist: string[];
+  maxFilesChanged: number;
+  maxPatchBytes: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamAiGithubRepoMappingInput {
+  projectId?: string | null;
+  repositoryOwner: string;
+  repositoryName: string;
+  defaultBranch?: string;
+  pathAllowlist?: string[];
+  maxFilesChanged?: number;
+  maxPatchBytes?: number;
+  enabled?: boolean;
 }
 
 export interface TeamAiAssistantContextSnapshot {
@@ -199,6 +420,13 @@ export interface TeamAiAssistantPromptInput {
   question?: string;
   customInstructions?: string | null;
   snapshot: TeamAiAssistantContextSnapshot;
+}
+
+export interface TeamAiActionPlannerPromptInput {
+  trigger: AiActionTriggerEvent;
+  snapshot: TeamAiAssistantContextSnapshot;
+  policy: TeamAiActionPolicy;
+  customInstructions?: string | null;
 }
 
 export interface TeamAiAutoAuditCandidate {

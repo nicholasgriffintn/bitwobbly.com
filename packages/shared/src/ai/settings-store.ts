@@ -4,6 +4,12 @@ import type { DB } from "../db/index.ts";
 import { schema } from "../db/index.ts";
 import { clampInt, nowIso, randomId } from "../lib/utils.ts";
 import {
+  DEFAULT_ACTION_BLOCKLIST,
+  DEFAULT_ACTION_EGRESS_ALLOWLIST,
+  DEFAULT_AI_ACTIONS_ENABLED,
+  DEFAULT_AI_EXECUTION_MODE,
+  DEFAULT_GITHUB_AUTOFIX_ENABLED,
+  DEFAULT_LOW_RISK_AUTO_ENABLED,
   DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
   DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   DEFAULT_MAX_CONTEXT_ITEMS,
@@ -15,7 +21,12 @@ import {
   MIN_MAX_CONTEXT_ITEMS,
   TEAM_AI_ASSISTANT_DEFAULT_MODEL,
 } from "./constants.ts";
+import {
+  getTeamAiActionPolicy,
+  upsertTeamAiActionPolicy,
+} from "./action-store.ts";
 import type {
+  TeamAiActionPolicyUpdate,
   TeamAiAssistantRun,
   TeamAiAssistantRunStatus,
   TeamAiAssistantRunType,
@@ -36,6 +47,12 @@ export function buildDefaultTeamAiAssistantSettings(
     autoAuditEnabled: false,
     autoAuditIntervalMinutes: DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
     manualAuditRateLimitPerHour: DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
+    autoActionsEnabled: DEFAULT_AI_ACTIONS_ENABLED,
+    executionMode: DEFAULT_AI_EXECUTION_MODE,
+    lowRiskAutoEnabled: DEFAULT_LOW_RISK_AUTO_ENABLED,
+    blockedActionTypes: Array.from(DEFAULT_ACTION_BLOCKLIST),
+    egressAllowlist: Array.from(DEFAULT_ACTION_EGRESS_ALLOWLIST),
+    githubAutofixEnabled: DEFAULT_GITHUB_AUTOFIX_ENABLED,
     maxContextItems: DEFAULT_MAX_CONTEXT_ITEMS,
     includeIssues: true,
     includeMonitors: true,
@@ -75,6 +92,12 @@ function toSettings(
       MIN_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
       MAX_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR
     ),
+    autoActionsEnabled: DEFAULT_AI_ACTIONS_ENABLED,
+    executionMode: DEFAULT_AI_EXECUTION_MODE,
+    lowRiskAutoEnabled: DEFAULT_LOW_RISK_AUTO_ENABLED,
+    blockedActionTypes: Array.from(DEFAULT_ACTION_BLOCKLIST),
+    egressAllowlist: Array.from(DEFAULT_ACTION_EGRESS_ALLOWLIST),
+    githubAutofixEnabled: DEFAULT_GITHUB_AUTOFIX_ENABLED,
     maxContextItems: clampInt(
       row.maxContextItems ?? DEFAULT_MAX_CONTEXT_ITEMS,
       MIN_MAX_CONTEXT_ITEMS,
@@ -203,17 +226,54 @@ function toSettingsUpdate(
   return updates;
 }
 
+function toPolicyUpdate(
+  input: TeamAiAssistantSettingsUpdate
+): TeamAiActionPolicyUpdate {
+  const out: TeamAiActionPolicyUpdate = {};
+  if (input.autoActionsEnabled !== undefined) {
+    out.autoActionsEnabled = input.autoActionsEnabled;
+  }
+  if (input.executionMode !== undefined) {
+    out.executionMode = input.executionMode;
+  }
+  if (input.lowRiskAutoEnabled !== undefined) {
+    out.lowRiskAutoEnabled = input.lowRiskAutoEnabled;
+  }
+  if (input.blockedActionTypes !== undefined) {
+    out.blockedActionTypes = input.blockedActionTypes;
+  }
+  if (input.egressAllowlist !== undefined) {
+    out.egressAllowlist = input.egressAllowlist;
+  }
+  if (input.githubAutofixEnabled !== undefined) {
+    out.githubAutofixEnabled = input.githubAutofixEnabled;
+  }
+  return out;
+}
+
 export async function getTeamAiAssistantSettings(
   db: DB,
   teamId: string
 ): Promise<TeamAiAssistantSettings> {
-  const row = await db
-    .select()
-    .from(schema.teamAiAssistantSettings)
-    .where(eq(schema.teamAiAssistantSettings.teamId, teamId))
-    .limit(1);
+  const [settingsRows, policy] = await Promise.all([
+    db
+      .select()
+      .from(schema.teamAiAssistantSettings)
+      .where(eq(schema.teamAiAssistantSettings.teamId, teamId))
+      .limit(1),
+    getTeamAiActionPolicy(db, teamId),
+  ]);
 
-  return toSettings(row[0], teamId);
+  const settings = toSettings(settingsRows[0], teamId);
+  return {
+    ...settings,
+    autoActionsEnabled: policy.autoActionsEnabled,
+    executionMode: policy.executionMode,
+    lowRiskAutoEnabled: policy.lowRiskAutoEnabled,
+    blockedActionTypes: policy.blockedActionTypes,
+    egressAllowlist: policy.egressAllowlist,
+    githubAutofixEnabled: policy.githubAutofixEnabled,
+  };
 }
 
 export async function upsertTeamAiAssistantSettings(
@@ -227,6 +287,8 @@ export async function upsertTeamAiAssistantSettings(
     .where(eq(schema.teamAiAssistantSettings.teamId, teamId))
     .limit(1);
   const now = nowIso();
+  const policyUpdate = toPolicyUpdate(input);
+  const hasPolicyChanges = Object.keys(policyUpdate).length > 0;
 
   if (!existing.length) {
     await db
@@ -237,6 +299,10 @@ export async function upsertTeamAiAssistantSettings(
       .update(schema.teamAiAssistantSettings)
       .set(toSettingsUpdate(input, now))
       .where(eq(schema.teamAiAssistantSettings.teamId, teamId));
+  }
+
+  if (hasPolicyChanges) {
+    await upsertTeamAiActionPolicy(db, teamId, policyUpdate);
   }
 
   return getTeamAiAssistantSettings(db, teamId);

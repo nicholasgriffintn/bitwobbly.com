@@ -42,6 +42,10 @@
       {
         "binding": "CHECK_JOBS",
         "queue": "bitwobbly-check-jobs"
+      },
+      {
+        "binding": "ACTION_TRIGGER_JOBS",
+        "queue": "bitwobbly-ai-action-triggers"
       }
     ]
   },

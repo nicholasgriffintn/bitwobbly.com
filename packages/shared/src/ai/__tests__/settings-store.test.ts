@@ -4,6 +4,12 @@ import test from "node:test";
 import type { DB } from "../../db/index.ts";
 import { createMockDb } from "../../../tests/utils/mock-db.ts";
 import {
+  DEFAULT_ACTION_BLOCKLIST,
+  DEFAULT_ACTION_EGRESS_ALLOWLIST,
+  DEFAULT_AI_ACTIONS_ENABLED,
+  DEFAULT_AI_EXECUTION_MODE,
+  DEFAULT_GITHUB_AUTOFIX_ENABLED,
+  DEFAULT_LOW_RISK_AUTO_ENABLED,
   DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
   DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   DEFAULT_MAX_CONTEXT_ITEMS,
@@ -15,7 +21,10 @@ import {
   MIN_MAX_CONTEXT_ITEMS,
   TEAM_AI_ASSISTANT_DEFAULT_MODEL,
 } from "../constants.ts";
-import { makeTeamAiAssistantSettingsRowFixture } from "../../../tests/fixtures.ts";
+import {
+  makeTeamAiActionPolicyRowFixture,
+  makeTeamAiAssistantSettingsRowFixture,
+} from "../../../tests/fixtures.ts";
 import {
   buildDefaultTeamAiAssistantSettings,
   claimTeamAiAssistantAutoAudit,
@@ -36,6 +45,12 @@ test("buildDefaultTeamAiAssistantSettings returns full default shape", () => {
     autoAuditEnabled: false,
     autoAuditIntervalMinutes: DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
     manualAuditRateLimitPerHour: DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
+    autoActionsEnabled: DEFAULT_AI_ACTIONS_ENABLED,
+    executionMode: DEFAULT_AI_EXECUTION_MODE,
+    lowRiskAutoEnabled: DEFAULT_LOW_RISK_AUTO_ENABLED,
+    blockedActionTypes: Array.from(DEFAULT_ACTION_BLOCKLIST),
+    egressAllowlist: Array.from(DEFAULT_ACTION_EGRESS_ALLOWLIST),
+    githubAutofixEnabled: DEFAULT_GITHUB_AUTOFIX_ENABLED,
     maxContextItems: DEFAULT_MAX_CONTEXT_ITEMS,
     includeIssues: true,
     includeMonitors: true,
@@ -63,6 +78,7 @@ test("upsertTeamAiAssistantSettings inserts clamped values and defaults", async 
         includeIssues: 0,
       }),
     ],
+    [],
   ]);
 
   const result = await upsertTeamAiAssistantSettings(fakeDb as unknown as DB, "team_1", {
@@ -87,6 +103,7 @@ test("upsertTeamAiAssistantSettings inserts clamped values and defaults", async 
   assert.equal(result.autoAuditIntervalMinutes, MIN_AUTO_AUDIT_INTERVAL_MINUTES);
   assert.equal(result.maxContextItems, MAX_MAX_CONTEXT_ITEMS);
   assert.equal(result.includeIssues, false);
+  assert.equal(result.executionMode, DEFAULT_AI_EXECUTION_MODE);
 });
 
 test("upsertTeamAiAssistantSettings updates only provided values and clamps ranges", async () => {
@@ -101,7 +118,7 @@ test("upsertTeamAiAssistantSettings updates only provided values and clamps rang
     maxContextItems: MIN_MAX_CONTEXT_ITEMS,
     includeMonitors: 0,
   });
-  const fakeDb = createMockDb([[existing], [updated]]);
+  const fakeDb = createMockDb([[existing], [updated], []]);
 
   const result = await upsertTeamAiAssistantSettings(fakeDb as unknown as DB, "team_1", {
     autoAuditIntervalMinutes: 999999,
@@ -121,6 +138,45 @@ test("upsertTeamAiAssistantSettings updates only provided values and clamps rang
   assert.equal(updateSet.includeMonitors, 0);
   assert.equal(result.autoAuditIntervalMinutes, MAX_AUTO_AUDIT_INTERVAL_MINUTES);
   assert.equal(result.includeMonitors, false);
+});
+
+test("upsertTeamAiAssistantSettings updates policy fields via policy store", async () => {
+  const existing = makeTeamAiAssistantSettingsRowFixture();
+  const updated = makeTeamAiAssistantSettingsRowFixture();
+  const policyUpdated = makeTeamAiActionPolicyRowFixture({
+    autoActionsEnabled: 0,
+    executionMode: "approval_required",
+    lowRiskAutoEnabled: 0,
+    blockedActionTypesJson: ["run_sql", "github_autofix"],
+    egressAllowlistJson: ["api.github.com", "api.example.com"],
+    githubAutofixEnabled: 1,
+  });
+
+  const fakeDb = createMockDb([
+    [existing],
+    [],
+    [policyUpdated],
+    [updated],
+    [policyUpdated],
+  ]);
+
+  const result = await upsertTeamAiAssistantSettings(fakeDb as unknown as DB, "team_1", {
+    autoActionsEnabled: false,
+    executionMode: "approval_required",
+    lowRiskAutoEnabled: false,
+    blockedActionTypes: ["run_sql", "github_autofix"],
+    egressAllowlist: ["api.example.com", "api.github.com"],
+    githubAutofixEnabled: true,
+  });
+
+  assert.equal(fakeDb.inserts.length, 1);
+  const policyInsert = fakeDb.inserts[0].value as Record<string, unknown>;
+  assert.equal(policyInsert.autoActionsEnabled, 0);
+  assert.equal(policyInsert.executionMode, "approval_required");
+  assert.equal(policyInsert.lowRiskAutoEnabled, 0);
+  assert.equal(policyInsert.githubAutofixEnabled, 1);
+  assert.deepEqual(result.blockedActionTypes, ["github_autofix", "run_sql"]);
+  assert.deepEqual(result.egressAllowlist, ["api.example.com", "api.github.com"]);
 });
 
 test("listTeamAiAssistantRuns maps persisted rows to public run shape", async () => {
@@ -241,7 +297,7 @@ test("manual audit rate limit is clamped when explicitly updated", async () => {
   const updated = makeTeamAiAssistantSettingsRowFixture({
     manualAuditRateLimitPerHour: MAX_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   });
-  const fakeDb = createMockDb([[existing], [updated]]);
+  const fakeDb = createMockDb([[existing], [updated], []]);
 
   const result = await upsertTeamAiAssistantSettings(fakeDb as unknown as DB, "team_1", {
     manualAuditRateLimitPerHour: 999,

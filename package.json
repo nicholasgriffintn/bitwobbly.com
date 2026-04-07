@@ -13,6 +13,7 @@
     "dev:scheduler": "pnpm -C apps/scheduler-worker dev",
     "dev:checker": "pnpm -C apps/checker-worker dev",
     "dev:notifier": "pnpm -C apps/notifier-worker dev",
+    "dev:ai-sandbox": "pnpm -C apps/ai-sandbox-worker dev",
     "dev:sentry-ingest": "pnpm -C apps/sentry-ingest-worker dev",
     "dev:sentry-processor": "pnpm -C apps/sentry-processor-worker dev",
     "lint": "eslint .",

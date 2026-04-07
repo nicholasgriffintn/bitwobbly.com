@@ -11,6 +11,13 @@ type AiSettings = {
   model: string;
   autoAuditEnabled: boolean;
   autoAuditIntervalMinutes: number;
+  manualAuditRateLimitPerHour: number;
+  autoActionsEnabled: boolean;
+  executionMode: "risk_based" | "approval_required" | "auto";
+  lowRiskAutoEnabled: boolean;
+  blockedActionTypes: string[];
+  egressAllowlist: string[];
+  githubAutofixEnabled: boolean;
   maxContextItems: number;
   includeIssues: boolean;
   includeMonitors: boolean;
@@ -52,6 +59,13 @@ export function AiAssistantSettingsCard({ initialSettings }: Props) {
           model: settings.model.trim(),
           autoAuditEnabled: settings.autoAuditEnabled,
           autoAuditIntervalMinutes: settings.autoAuditIntervalMinutes,
+          manualAuditRateLimitPerHour: settings.manualAuditRateLimitPerHour,
+          autoActionsEnabled: settings.autoActionsEnabled,
+          executionMode: settings.executionMode,
+          lowRiskAutoEnabled: settings.lowRiskAutoEnabled,
+          blockedActionTypes: settings.blockedActionTypes,
+          egressAllowlist: settings.egressAllowlist,
+          githubAutofixEnabled: settings.githubAutofixEnabled,
           maxContextItems: settings.maxContextItems,
           includeIssues: settings.includeIssues,
           includeMonitors: settings.includeMonitors,
@@ -133,6 +147,23 @@ export function AiAssistantSettingsCard({ initialSettings }: Props) {
               }
             />
 
+            <label htmlFor="ai-manual-audit-rate-limit">
+              Manual audits per hour (rate limit)
+            </label>
+            <input
+              id="ai-manual-audit-rate-limit"
+              type="number"
+              min={1}
+              max={60}
+              value={settings.manualAuditRateLimitPerHour}
+              onChange={(event) =>
+                setSettings((previous) => ({
+                  ...previous,
+                  manualAuditRateLimitPerHour: Number(event.target.value),
+                }))
+              }
+            />
+
             <label htmlFor="ai-context-limit">Max context items per section</label>
             <input
               id="ai-context-limit"
@@ -160,6 +191,85 @@ export function AiAssistantSettingsCard({ initialSettings }: Props) {
               }
               rows={5}
               placeholder="Example: prioritise low-noise alerting recommendations."
+            />
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={settings.autoActionsEnabled}
+                onChange={onCheckbox("autoActionsEnabled")}
+              />
+              Enable automatic actions
+            </label>
+
+            <label htmlFor="ai-execution-mode">Action execution mode</label>
+            <select
+              id="ai-execution-mode"
+              value={settings.executionMode}
+              onChange={(event) =>
+                setSettings((previous) => ({
+                  ...previous,
+                  executionMode: event.target.value as AiSettings["executionMode"],
+                }))
+              }
+            >
+              <option value="risk_based">Risk-based</option>
+              <option value="approval_required">Approval required</option>
+              <option value="auto">Fully automatic</option>
+            </select>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={settings.lowRiskAutoEnabled}
+                onChange={onCheckbox("lowRiskAutoEnabled")}
+              />
+              Auto-execute low-risk actions
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={settings.githubAutofixEnabled}
+                onChange={onCheckbox("githubAutofixEnabled")}
+              />
+              Enable GitHub autofix actions
+            </label>
+
+            <label htmlFor="ai-blocked-actions">
+              Blocked action types (comma-separated)
+            </label>
+            <input
+              id="ai-blocked-actions"
+              value={settings.blockedActionTypes.join(", ")}
+              onChange={(event) =>
+                setSettings((previous) => ({
+                  ...previous,
+                  blockedActionTypes: event.target.value
+                    .split(",")
+                    .map((value) => value.trim())
+                    .filter(Boolean),
+                }))
+              }
+              placeholder="run_sql, shell_command"
+            />
+
+            <label htmlFor="ai-egress-allowlist">
+              Egress allowlist (comma-separated hostnames)
+            </label>
+            <input
+              id="ai-egress-allowlist"
+              value={settings.egressAllowlist.join(", ")}
+              onChange={(event) =>
+                setSettings((previous) => ({
+                  ...previous,
+                  egressAllowlist: event.target.value
+                    .split(",")
+                    .map((value) => value.trim().toLowerCase())
+                    .filter(Boolean),
+                }))
+              }
+              placeholder="api.github.com, github.com"
             />
 
             <div className="grid two">

@@ -49,6 +49,10 @@
       {
         "binding": "ALERT_JOBS",
         "queue": "bitwobbly-alert-jobs"
+      },
+      {
+        "binding": "ACTION_TRIGGER_JOBS",
+        "queue": "bitwobbly-ai-action-triggers"
       }
     ]
   }

@@ -20,6 +20,27 @@ const UpdateAiAssistantSettingsSchema = z
     model: z.string().min(1).max(120).optional(),
     autoAuditEnabled: z.boolean().optional(),
     autoAuditIntervalMinutes: z.number().int().min(15).max(10_080).optional(),
+    manualAuditRateLimitPerHour: z.number().int().min(1).max(60).optional(),
+    autoActionsEnabled: z.boolean().optional(),
+    executionMode: z
+      .enum(["risk_based", "approval_required", "auto"])
+      .optional(),
+    lowRiskAutoEnabled: z.boolean().optional(),
+    blockedActionTypes: z
+      .array(
+        z.enum([
+          "monitor_tuning",
+          "notification_routing",
+          "sentry_grouping_update",
+          "incident_runbook_update",
+          "github_autofix",
+          "run_sql",
+          "shell_command",
+        ])
+      )
+      .optional(),
+    egressAllowlist: z.array(z.string().min(1).max(255)).optional(),
+    githubAutofixEnabled: z.boolean().optional(),
     maxContextItems: z.number().int().min(5).max(100).optional(),
     includeIssues: z.boolean().optional(),
     includeMonitors: z.boolean().optional(),

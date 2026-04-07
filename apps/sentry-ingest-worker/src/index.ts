@@ -171,21 +171,14 @@ const handler = {
       const otlpType = ingestKind === "otlp_logs" ? "logs" : "traces";
       const r2Key = `raw/${sentryProjectId}/otlp/${otlpType}/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${String(now.getUTCDate()).padStart(2, "0")}/${crypto.randomUUID()}.otlp`;
 
-      if (ingestKind === "envelope") {
-        await env.SENTRY_RAW.put(r2Key, body);
-      } else {
-        const contentType = request.headers.get("content-type") ?? undefined;
-        const contentEncoding =
-          request.headers.get("content-encoding") ?? undefined;
-        await env.SENTRY_RAW.put(r2Key, body, {
-          httpMetadata: {
-            contentType,
-            contentEncoding,
-          },
-        });
-      }
-
       const contentType = request.headers.get("content-type") ?? undefined;
+      const contentEncoding = request.headers.get("content-encoding") ?? undefined;
+      await env.SENTRY_RAW.put(r2Key, body, {
+        httpMetadata: {
+          contentType,
+          contentEncoding,
+        },
+      });
       const manifest = {
         manifest_id: crypto.randomUUID(),
         sentry_project_id: sentryProjectId,
