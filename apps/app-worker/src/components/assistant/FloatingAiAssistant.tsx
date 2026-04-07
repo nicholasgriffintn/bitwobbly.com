@@ -1,31 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 
 import { TabNav } from "@/components/navigation";
 import { Button } from "@/components/ui";
 import {
+  type AiAssistantRun,
   appendAssistantStreamToken,
+  buildManualAuditPrompt,
   createAssistantMessageId,
   hasAssistantMessageOutput,
-  type AiAssistantRun,
   type AssistantMessage,
   type AssistantTab,
 } from "@/lib/ai-assistant-chat";
+import { isAbortError } from "@/lib/abort-utils";
 import { streamAiAssistantAnswer } from "@/lib/ai-assistant-stream-client";
-import {
-  getAiAssistantSettingsFn,
-  runAiAssistantAuditFn,
-} from "@/server/functions/ai-assistant";
+import { getAiAssistantSettingsFn } from "@/server/functions/ai-assistant";
 import { AssistantChatTab } from "./AssistantChatTab";
 import { AssistantOpsTab } from "./AssistantOpsTab";
-
-function getLatestAuditRun(runs: AiAssistantRun[]): AiAssistantRun | null {
-  return (
-    runs.find(
-      (run) => run.runType === "manual_audit" || run.runType === "auto_audit"
-    ) ?? null
-  );
-}
 
 export function FloatingAiAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,12 +32,22 @@ export function FloatingAiAssistant() {
   const [runs, setRuns] = useState<AiAssistantRun[]>([]);
   const [auditFocus, setAuditFocus] = useState("");
   const [isRunningAudit, setIsRunningAudit] = useState(false);
+  const [auditPreviewThinking, setAuditPreviewThinking] = useState("");
+  const [auditPreviewAnswer, setAuditPreviewAnswer] = useState("");
   const [activeAssistantMessageId, setActiveAssistantMessageId] = useState<
     string | null
   >(null);
+  const chatAbortControllerRef = useRef<AbortController | null>(null);
+  const auditAbortControllerRef = useRef<AbortController | null>(null);
 
   const getAiSettings = useServerFn(getAiAssistantSettingsFn);
-  const runAudit = useServerFn(runAiAssistantAuditFn);
+
+  useEffect(() => {
+    return () => {
+      chatAbortControllerRef.current?.abort();
+      auditAbortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen || isEnabled !== null) return;
@@ -85,17 +86,18 @@ export function FloatingAiAssistant() {
     !isLoading &&
     question.trim().length === 0 &&
     messages.length === 0;
-  const latestAudit = useMemo(() => getLatestAuditRun(runs), [runs]);
 
   const sendQuestion = async () => {
     const trimmed = question.trim();
     if (!trimmed || !canSend) return;
 
     const assistantId = createAssistantMessageId("assistant");
+    const abortController = new AbortController();
     setQuestion("");
     setError(null);
     setIsLoading(true);
     setActiveAssistantMessageId(assistantId);
+    chatAbortControllerRef.current = abortController;
     setMessages((prev) => [
       ...prev,
       {
@@ -113,17 +115,21 @@ export function FloatingAiAssistant() {
     ]);
 
     try {
-      await streamAiAssistantAnswer(trimmed, {
-        onToken: (token, channel) => {
-          if (!token) return;
-          setMessages((prev) =>
-            appendAssistantStreamToken(prev, assistantId, token, channel)
-          );
+      await streamAiAssistantAnswer(
+        trimmed,
+        {
+          onToken: (token, channel) => {
+            if (!token) return;
+            setMessages((prev) =>
+              appendAssistantStreamToken(prev, assistantId, token, channel)
+            );
+          },
+          onComplete: () => {
+            // no-op
+          },
         },
-        onComplete: () => {
-          // no-op
-        },
-      });
+        { mode: "query", signal: abortController.signal }
+      );
 
       void getAiSettings()
         .then((refreshed) => {
@@ -136,6 +142,15 @@ export function FloatingAiAssistant() {
           // keep chat completion responsive even if metadata refresh fails
         });
     } catch (err) {
+      if (isAbortError(err)) {
+        setMessages((prev) =>
+          prev.filter(
+            (message) =>
+              message.id !== assistantId || hasAssistantMessageOutput(message)
+          )
+        );
+        return;
+      }
       setMessages((prev) =>
         prev.filter(
           (message) =>
@@ -144,6 +159,9 @@ export function FloatingAiAssistant() {
       );
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      if (chatAbortControllerRef.current === abortController) {
+        chatAbortControllerRef.current = null;
+      }
       setIsLoading(false);
       setActiveAssistantMessageId(null);
     }
@@ -151,22 +169,58 @@ export function FloatingAiAssistant() {
 
   const onRunAudit = async () => {
     if (isEnabled !== true) return;
+
+    const auditPrompt = buildManualAuditPrompt(auditFocus);
+    const abortController = new AbortController();
     setError(null);
     setIsRunningAudit(true);
+    setAuditPreviewThinking("");
+    setAuditPreviewAnswer("");
+    auditAbortControllerRef.current = abortController;
     try {
-      const response = await runAudit({
-        data: {
-          focus: auditFocus.trim() || undefined,
+      await streamAiAssistantAnswer(
+        auditPrompt,
+        {
+          onToken: (token, channel) => {
+            if (!token) return;
+            if (channel === "thinking") {
+              setAuditPreviewThinking((prev) => `${prev}${token}`);
+              return;
+            }
+            setAuditPreviewAnswer((prev) => `${prev}${token}`);
+          },
+          onComplete: () => {
+            // no-op
+          },
         },
-      });
-      setRuns((prev) => [response.run, ...prev].slice(0, 10));
-      setLastAuditAt(Math.floor(Date.now() / 1000));
+        { mode: "audit", signal: abortController.signal }
+      );
+
+      const refreshed = await getAiSettings();
+      setIsEnabled(refreshed.settings.enabled);
+      setModel(refreshed.settings.model);
+      setLastAuditAt(refreshed.settings.lastAutoAuditAt);
+      setRuns(refreshed.latestRuns);
       setAuditFocus("");
     } catch (err) {
+      if (isAbortError(err)) {
+        return;
+      }
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      if (auditAbortControllerRef.current === abortController) {
+        auditAbortControllerRef.current = null;
+      }
       setIsRunningAudit(false);
     }
+  };
+
+  const cancelChatStream = () => {
+    chatAbortControllerRef.current?.abort();
+  };
+
+  const cancelAuditStream = () => {
+    auditAbortControllerRef.current?.abort();
   };
 
   return (
@@ -218,6 +272,7 @@ export function FloatingAiAssistant() {
                 activeAssistantMessageId={activeAssistantMessageId}
                 onQuestionChange={setQuestion}
                 onSend={sendQuestion}
+                onCancel={cancelChatStream}
               />
             ) : (
               <AssistantOpsTab
@@ -228,9 +283,11 @@ export function FloatingAiAssistant() {
                 isRunningAudit={isRunningAudit}
                 isLoading={isLoading}
                 runs={runs}
-                latestAudit={latestAudit}
+                auditPreviewThinking={auditPreviewThinking}
+                auditPreviewAnswer={auditPreviewAnswer}
                 onAuditFocusChange={setAuditFocus}
                 onRunAudit={onRunAudit}
+                onCancelAudit={cancelAuditStream}
               />
             )}
           </div>

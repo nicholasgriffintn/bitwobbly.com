@@ -1,3 +1,5 @@
+import { createAbortError } from "./abort-utils.ts";
+
 type SseState = {
   pendingText: string;
   eventDataLines: string[];
@@ -10,6 +12,10 @@ type AiSsePayload = {
 };
 
 type SsePayloadHandler = (payload: string) => void;
+
+type ConsumeSseByteStreamOptions = {
+  signal?: AbortSignal;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -177,7 +183,8 @@ function flushSseText(state: SseState, onPayload: SsePayloadHandler): void {
 
 export async function consumeSseByteStream(
   stream: ReadableStream<Uint8Array>,
-  onPayload: SsePayloadHandler
+  onPayload: SsePayloadHandler,
+  options: ConsumeSseByteStreamOptions = {}
 ): Promise<void> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
@@ -185,9 +192,28 @@ export async function consumeSseByteStream(
     pendingText: "",
     eventDataLines: [],
   };
+  const signal = options.signal;
+
+  const abortReader = () => {
+    void reader.cancel().catch(() => {
+      // ignore cancellation errors
+    });
+  };
+  if (signal?.aborted) {
+    abortReader();
+    throw createAbortError();
+  }
+
+  const onAbort = () => {
+    abortReader();
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
 
   try {
     while (true) {
+      if (signal?.aborted) {
+        throw createAbortError();
+      }
       const { done, value } = await reader.read();
       if (done) break;
       if (!value) continue;
@@ -200,6 +226,7 @@ export async function consumeSseByteStream(
     }
     flushSseText(state, onPayload);
   } finally {
+    signal?.removeEventListener("abort", onAbort);
     reader.releaseLock();
   }
 }

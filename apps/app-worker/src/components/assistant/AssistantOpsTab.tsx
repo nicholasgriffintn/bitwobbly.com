@@ -9,10 +9,16 @@ type AssistantOpsTabProps = {
   isRunningAudit: boolean;
   isLoading: boolean;
   runs: AiAssistantRun[];
-  latestAudit: AiAssistantRun | null;
+  auditPreviewThinking: string;
+  auditPreviewAnswer: string;
   onAuditFocusChange: (value: string) => void;
   onRunAudit: () => Promise<void>;
+  onCancelAudit: () => void;
 };
+
+function isAuditRun(run: AiAssistantRun): boolean {
+  return run.runType === "manual_audit" || run.runType === "auto_audit";
+}
 
 export function AssistantOpsTab({
   isEnabled,
@@ -22,10 +28,14 @@ export function AssistantOpsTab({
   isRunningAudit,
   isLoading,
   runs,
-  latestAudit,
+  auditPreviewThinking,
+  auditPreviewAnswer,
   onAuditFocusChange,
   onRunAudit,
+  onCancelAudit,
 }: AssistantOpsTabProps) {
+  const auditRuns = runs.filter(isAuditRun);
+
   return (
     <div className="assistant-content assistant-ops">
       {isEnabled !== true ? (
@@ -50,6 +60,24 @@ export function AssistantOpsTab({
             </div>
           </div>
 
+            {(isRunningAudit || auditPreviewThinking || auditPreviewAnswer) && (
+              <div className="assistant-ops-section">
+                <div className="assistant-section-title">
+                  Manual audit output {isRunningAudit ? "(streaming)" : ""}
+                </div>
+                {auditPreviewThinking ? (
+                  <div className="assistant-thinking">
+                    <div className="assistant-thinking-label">Thinking</div>
+                    <div>{auditPreviewThinking}</div>
+                  </div>
+                ) : null}
+                <pre className="assistant-pre">
+                  {auditPreviewAnswer || (isRunningAudit ? "Generating audit…" : "")}
+                </pre>
+              </div>
+            )}
+
+
           <div className="assistant-ops-section">
             <label className="assistant-label" htmlFor="assistant-audit-focus">
               Run audit now (optional focus)
@@ -60,8 +88,14 @@ export function AssistantOpsTab({
               value={auditFocus}
               onChange={(event) => onAuditFocusChange(event.target.value)}
               placeholder="e.g. notification noise for Sentry issue spikes"
+                disabled={isRunningAudit}
             />
             <div className="assistant-composer-actions">
+                {isRunningAudit ? (
+                  <Button type="button" variant="outline" onClick={onCancelAudit}>
+                    Cancel
+                  </Button>
+                ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -93,14 +127,31 @@ export function AssistantOpsTab({
             )}
           </div>
 
-          {latestAudit && (
-            <details className="assistant-ops-section">
-              <summary className="assistant-section-title">
-                Latest audit output
-              </summary>
-              <pre className="assistant-pre">{latestAudit.answer}</pre>
-            </details>
-          )}
+            <div className="assistant-ops-section">
+              <div className="assistant-section-title">Audit history</div>
+              {auditRuns.length === 0 ? (
+                <div className="muted">No manual or scheduled audits yet.</div>
+              ) : (
+                <div className="assistant-audit-history">
+                  {auditRuns.map((run, index) => (
+                    <details
+                      key={run.id}
+                      className="assistant-ops-section"
+                      open={index === 0}
+                    >
+                      <summary className="assistant-section-title">
+                      {runTypeLabel(run.runType)} ·{" "}
+                      {new Date(run.createdAt).toLocaleString()}
+                    </summary>
+                    {run.question ? (
+                      <div className="assistant-run-meta">{run.question}</div>
+                    ) : null}
+                    <pre className="assistant-pre">{run.answer}</pre>
+                  </details>
+                ))}
+                  </div>
+              )}
+            </div>
         </>
       )}
     </div>

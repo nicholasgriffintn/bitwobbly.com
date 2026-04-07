@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 
 import type { DB } from "../../db/index.ts";
 import { schema } from "../../db/index.ts";
@@ -354,4 +354,31 @@ export async function markTeamAiAssistantAutoAudit(
   await upsertTeamAiAssistantSettings(db, teamId, {
     lastAutoAuditAt: executedAtSec,
   });
+}
+
+export async function claimTeamAiAssistantAutoAudit(
+  db: DB,
+  teamId: string,
+  nowSec: number,
+  dueBeforeSec: number
+): Promise<boolean> {
+  const result = await db
+    .update(schema.teamAiAssistantSettings)
+    .set({
+      lastAutoAuditAt: nowSec,
+      updatedAt: nowIso(),
+    })
+    .where(
+      and(
+        eq(schema.teamAiAssistantSettings.teamId, teamId),
+        eq(schema.teamAiAssistantSettings.enabled, 1),
+        eq(schema.teamAiAssistantSettings.autoAuditEnabled, 1),
+        or(
+          isNull(schema.teamAiAssistantSettings.lastAutoAuditAt),
+          lte(schema.teamAiAssistantSettings.lastAutoAuditAt, dueBeforeSec)
+        )
+      )
+    );
+
+  return Number(result.meta?.changes ?? 0) > 0;
 }

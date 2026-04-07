@@ -11,7 +11,14 @@ import {
   getDb,
   type TeamAiAssistantRun,
 } from "@bitwobbly/shared";
-import { encodeSseDataEvent, encodeSseDoneEvent } from "@/lib/ai-sse";
+import {
+  consumeSseByteStream,
+  encodeSseDataEvent,
+  encodeSseDoneEvent,
+  mergeStreamToken,
+  parseAiSsePayload,
+} from "@/lib/ai-sse";
+import { isAbortError } from "@/lib/abort-utils";
 import { isReadableByteStream } from "./stream-utils";
 
 const SupportedModelSchema = z.enum(["@cf/moonshotai/kimi-k2.5"]);
@@ -136,12 +143,17 @@ export async function runAssistantOnce(
 export async function createAssistantQueryStreamResponse(input: {
   teamId: string;
   question: string;
+  mode?: AssistantMode;
+  runType?: AssistantRunType;
+  requestSignal?: AbortSignal;
   ai: Ai;
 }): Promise<Response> {
+  const mode = input.mode ?? "query";
+  const runType = input.runType ?? "manual_query";
   const execution = await buildExecutionContext({
     teamId: input.teamId,
-    mode: "query",
-    runType: "manual_query",
+    mode,
+    runType,
     question: input.question,
   });
 
@@ -151,7 +163,92 @@ export async function createAssistantQueryStreamResponse(input: {
   });
 
   if (isReadableByteStream(rawResponse)) {
-    return new Response(rawResponse, {
+    const streamAbortController = new AbortController();
+    const abortFromRequestSignal = () => {
+      streamAbortController.abort();
+    };
+    input.requestSignal?.addEventListener("abort", abortFromRequestSignal, {
+      once: true,
+    });
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        let sawDone = false;
+        let answer = "";
+
+        try {
+          await consumeSseByteStream(
+            rawResponse,
+            (payload) => {
+              if (streamAbortController.signal.aborted) {
+                return;
+              }
+              const parsed = parseAiSsePayload(payload);
+              if (parsed.done) {
+                sawDone = true;
+                controller.enqueue(encodeSseDoneEvent());
+                return;
+              }
+
+              const merged = mergeStreamToken(answer, parsed.answerToken);
+              answer = merged.next;
+              controller.enqueue(encodeSseDataEvent(payload));
+            },
+            { signal: streamAbortController.signal }
+          );
+
+          if (streamAbortController.signal.aborted) {
+            return;
+          }
+
+          if (!sawDone) {
+            controller.enqueue(encodeSseDoneEvent());
+          }
+
+          const trimmedAnswer = answer.trim();
+          if (!trimmedAnswer) {
+            throw new Error("Workers AI returned an empty response");
+          }
+
+          await createTeamAiAssistantRun(execution.db, {
+            teamId: execution.teamId,
+            runType: execution.runType,
+            question: execution.question,
+            answer: trimmedAnswer,
+            model: execution.model,
+            contextSummary: execution.contextSummary,
+          });
+
+          controller.close();
+        } catch (error) {
+          if (isAbortError(error)) {
+            return;
+          }
+          controller.error(
+            error instanceof Error ? error : new Error(String(error))
+          );
+        } finally {
+          input.requestSignal?.removeEventListener(
+            "abort",
+            abortFromRequestSignal
+          );
+        }
+      },
+      cancel() {
+        streamAbortController.abort();
+        input.requestSignal?.removeEventListener(
+          "abort",
+          abortFromRequestSignal
+        );
+        return undefined;
+      },
+    });
+
+    if (input.requestSignal?.aborted) {
+      streamAbortController.abort();
+    }
+
+    return new Response(stream, {
       headers: {
         "content-type": "text/event-stream; charset=utf-8",
         "cache-control": "no-store",

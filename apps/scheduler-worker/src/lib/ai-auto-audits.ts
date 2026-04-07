@@ -3,11 +3,11 @@ import {
   buildTeamAiAssistantContextSnapshot,
   buildTeamAiAssistantContextSummary,
   buildTeamAiAssistantMessages,
+  claimTeamAiAssistantAutoAudit,
   createLogger,
   createTeamAiAssistantRun,
   extractAiTextResponse,
   listTeamsDueForAutoAudit,
-  markTeamAiAssistantAutoAudit,
   serialiseError,
 } from "@bitwobbly/shared";
 
@@ -28,6 +28,17 @@ export async function runTeamAiAutoAudits(
 
   for (const { teamId, settings } of dueTeams) {
     try {
+      const dueBeforeSec = nowSec - settings.autoAuditIntervalMinutes * 60;
+      const claimed = await claimTeamAiAssistantAutoAudit(
+        db,
+        teamId,
+        nowSec,
+        dueBeforeSec
+      );
+      if (!claimed) {
+        continue;
+      }
+
       const snapshot = await buildTeamAiAssistantContextSnapshot(
         db,
         teamId,
@@ -58,7 +69,6 @@ export async function runTeamAiAutoAudits(
         model: settings.model,
         contextSummary: buildTeamAiAssistantContextSummary(snapshot),
       });
-      await markTeamAiAssistantAutoAudit(db, teamId, nowSec);
 
       logger.info("generated automated AI audit", {
         teamId,

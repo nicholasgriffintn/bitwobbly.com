@@ -55,7 +55,7 @@ export const getAiAssistantSettingsFn = createServerFn({
   const db = getDb(env.DB);
   const [settings, latestRuns] = await Promise.all([
     getTeamAiAssistantSettings(db, teamId),
-    listTeamAiAssistantRuns(db, teamId, { limit: 10 }),
+    listTeamAiAssistantRuns(db, teamId, { limit: 30 }),
   ]);
   return {
     settings,
@@ -106,7 +106,6 @@ export const runAiAssistantAuditFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => RunAuditSchema.parse(data ?? {}))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
-    const db = getDb(env.DB);
 
     const focus = data.focus?.trim();
     const question = focus
@@ -123,10 +122,6 @@ export const runAiAssistantAuditFn = createServerFn({ method: "POST" })
       },
       ai
     );
-
-    await upsertTeamAiAssistantSettings(db, teamId, {
-      lastAutoAuditAt: Math.floor(Date.now() / 1000),
-    });
 
     return result;
   });

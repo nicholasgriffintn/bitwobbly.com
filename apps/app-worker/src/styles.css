@@ -1274,6 +1274,7 @@ textarea {
 .assistant-composer-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .assistant-suggestions {
@@ -1386,6 +1387,11 @@ textarea {
   margin-top: 2px;
   font-size: 11px;
   color: var(--muted);
+}
+
+.assistant-audit-history {
+  display: grid;
+  gap: 8px;
 }
 
 .assistant-pre {

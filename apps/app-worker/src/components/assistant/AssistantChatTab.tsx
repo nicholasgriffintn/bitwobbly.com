@@ -17,6 +17,7 @@ type AssistantChatTabProps = {
   activeAssistantMessageId: string | null;
   onQuestionChange: (value: string) => void;
   onSend: () => Promise<void>;
+  onCancel: () => void;
 };
 
 export function AssistantChatTab({
@@ -30,6 +31,7 @@ export function AssistantChatTab({
   activeAssistantMessageId,
   onQuestionChange,
   onSend,
+  onCancel,
 }: AssistantChatTabProps) {
   return (
     <div className="assistant-content assistant-chat-content">
@@ -125,6 +127,15 @@ export function AssistantChatTab({
           placeholder="Ask about monitoring, incidents, notifications, or setup guidance…"
         />
         <div className="assistant-composer-actions">
+          {isLoading ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          ) : null}
           <Button
             type="button"
             onClick={() => void onSend()}

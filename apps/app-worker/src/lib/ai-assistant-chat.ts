@@ -24,6 +24,9 @@ export const ASSISTANT_SUGGESTED_PROMPTS = [
   "Do our grouping rules look likely to over-group issues?",
 ] as const;
 
+export const DEFAULT_AUDIT_PROMPT =
+  "Generate a monitoring and incident-management audit with prioritised improvements for monitors, notifications, and issue grouping rules.";
+
 export function createAssistantMessageId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -59,4 +62,10 @@ export function runTypeLabel(runType: AiAssistantRun["runType"]): string {
   if (runType === "manual_query") return "Manual query";
   if (runType === "manual_audit") return "Manual audit";
   return "Auto audit";
+}
+
+export function buildManualAuditPrompt(focus: string): string {
+  const trimmedFocus = focus.trim();
+  if (!trimmedFocus) return DEFAULT_AUDIT_PROMPT;
+  return `Generate a monitoring and incident-management audit focused on: ${trimmedFocus}`;
 }

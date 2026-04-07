@@ -10,6 +10,11 @@ type StreamCallbacks = {
   onComplete: () => void;
 };
 
+type StreamRequestOptions = {
+  mode?: "query" | "audit";
+  signal?: AbortSignal;
+};
+
 async function readErrorResponse(response: Response): Promise<string> {
   try {
     const payload = await response.json();
@@ -29,7 +34,8 @@ async function readErrorResponse(response: Response): Promise<string> {
 
 async function consumeAiSseStream(
   response: Response,
-  callbacks: StreamCallbacks
+  callbacks: StreamCallbacks,
+  options: StreamRequestOptions
 ): Promise<void> {
   if (!response.body) {
     throw new Error("Streaming response body is missing");
@@ -37,33 +43,38 @@ async function consumeAiSseStream(
 
   let answer = "";
   let thinking = "";
-  await consumeSseByteStream(response.body, (payload) => {
-    const parsed = parseAiSsePayload(payload);
-    if (parsed.done) return;
+  await consumeSseByteStream(
+    response.body,
+    (payload) => {
+      const parsed = parseAiSsePayload(payload);
+      if (parsed.done) return;
 
-    if (parsed.thinkingToken) {
-      const nextThinking = mergeStreamToken(thinking, parsed.thinkingToken);
-      thinking = nextThinking.next;
-      if (nextThinking.delta) {
-        callbacks.onToken(nextThinking.delta, "thinking");
+      if (parsed.thinkingToken) {
+        const nextThinking = mergeStreamToken(thinking, parsed.thinkingToken);
+        thinking = nextThinking.next;
+        if (nextThinking.delta) {
+          callbacks.onToken(nextThinking.delta, "thinking");
+        }
       }
-    }
 
-    if (parsed.answerToken) {
-      const nextAnswer = mergeStreamToken(answer, parsed.answerToken);
-      answer = nextAnswer.next;
-      if (nextAnswer.delta) {
-        callbacks.onToken(nextAnswer.delta, "answer");
+      if (parsed.answerToken) {
+        const nextAnswer = mergeStreamToken(answer, parsed.answerToken);
+        answer = nextAnswer.next;
+        if (nextAnswer.delta) {
+          callbacks.onToken(nextAnswer.delta, "answer");
+        }
       }
-    }
-  });
+    },
+    { signal: options.signal }
+  );
 
   callbacks.onComplete();
 }
 
 export async function streamAiAssistantAnswer(
   question: string,
-  callbacks: StreamCallbacks
+  callbacks: StreamCallbacks,
+  options: StreamRequestOptions = {}
 ): Promise<void> {
   const response = await fetch("/api/ai-assistant/stream", {
     method: "POST",
@@ -71,12 +82,13 @@ export async function streamAiAssistantAnswer(
       "content-type": "application/json",
       accept: "text/event-stream",
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, mode: options.mode ?? "query" }),
+    signal: options.signal,
   });
 
   if (!response.ok) {
     throw new Error(await readErrorResponse(response));
   }
 
-  await consumeAiSseStream(response, callbacks);
+  await consumeAiSseStream(response, callbacks, options);
 }

@@ -18,6 +18,7 @@ const MAX_REQUEST_BODY_BYTES = 32 * 1024;
 
 const AskAiAssistantRequestSchema = z.object({
   question: z.string().min(3).max(6_000),
+  mode: z.enum(["query", "audit"]).optional(),
 });
 
 export const Route = createFileRoute("/api/ai-assistant/stream")({
@@ -33,6 +34,9 @@ export const Route = createFileRoute("/api/ai-assistant/stream")({
           return await createAssistantQueryStreamResponse({
             teamId,
             question: data.question.trim(),
+            mode: data.mode,
+            runType: data.mode === "audit" ? "manual_audit" : "manual_query",
+            requestSignal: request.signal,
             ai,
           });
         } catch (error) {
