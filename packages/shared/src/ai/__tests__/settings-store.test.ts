@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { DB } from "../../db/index.ts";
-import { createMockDb } from "../tests/utils/mock-db.ts";
+import { createMockDb } from "../../../tests/utils/mock-db.ts";
 import {
   DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
   DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
@@ -14,8 +14,8 @@ import {
   MIN_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   MIN_MAX_CONTEXT_ITEMS,
   TEAM_AI_ASSISTANT_DEFAULT_MODEL,
-} from "./constants.ts";
-import { makeTeamAiAssistantSettingsRowFixture } from "./test-fixtures.ts";
+} from "../constants.ts";
+import { makeTeamAiAssistantSettingsRowFixture } from "../../../tests/fixtures.ts";
 import {
   buildDefaultTeamAiAssistantSettings,
   claimTeamAiAssistantAutoAudit,
@@ -24,7 +24,7 @@ import {
   listTeamAiAssistantRuns,
   listTeamsDueForAutoAudit,
   upsertTeamAiAssistantSettings,
-} from "./settings-store.ts";
+} from "../settings-store.ts";
 
 test("buildDefaultTeamAiAssistantSettings returns full default shape", () => {
   const settings = buildDefaultTeamAiAssistantSettings("team_123");

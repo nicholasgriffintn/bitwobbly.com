@@ -1,4 +1,4 @@
-import { isRecord, readStringField } from "../type-guards.ts";
+import { isRecord, readStringField } from "../lib/type-guards.ts";
 
 function extractChoiceContent(content: unknown): string {
   if (typeof content === "string") return content;

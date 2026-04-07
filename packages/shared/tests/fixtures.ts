@@ -3,7 +3,7 @@ import {
   DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   DEFAULT_MAX_CONTEXT_ITEMS,
   TEAM_AI_ASSISTANT_DEFAULT_MODEL,
-} from "./constants.ts";
+} from "../src/ai/constants.ts";
 
 export type TeamAiAssistantSettingsRowFixture = {
   teamId: string;

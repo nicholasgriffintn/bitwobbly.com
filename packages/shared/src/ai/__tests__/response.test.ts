@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { extractAiTextContent, extractAiTextResponse } from "./response.ts";
+import { extractAiTextContent, extractAiTextResponse } from "../response.ts";
 
 test("extractAiTextResponse reads direct response field", () => {
   const output = extractAiTextResponse({ response: "hello world" });

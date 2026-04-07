@@ -1,8 +1,8 @@
 import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 
-import type { DB } from "../../db/index.ts";
-import { schema } from "../../db/index.ts";
-import { clampInt, nowIso, randomId } from "../utils.ts";
+import type { DB } from "../db/index.ts";
+import { schema } from "../db/index.ts";
+import { clampInt, nowIso, randomId } from "../lib/utils.ts";
 import {
   DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
   DEFAULT_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
@@ -23,36 +23,8 @@ import type {
   TeamAiAssistantSettingsUpdate,
   TeamAiAutoAuditCandidate,
 } from "./types.ts";
-
-function toRunType(value: string): TeamAiAssistantRunType {
-  if (value === "manual_query") return value;
-  if (value === "manual_audit") return value;
-  if (value === "auto_audit") return value;
-  throw new Error(`Invalid AI run type: ${value}`);
-}
-
-function toRunStatus(value: string): TeamAiAssistantRunStatus {
-  if (value === "running") return value;
-  if (value === "completed") return value;
-  if (value === "failed") return value;
-  if (value === "cancelled") return value;
-  throw new Error(`Invalid AI run status: ${value}`);
-}
-
-function toBoolFlag(value: number | null | undefined): boolean {
-  return Number(value ?? 0) === 1;
-}
-
-function toDbFlag(value: boolean | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  return value ? 1 : 0;
-}
-
-function toModelName(value: string | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  const trimmed = value.trim();
-  return trimmed.length ? trimmed : TEAM_AI_ASSISTANT_DEFAULT_MODEL;
-}
+import { toBoolFlag, toDbFlag } from "../lib/db-utils.ts";
+import { toModelName, toRunStatus, toRunType } from "./utils.ts";
 
 export function buildDefaultTeamAiAssistantSettings(
   teamId: string

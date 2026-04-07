@@ -1,4 +1,4 @@
-import { isRecord } from "../type-guards.ts";
+import { isRecord } from "../lib/type-guards.ts";
 
 export function extractAiUsageFromResponsePayload(
   payload: unknown

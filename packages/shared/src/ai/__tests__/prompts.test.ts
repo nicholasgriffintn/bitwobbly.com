@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildTeamAiAssistantMessages } from "./prompts.ts";
+import { buildTeamAiAssistantMessages } from "../prompts.ts";
 
 test("buildTeamAiAssistantMessages includes question and custom instructions", () => {
   const messages = buildTeamAiAssistantMessages({

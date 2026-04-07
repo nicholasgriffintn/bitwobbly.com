@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   extractAiUsageFromResponsePayload,
   parseAiUsageFromSsePayload,
-} from "./usage.ts";
+} from "../usage.ts";
 
 test("extractAiUsageFromResponsePayload reads top-level usage", () => {
   const usage = extractAiUsageFromResponsePayload({

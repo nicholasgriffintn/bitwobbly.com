@@ -1,9 +1,9 @@
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 
-import type { DB } from "../../db/index.ts";
-import { schema } from "../../db/index.ts";
-import { toRecordOrNull } from "../type-guards.ts";
-import { clampInt, objectKeys, safeJsonParse } from "../utils.ts";
+import type { DB } from "../db/index.ts";
+import { schema } from "../db/index.ts";
+import { toRecordOrNull } from "../lib/type-guards.ts";
+import { clampInt, objectKeys, safeJsonParse } from "../lib/utils.ts";
 import { MAX_MAX_CONTEXT_ITEMS, MIN_MAX_CONTEXT_ITEMS } from "./constants.ts";
 import type {
   AlertRuleContextItem,
