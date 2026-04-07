@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui";
 import { runTypeLabel, type AiAssistantRun } from "@/lib/ai-assistant-chat";
+import { AssistantMarkdown } from "./AssistantMarkdown";
 
 type AssistantOpsTabProps = {
   isEnabled: boolean | null;
@@ -8,17 +9,13 @@ type AssistantOpsTabProps = {
   auditFocus: string;
   isRunningAudit: boolean;
   isLoading: boolean;
-  runs: AiAssistantRun[];
+  auditRuns: AiAssistantRun[];
   auditPreviewThinking: string;
   auditPreviewAnswer: string;
   onAuditFocusChange: (value: string) => void;
   onRunAudit: () => Promise<void>;
   onCancelAudit: () => void;
 };
-
-function isAuditRun(run: AiAssistantRun): boolean {
-  return run.runType === "manual_audit" || run.runType === "auto_audit";
-}
 
 export function AssistantOpsTab({
   isEnabled,
@@ -27,15 +24,13 @@ export function AssistantOpsTab({
   auditFocus,
   isRunningAudit,
   isLoading,
-  runs,
+  auditRuns,
   auditPreviewThinking,
   auditPreviewAnswer,
   onAuditFocusChange,
   onRunAudit,
   onCancelAudit,
 }: AssistantOpsTabProps) {
-  const auditRuns = runs.filter(isAuditRun);
-
   return (
     <div className="assistant-content assistant-ops">
       {isEnabled !== true ? (
@@ -60,23 +55,22 @@ export function AssistantOpsTab({
             </div>
           </div>
 
-            {(isRunningAudit || auditPreviewThinking || auditPreviewAnswer) && (
-              <div className="assistant-ops-section">
-                <div className="assistant-section-title">
-                  Manual audit output {isRunningAudit ? "(streaming)" : ""}
-                </div>
-                {auditPreviewThinking ? (
-                  <div className="assistant-thinking">
-                    <div className="assistant-thinking-label">Thinking</div>
-                    <div>{auditPreviewThinking}</div>
-                  </div>
-                ) : null}
-                <pre className="assistant-pre">
-                  {auditPreviewAnswer || (isRunningAudit ? "Generating audit…" : "")}
-                </pre>
+          {(isRunningAudit || auditPreviewThinking || auditPreviewAnswer) && (
+            <div className="assistant-ops-section">
+              <div className="assistant-section-title">
+                Manual audit output {isRunningAudit ? "(streaming)" : ""}
               </div>
-            )}
-
+              {auditPreviewThinking ? (
+                <div className="assistant-thinking">
+                  <div className="assistant-thinking-label">Thinking</div>
+                  <div>{auditPreviewThinking}</div>
+                </div>
+              ) : null}
+              <AssistantMarkdown
+                content={auditPreviewAnswer || (isRunningAudit ? "Generating audit…" : "")}
+              />
+            </div>
+          )}
 
           <div className="assistant-ops-section">
             <label className="assistant-label" htmlFor="assistant-audit-focus">
@@ -88,14 +82,14 @@ export function AssistantOpsTab({
               value={auditFocus}
               onChange={(event) => onAuditFocusChange(event.target.value)}
               placeholder="e.g. notification noise for Sentry issue spikes"
-                disabled={isRunningAudit}
+              disabled={isRunningAudit}
             />
             <div className="assistant-composer-actions">
-                {isRunningAudit ? (
-                  <Button type="button" variant="outline" onClick={onCancelAudit}>
-                    Cancel
-                  </Button>
-                ) : null}
+              {isRunningAudit ? (
+                <Button type="button" variant="outline" onClick={onCancelAudit}>
+                  Cancel
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -108,50 +102,30 @@ export function AssistantOpsTab({
           </div>
 
           <div className="assistant-ops-section">
-            <div className="assistant-section-title">Recent AI runs</div>
-            {runs.length === 0 ? (
-              <div className="muted">No runs yet.</div>
+            <div className="assistant-section-title">Audit history</div>
+            {auditRuns.length === 0 ? (
+              <div className="muted">No manual or scheduled audits yet.</div>
             ) : (
-              <ul className="assistant-run-list">
-                {runs.slice(0, 6).map((run) => (
-                  <li key={run.id} className="assistant-run-item">
-                    <div className="assistant-run-title">
-                      {runTypeLabel(run.runType)}
-                    </div>
-                    <div className="assistant-run-meta">
-                      {new Date(run.createdAt).toLocaleString()} · {run.model}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-            <div className="assistant-ops-section">
-              <div className="assistant-section-title">Audit history</div>
-              {auditRuns.length === 0 ? (
-                <div className="muted">No manual or scheduled audits yet.</div>
-              ) : (
-                <div className="assistant-audit-history">
-                  {auditRuns.map((run, index) => (
-                    <details
-                      key={run.id}
-                      className="assistant-ops-section"
-                      open={index === 0}
-                    >
-                      <summary className="assistant-section-title">
+              <div className="assistant-audit-history">
+                {auditRuns.map((run, index) => (
+                  <details
+                    key={run.id}
+                    className="assistant-ops-section"
+                    open={index === 0}
+                  >
+                    <summary className="assistant-section-title">
                       {runTypeLabel(run.runType)} ·{" "}
                       {new Date(run.createdAt).toLocaleString()}
                     </summary>
                     {run.question ? (
                       <div className="assistant-run-meta">{run.question}</div>
                     ) : null}
-                    <pre className="assistant-pre">{run.answer}</pre>
+                    <AssistantMarkdown content={run.answer} />
                   </details>
                 ))}
-                  </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

@@ -3,8 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui";
 import {
   ASSISTANT_SUGGESTED_PROMPTS,
+  type AiAssistantRun,
   type AssistantMessage,
 } from "@/lib/ai-assistant-chat";
+import { AssistantMarkdown } from "./AssistantMarkdown";
 
 type AssistantChatTabProps = {
   isInitializing: boolean;
@@ -13,9 +15,11 @@ type AssistantChatTabProps = {
   canSend: boolean;
   question: string;
   messages: AssistantMessage[];
+  recentManualChats: AiAssistantRun[];
   showSuggestedPrompts: boolean;
   activeAssistantMessageId: string | null;
   onQuestionChange: (value: string) => void;
+  onOpenPastChat: (run: AiAssistantRun) => void;
   onSend: () => Promise<void>;
   onCancel: () => void;
 };
@@ -27,9 +31,11 @@ export function AssistantChatTab({
   canSend,
   question,
   messages,
+  recentManualChats,
   showSuggestedPrompts,
   activeAssistantMessageId,
   onQuestionChange,
+  onOpenPastChat,
   onSend,
   onCancel,
 }: AssistantChatTabProps) {
@@ -48,6 +54,32 @@ export function AssistantChatTab({
           <div className="assistant-empty-state">
             Ask about incidents, monitors, components, status pages,
             notifications, and grouping rules.
+          </div>
+        )}
+
+        {recentManualChats.length > 0 &&
+          isEnabled === true &&
+          messages.length === 0 && (
+          <div className="assistant-history">
+            <div className="assistant-history-title">Recent chats</div>
+            <div className="assistant-history-list">
+              {recentManualChats.slice(0, 8).map((run) => (
+                <button
+                  key={run.id}
+                  type="button"
+                  className="assistant-history-item"
+                  onClick={() => onOpenPastChat(run)}
+                  disabled={isLoading}
+                >
+                  <div className="assistant-history-question">
+                    {run.question ?? "Manual query"}
+                  </div>
+                  <div className="assistant-run-meta">
+                    {new Date(run.createdAt).toLocaleString()} · {run.model}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -77,7 +109,9 @@ export function AssistantChatTab({
                   ) : null}
                   <div className="assistant-answer">
                     <div className="assistant-answer-label">Response</div>
-                    <div>{message.content || (showStreamingPlaceholder ? "…" : "")}</div>
+                    <AssistantMarkdown
+                      content={message.content || (showStreamingPlaceholder ? "…" : "")}
+                    />
                   </div>
                 </div>
               ) : (

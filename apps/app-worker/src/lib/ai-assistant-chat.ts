@@ -64,6 +64,14 @@ export function runTypeLabel(runType: AiAssistantRun["runType"]): string {
   return "Auto audit";
 }
 
+export function isAuditRun(run: AiAssistantRun): boolean {
+  return run.runType === "manual_audit" || run.runType === "auto_audit";
+}
+
+export function isManualQueryRun(run: AiAssistantRun): boolean {
+  return run.runType === "manual_query";
+}
+
 export function buildManualAuditPrompt(focus: string): string {
   const trimmedFocus = focus.trim();
   if (!trimmedFocus) return DEFAULT_AUDIT_PROMPT;

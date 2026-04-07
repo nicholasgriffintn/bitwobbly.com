@@ -9,6 +9,8 @@ import {
   buildManualAuditPrompt,
   createAssistantMessageId,
   hasAssistantMessageOutput,
+  isAuditRun,
+  isManualQueryRun,
   type AssistantMessage,
   type AssistantTab,
 } from "@/lib/ai-assistant-chat";
@@ -81,6 +83,8 @@ export function FloatingAiAssistant() {
     () => !!question.trim() && !isLoading && isEnabled === true,
     [isEnabled, isLoading, question]
   );
+  const auditRuns = useMemo(() => runs.filter(isAuditRun), [runs]);
+  const manualQueryRuns = useMemo(() => runs.filter(isManualQueryRun), [runs]);
   const showSuggestedPrompts =
     isEnabled === true &&
     !isLoading &&
@@ -223,6 +227,33 @@ export function FloatingAiAssistant() {
     auditAbortControllerRef.current?.abort();
   };
 
+  const openPastChat = (run: AiAssistantRun) => {
+    if (isLoading) return;
+    const restoredQuestion = run.question?.trim() ?? "";
+    const restoredMessages: AssistantMessage[] = [];
+
+    if (restoredQuestion) {
+      restoredMessages.push({
+        id: createAssistantMessageId("user"),
+        role: "user",
+        content: restoredQuestion,
+        thinking: "",
+      });
+    }
+
+    restoredMessages.push({
+      id: createAssistantMessageId("assistant"),
+      role: "assistant",
+      content: run.answer,
+      thinking: "",
+    });
+
+    setError(null);
+    setQuestion("");
+    setActiveAssistantMessageId(null);
+    setMessages(restoredMessages);
+  };
+
   return (
     <div className="assistant-fab-wrapper">
       {isOpen ? (
@@ -250,7 +281,7 @@ export function FloatingAiAssistant() {
               <TabNav
                 tabs={[
                   { id: "chat", label: "Chat" },
-                  { id: "ops", label: "Ops", count: runs.length },
+                  { id: "ops", label: "Ops", count: auditRuns.length },
                 ]}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
@@ -268,9 +299,11 @@ export function FloatingAiAssistant() {
                 canSend={canSend}
                 question={question}
                 messages={messages}
+                recentManualChats={manualQueryRuns}
                 showSuggestedPrompts={showSuggestedPrompts}
                 activeAssistantMessageId={activeAssistantMessageId}
                 onQuestionChange={setQuestion}
+                onOpenPastChat={openPastChat}
                 onSend={sendQuestion}
                 onCancel={cancelChatStream}
               />
@@ -282,7 +315,7 @@ export function FloatingAiAssistant() {
                 auditFocus={auditFocus}
                 isRunningAudit={isRunningAudit}
                 isLoading={isLoading}
-                runs={runs}
+                auditRuns={auditRuns}
                 auditPreviewThinking={auditPreviewThinking}
                 auditPreviewAnswer={auditPreviewAnswer}
                 onAuditFocusChange={setAuditFocus}
