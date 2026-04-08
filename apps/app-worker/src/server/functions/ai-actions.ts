@@ -57,8 +57,9 @@ const DeleteGithubMappingInputSchema = z.object({
 
 const CompleteGithubInstallInputSchema = z.object({
   installationId: z.number().int().min(1).max(2_147_483_647),
-  state: z.string().min(10).max(4096),
+  state: z.string().min(10).max(4096).optional(),
   setupAction: z.string().min(1).max(50).optional(),
+  explicitConfirm: z.boolean().optional(),
 });
 
 const ListGithubInstallationReposInputSchema = z.object({
@@ -283,12 +284,18 @@ export const completeAiGithubAppInstallFn = createServerFn({ method: "POST" })
       throw new Error("Unsupported GitHub setup action");
     }
 
-    await verifyGitHubInstallStateToken({
-      sessionSecret: env.SESSION_SECRET,
-      token: data.state,
-      expectedTeamId: teamId,
-      expectedUserId: userId ?? null,
-    });
+    if (data.state) {
+      await verifyGitHubInstallStateToken({
+        sessionSecret: env.SESSION_SECRET,
+        token: data.state,
+        expectedTeamId: teamId,
+        expectedUserId: userId ?? null,
+      });
+    } else if (!data.explicitConfirm) {
+      throw new Error(
+        "GitHub callback did not include state. Confirm installation from Settings to continue."
+      );
+    }
 
     const config = getGitHubAppConfig();
     const installation = await getGitHubInstallation({

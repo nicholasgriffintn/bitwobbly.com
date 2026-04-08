@@ -133,7 +133,7 @@ export function AiAuditPage({
         setError(err instanceof Error ? err.message : String(err));
       }
     })();
-  }, [initialActionRuns]);
+  }, [initialActionRuns, syncActionRuns]);
 
   const auditRuns = useMemo(() => runs.filter(isAuditRun), [runs]);
   const auditHistoryRuns = useMemo(() => auditRuns.slice(0, 12), [auditRuns]);
@@ -143,11 +143,6 @@ export function AiAuditPage({
       setActiveAuditRunId(null);
       return;
     }
-  }, [activeAuditRunId, auditRuns]);
-
-  const activeAuditRun = useMemo(() => {
-    if (!activeAuditRunId) return null;
-    return auditRuns.find((run) => run.id === activeAuditRunId) ?? null;
   }, [activeAuditRunId, auditRuns]);
 
   const onSelectActionRun = async (runId: string) => {
@@ -279,34 +274,44 @@ export function AiAuditPage({
           <div className="muted">No manual or scheduled audits yet.</div>
         ) : (
           <ListContainer>
-            {auditHistoryRuns.map((run, index) => (
-              <ListRow
-                key={run.id}
-                title={`${runTypeLabel(run.runType)} · ${new Date(run.createdAt).toLocaleString()}`}
-                subtitle={run.question || "No focus provided"}
-                isOdd={index > 0}
-                actions={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    onClick={() => activeAuditRunId === run.id ? setActiveAuditRunId(null) : setActiveAuditRunId(run.id)}
-                  >
-                    {run.id === activeAuditRunId ? "Close output" : "View output"}
-                  </Button>
-                }
-              />
-            ))}
+            {auditHistoryRuns.map((run, index) => {
+              const isOutputExpanded = activeAuditRunId === run.id;
+
+              return (
+                <ListRow
+                  key={run.id}
+                  className="list-item-expanded"
+                  title={`${runTypeLabel(run.runType)} · ${new Date(run.createdAt).toLocaleString()}`}
+                  subtitle={run.question || "No focus provided"}
+                  isOdd={index > 0}
+                  actions={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() =>
+                        isOutputExpanded
+                          ? setActiveAuditRunId(null)
+                          : setActiveAuditRunId(run.id)
+                      }
+                    >
+                      {isOutputExpanded ? "Hide output" : "View output"}
+                    </Button>
+                  }
+                  expanded={isOutputExpanded}
+                  expandedContent={
+                    <div className="ai-audit-output">
+                      <div className="assistant-section-title">
+                        {runTypeLabel(run.runType)} output
+                      </div>
+                      <AssistantMarkdown content={run.answer} />
+                    </div>
+                  }
+                />
+              );
+            })}
           </ListContainer>
         )}
-        {activeAuditRun ? (
-          <div className="ai-audit-output">
-            <div className="assistant-section-title">
-              {runTypeLabel(activeAuditRun.runType)} output
-            </div>
-            <AssistantMarkdown content={activeAuditRun.answer} />
-          </div>
-        ) : null}
       </Card>
 
       <Card>

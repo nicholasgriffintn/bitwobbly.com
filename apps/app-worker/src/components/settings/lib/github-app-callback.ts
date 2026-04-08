@@ -1,6 +1,6 @@
 export type GitHubInstallCallbackParams = {
   installationId: number;
-  state: string;
+  state: string | null;
   setupAction: string | null;
 };
 
@@ -9,8 +9,7 @@ export function parseGitHubInstallCallbackParams(
 ): GitHubInstallCallbackParams | null {
   const params = new URLSearchParams(search);
   const installationIdRaw = params.get("installation_id");
-  const state = params.get("state");
-  if (!installationIdRaw || !state) {
+  if (!installationIdRaw) {
     return null;
   }
 
@@ -21,7 +20,7 @@ export function parseGitHubInstallCallbackParams(
 
   return {
     installationId,
-    state,
+    state: params.get("state"),
     setupAction: params.get("setup_action"),
   };
 }

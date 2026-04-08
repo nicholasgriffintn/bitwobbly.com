@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle } from "@/components/layout";
@@ -77,6 +77,11 @@ type TeamProject = {
   name: string;
 };
 
+type PendingGitHubInstall = {
+  installationId: number;
+  setupAction: string | null;
+};
+
 export function AiGithubMappingsCard() {
   const [mappings, setMappings] = useState<AiGithubMapping[]>([]);
   const [installations, setInstallations] = useState<AiGithubInstallation[]>([]);
@@ -87,6 +92,9 @@ export function AiGithubMappingsCard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [isConnectingApp, setIsConnectingApp] = useState(false);
+  const [pendingInstall, setPendingInstall] = useState<PendingGitHubInstall | null>(
+    null
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -121,7 +129,7 @@ export function AiGithubMappingsCard() {
     [repositories, form.repositoryFullName]
   );
 
-  const refreshProjects = async () => {
+  const refreshProjects = useCallback(async () => {
     const response = await listProjects();
     setProjects(
       response.projects.map((project) => ({
@@ -129,9 +137,9 @@ export function AiGithubMappingsCard() {
         name: project.name,
       }))
     );
-  };
+  }, [listProjects]);
 
-  const refreshMappings = async () => {
+  const refreshMappings = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await listMappings();
@@ -139,9 +147,9 @@ export function AiGithubMappingsCard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [listMappings]);
 
-  const refreshInstallations = async () => {
+  const refreshInstallations = useCallback(async () => {
     const response = await listInstallations();
     setInstallations(
       response.installations.map((installation) => ({
@@ -153,12 +161,12 @@ export function AiGithubMappingsCard() {
         repositorySelection: installation.repositorySelection,
       }))
     );
-  };
+  }, [listInstallations]);
 
-  const refreshInstallUrl = async () => {
+  const refreshInstallUrl = useCallback(async () => {
     const response = await getInstallUrl();
     setInstallUrl(response.installUrl);
-  };
+  }, [getInstallUrl]);
 
   useEffect(() => {
     void Promise.all([
@@ -169,7 +177,7 @@ export function AiGithubMappingsCard() {
     ]).catch((err) => {
       setError(err instanceof Error ? err.message : String(err));
     });
-  }, []);
+  }, [refreshInstallUrl, refreshInstallations, refreshMappings, refreshProjects]);
 
   useEffect(() => {
     if (hasHandledCallbackRef.current) return;
@@ -177,6 +185,18 @@ export function AiGithubMappingsCard() {
 
     const callback = parseGitHubInstallCallbackParams(window.location.search);
     if (!callback) return;
+
+    clearGitHubInstallCallbackParams();
+    if (!callback.state) {
+      setPendingInstall({
+        installationId: callback.installationId,
+        setupAction: callback.setupAction,
+      });
+      setMessage(
+        `GitHub returned installation #${callback.installationId}. Confirm below to connect it to this team.`
+      );
+      return;
+    }
 
     setIsConnectingApp(true);
     setError(null);
@@ -190,7 +210,7 @@ export function AiGithubMappingsCard() {
     })
       .then(async () => {
         await Promise.all([refreshInstallations(), refreshInstallUrl()]);
-        clearGitHubInstallCallbackParams();
+        setPendingInstall(null);
         setMessage("GitHub App installation connected.");
       })
       .catch((err) => {
@@ -199,7 +219,30 @@ export function AiGithubMappingsCard() {
       .finally(() => {
         setIsConnectingApp(false);
       });
-  }, []);
+  }, [completeInstall, refreshInstallUrl, refreshInstallations]);
+
+  const onConfirmPendingInstall = async () => {
+    if (!pendingInstall) return;
+    setIsConnectingApp(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await completeInstall({
+        data: {
+          installationId: pendingInstall.installationId,
+          setupAction: pendingInstall.setupAction ?? undefined,
+          explicitConfirm: true,
+        },
+      });
+      await Promise.all([refreshInstallations(), refreshInstallUrl()]);
+      setPendingInstall(null);
+      setMessage("GitHub App installation connected.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsConnectingApp(false);
+    }
+  };
 
   useEffect(() => {
     const installationId = Number(form.installationId);
@@ -245,7 +288,7 @@ export function AiGithubMappingsCard() {
     return () => {
       cancelled = true;
     };
-  }, [form.installationId]);
+  }, [form.installationId, listInstallationRepos]);
 
   const onSave = async () => {
     setError(null);
@@ -324,18 +367,30 @@ export function AiGithubMappingsCard() {
       {message && <div className="muted mb-3">{message}</div>}
 
       <div className="button-row mb-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            if (installUrl) {
-              window.location.href = installUrl;
-            }
-          }}
-          disabled={!installUrl || isConnectingApp}
-        >
-          {isConnectingApp ? "Connecting..." : "Install / Configure GitHub App"}
-        </Button>
+        {!pendingInstall ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (installUrl) {
+                window.location.href = installUrl;
+              }
+            }}
+            disabled={!installUrl || isConnectingApp}
+          >
+            {isConnectingApp ? "Connecting..." : "Install / Configure GitHub App"}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            color="info"
+            onClick={() => void onConfirmPendingInstall()}
+            disabled={isConnectingApp}
+          >
+            Connect returned installation #{pendingInstall.installationId}
+          </Button>
+        )}
       </div>
 
       <div className="form">

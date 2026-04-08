@@ -1,9 +1,12 @@
 import { isRecord } from "../lib/type-guards.ts";
 import { toFiniteNumber, toNonEmptyString } from "../lib/value-utils.ts";
+import { toBase64UrlFromBytes, toBase64UrlFromText } from "../lib/base64-url.ts";
+import { parsePrivateKeyPemToPkcs8ArrayBuffer } from "../lib/private-key-pem.ts";
 
 const GITHUB_ACCEPT = "application/vnd.github+json";
 const GITHUB_API_VERSION = "2022-11-28";
 const GITHUB_API_BASE_URL = "https://api.github.com";
+const GITHUB_USER_AGENT = "bitwobbly-github-app/1.0";
 
 export type GitHubAppCredentials = {
   appId: string;
@@ -35,39 +38,6 @@ export type GitHubApiRequestInput = {
   path: string;
   body?: Record<string, unknown>;
 };
-
-function toBase64UrlFromText(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += 4096) {
-    const chunk = bytes.slice(index, index + 4096);
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function toBase64UrlFromBytes(value: Uint8Array): string {
-  let binary = "";
-  for (let index = 0; index < value.length; index += 4096) {
-    const chunk = value.slice(index, index + 4096);
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function parsePkcs8Pem(input: string): ArrayBuffer {
-  const normalised = input.replace(/\\n/g, "\n");
-  const stripped = normalised
-    .replace("-----BEGIN PRIVATE KEY-----", "")
-    .replace("-----END PRIVATE KEY-----", "")
-    .replace(/\s+/g, "");
-  const decoded = atob(stripped);
-  const bytes = new Uint8Array(decoded.length);
-  for (let index = 0; index < decoded.length; index += 1) {
-    bytes[index] = decoded.charCodeAt(index);
-  }
-  return bytes.buffer;
-}
 
 function parseRepositorySelection(value: unknown): "all" | "selected" | "unknown" {
   if (value === "all") return "all";
@@ -143,7 +113,7 @@ export async function createGitHubAppJwt(
 
   const privateKey = await crypto.subtle.importKey(
     "pkcs8",
-    parsePkcs8Pem(credentials.appPrivateKeyPem),
+    parsePrivateKeyPemToPkcs8ArrayBuffer(credentials.appPrivateKeyPem),
     {
       name: "RSASSA-PKCS1-v1_5",
       hash: "SHA-256",
@@ -169,6 +139,7 @@ export async function gitHubApiRequest(input: GitHubApiRequestInput): Promise<un
       accept: GITHUB_ACCEPT,
       authorization: `Bearer ${input.authToken}`,
       "x-github-api-version": GITHUB_API_VERSION,
+      "user-agent": GITHUB_USER_AGENT,
       "content-type": "application/json",
     },
     body: input.body ? JSON.stringify(input.body) : undefined,
