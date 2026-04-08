@@ -1448,6 +1448,14 @@ textarea {
   gap: 10px;
 }
 
+.ai-audit-expanded-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
 .assistant-markdown {
   color: inherit;
 }

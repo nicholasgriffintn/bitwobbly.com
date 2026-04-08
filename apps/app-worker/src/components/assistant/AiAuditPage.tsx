@@ -74,6 +74,9 @@ export function AiAuditPage({
   );
   const [runs, setRuns] = useState<AiAssistantRun[]>(initialRuns);
   const [activeAuditRunId, setActiveAuditRunId] = useState<string | null>(null);
+  const [expandedActionRunId, setExpandedActionRunId] = useState<string | null>(
+    null
+  );
 
   const getAiSettings = useServerFn(getAiAssistantSettingsFn);
   const {
@@ -175,6 +178,18 @@ export function AiAuditPage({
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const onToggleActionRun = (runId: string) => {
+    if (expandedActionRunId === runId) {
+      setExpandedActionRunId(null);
+      return;
+    }
+
+    setExpandedActionRunId(runId);
+    if (activeActionRunId !== runId) {
+      void onSelectActionRun(runId);
     }
   };
 
@@ -300,7 +315,7 @@ export function AiAuditPage({
                   }
                   expanded={isOutputExpanded}
                   expandedContent={
-                    <div className="ai-audit-output">
+                    <div className="ai-audit-output ai-audit-expanded-panel">
                       <div className="assistant-section-title">
                         {runTypeLabel(run.runType)} output
                       </div>
@@ -336,109 +351,130 @@ export function AiAuditPage({
           </div>
         ) : (
           <ListContainer>
-            {actionRuns.map((run, index) => (
-              <ListRow
-                key={run.id}
-                isOdd={index > 0}
-                title={
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span>{run.triggerSource}:{run.triggerType}</span>
-                    <Badge size="small" variant={runStatusVariant(run.status)}>
-                      {run.status}
-                    </Badge>
-                  </span>
-                }
-                subtitle={new Date(run.createdAt).toLocaleString()}
-                actions={
-                  <Button
-                    type="button"
-                    variant={run.id === activeActionRunId ? "primary" : "outline"}
-                    size="xs"
-                    onClick={() => void onSelectActionRun(run.id)}
-                  >
-                    {run.id === activeActionRunId ? "Open" : "Inspect"}
-                  </Button>
-                }
-              />
-            ))}
+            {actionRuns.map((run, index) => {
+              const isExpanded = expandedActionRunId === run.id;
+              const isLoaded = activeActionRunId === run.id;
+
+              return (
+                <ListRow
+                  key={run.id}
+                  className="list-item-expanded"
+                  isOdd={index > 0}
+                  title={
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>{run.triggerSource}:{run.triggerType}</span>
+                      <Badge size="small" variant={runStatusVariant(run.status)}>
+                        {run.status}
+                      </Badge>
+                    </span>
+                  }
+                  subtitle={new Date(run.createdAt).toLocaleString()}
+                  actions={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => onToggleActionRun(run.id)}
+                    >
+                      {isExpanded ? "Hide actions" : "View actions"}
+                    </Button>
+                  }
+                  expanded={isExpanded}
+                  expandedContent={
+                    <div className="ai-audit-action-details ai-audit-expanded-panel">
+                      <div className="assistant-section-title">Actions in this run</div>
+                      {(!isLoaded || isActionLoading) && isExpanded ? (
+                        <div className="muted">Loading actions...</div>
+                      ) : activeActionRunActions.length === 0 ? (
+                        <div className="muted">No actions found for this run.</div>
+                      ) : (
+                        <ListContainer>
+                          {activeActionRunActions.map((action, actionIndex) => (
+                            <ListRow
+                              key={action.id}
+                              isOdd={actionIndex > 0}
+                              title={
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <span>{action.title}</span>
+                                  <Badge
+                                    size="small"
+                                    variant={riskTierVariant(action.riskTier)}
+                                  >
+                                    {action.riskTier}
+                                  </Badge>
+                                  <Badge
+                                    size="small"
+                                    variant={actionStatusVariant(action.status)}
+                                  >
+                                    {action.status}
+                                  </Badge>
+                                </span>
+                              }
+                              subtitle={action.actionType}
+                              actions={
+                                <div className="button-row">
+                                  {action.requiresApproval && action.status === "pending" ? (
+                                    <>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        onClick={() =>
+                                          void onRunActionOperation(action.id, "approve")
+                                        }
+                                      >
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="xs"
+                                        color="danger"
+                                        onClick={() =>
+                                          void onRunActionOperation(action.id, "reject")
+                                        }
+                                      >
+                                        Reject
+                                      </Button>
+                                    </>
+                                  ) : null}
+                                  {action.status === "failed" ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="xs"
+                                      onClick={() =>
+                                        void onRunActionOperation(action.id, "retry")
+                                      }
+                                    >
+                                      Retry
+                                    </Button>
+                                  ) : null}
+                                  {action.status === "completed" ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="xs"
+                                      onClick={() =>
+                                        void onRunActionOperation(action.id, "rollback")
+                                      }
+                                    >
+                                      Rollback
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              }
+                            />
+                          ))}
+                        </ListContainer>
+                      )}
+                    </div>
+                  }
+                />
+              );
+            })}
           </ListContainer>
         )}
-        {activeActionRunId ? (
-          <div className="ai-audit-action-details">
-            <div className="assistant-section-title">Actions in selected run</div>
-            {isActionLoading ? (
-              <div className="muted">Loading actions...</div>
-            ) : activeActionRunActions.length === 0 ? (
-              <div className="muted">No actions found for this run.</div>
-            ) : (
-              <ListContainer>
-                {activeActionRunActions.map((action, index) => (
-                  <ListRow
-                    key={action.id}
-                    isOdd={index > 0}
-                    title={
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span>{action.title}</span>
-                        <Badge size="small" variant={riskTierVariant(action.riskTier)}>
-                          {action.riskTier}
-                        </Badge>
-                        <Badge size="small" variant={actionStatusVariant(action.status)}>
-                          {action.status}
-                        </Badge>
-                      </span>
-                    }
-                    subtitle={action.actionType}
-                    actions={
-                      <div className="button-row">
-                        {action.requiresApproval && action.status === "pending" ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="xs"
-                              onClick={() => void onRunActionOperation(action.id, "approve")}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="xs"
-                              color="danger"
-                              onClick={() => void onRunActionOperation(action.id, "reject")}
-                            >
-                              Reject
-                            </Button>
-                          </>
-                        ) : null}
-                        {action.status === "failed" ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="xs"
-                            onClick={() => void onRunActionOperation(action.id, "retry")}
-                          >
-                            Retry
-                          </Button>
-                        ) : null}
-                        {action.status === "completed" ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="xs"
-                            onClick={() => void onRunActionOperation(action.id, "rollback")}
-                          >
-                            Rollback
-                          </Button>
-                        ) : null}
-                      </div>
-                    }
-                  />
-                ))}
-              </ListContainer>
-            )}
-          </div>
-        ) : null}
       </Card>
     </Page>
   );
