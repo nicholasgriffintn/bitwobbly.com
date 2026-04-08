@@ -96,6 +96,28 @@ export function useAssistantActionRuns(): UseAssistantActionRunsResult {
       await rollbackAction({ data: { actionId } });
     }
     await refreshActionRuns();
+
+    if (
+      (operation === "approve" || operation === "retry") &&
+      activeActionRunId
+    ) {
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        const response = await getActionRun({
+          data: { runId: activeActionRunId },
+        });
+        const actions = parseActionRunItems(response);
+        setActiveActionRunActions(actions);
+        const target = actions.find((action) => action.id === actionId);
+        if (
+          !target ||
+          (target.status !== "approved" && target.status !== "executing")
+        ) {
+          break;
+        }
+      }
+      await refreshActionRuns();
+    }
   };
 
   return {

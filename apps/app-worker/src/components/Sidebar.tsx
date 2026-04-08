@@ -19,6 +19,7 @@ export default function Sidebar() {
         <Link to="/app/status-pages">Status pages</Link>
         <Link to="/app/incidents">Incidents</Link>
         <Link to="/app/issues">Issues</Link>
+        <Link to="/app/ai-audit">AI Audit</Link>
         <Link to="/app/notifications">Notifications</Link>
         <Link to="/app/settings">Settings</Link>
       </nav>

@@ -1432,6 +1432,22 @@ textarea {
   gap: 8px;
 }
 
+.ai-audit-output {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--stroke);
+  display: grid;
+  gap: 8px;
+}
+
+.ai-audit-action-details {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--stroke);
+  display: grid;
+  gap: 10px;
+}
+
 .assistant-markdown {
   color: inherit;
 }

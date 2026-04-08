@@ -16,8 +16,10 @@ import {
   listTeamAiActionRuns,
   listTeamAiActions,
   listTeamAiGithubRepoMappings,
+  nowIso,
   parseTeamAiGithubRepoMappingInput,
   parseTeamAiPolicyUpdate,
+  updateTeamAiAction,
   upsertTeamAiGithubInstallation,
   upsertTeamAiActionPolicy,
   upsertTeamAiGithubRepoMapping,
@@ -105,6 +107,36 @@ async function requestActionOperation(input: {
     operation: input.operation,
     userId,
   });
+
+  if (input.operation === "approve") {
+    await updateTeamAiAction(db, {
+      teamId,
+      actionId: input.actionId,
+      status: "approved",
+      approvedByUserId: userId ?? null,
+      approvedAt: nowIso(),
+    });
+  } else if (input.operation === "reject" || input.operation === "cancel") {
+    await updateTeamAiAction(db, {
+      teamId,
+      actionId: input.actionId,
+      status: "cancelled",
+    });
+  } else if (input.operation === "retry") {
+    await updateTeamAiAction(db, {
+      teamId,
+      actionId: input.actionId,
+      status: "pending",
+      failedAt: null,
+    });
+  } else if (input.operation === "rollback") {
+    await updateTeamAiAction(db, {
+      teamId,
+      actionId: input.actionId,
+      status: "rolled_back",
+      rolledBackAt: nowIso(),
+    });
+  }
 
   const event = operationEvents[input.operation];
   await createTeamAiActionEvent(db, {

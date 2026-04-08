@@ -30,6 +30,7 @@ import { Route as AppMonitorsRouteImport } from './routes/app/monitors'
 import { Route as AppMaintenanceRouteImport } from './routes/app/maintenance'
 import { Route as AppIncidentsRouteImport } from './routes/app/incidents'
 import { Route as AppComponentsRouteImport } from './routes/app/components'
+import { Route as AppAiAuditRouteImport } from './routes/app/ai-audit'
 import { Route as AppIssuesIndexRouteImport } from './routes/app/issues/index'
 import { Route as StatusSlugUnsubscribeRouteImport } from './routes/status/$slug/unsubscribe'
 import { Route as StatusSlugConfirmRouteImport } from './routes/status/$slug/confirm'
@@ -146,6 +147,11 @@ const AppComponentsRoute = AppComponentsRouteImport.update({
   path: '/components',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAiAuditRoute = AppAiAuditRouteImport.update({
+  id: '/ai-audit',
+  path: '/ai-audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppIssuesIndexRoute = AppIssuesIndexRouteImport.update({
   id: '/issues/',
   path: '/issues/',
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/setup-mfa': typeof SetupMfaRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/ai-audit': typeof AppAiAuditRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
   '/app/maintenance': typeof AppMaintenanceRoute
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/setup-mfa': typeof SetupMfaRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/ai-audit': typeof AppAiAuditRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
   '/app/maintenance': typeof AppMaintenanceRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/setup-mfa': typeof SetupMfaRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/ai-audit': typeof AppAiAuditRoute
   '/app/components': typeof AppComponentsRoute
   '/app/incidents': typeof AppIncidentsRoute
   '/app/maintenance': typeof AppMaintenanceRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup-mfa'
     | '/verify-email'
+    | '/app/ai-audit'
     | '/app/components'
     | '/app/incidents'
     | '/app/maintenance'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup-mfa'
     | '/verify-email'
+    | '/app/ai-audit'
     | '/app/components'
     | '/app/incidents'
     | '/app/maintenance'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup-mfa'
     | '/verify-email'
+    | '/app/ai-audit'
     | '/app/components'
     | '/app/incidents'
     | '/app/maintenance'
@@ -570,6 +582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppComponentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/ai-audit': {
+      id: '/app/ai-audit'
+      path: '/ai-audit'
+      fullPath: '/app/ai-audit'
+      preLoaderRoute: typeof AppAiAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/issues/': {
       id: '/app/issues/'
       path: '/issues'
@@ -644,6 +663,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAiAuditRoute: typeof AppAiAuditRoute
   AppComponentsRoute: typeof AppComponentsRoute
   AppIncidentsRoute: typeof AppIncidentsRoute
   AppMaintenanceRoute: typeof AppMaintenanceRoute
@@ -658,6 +678,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAiAuditRoute: AppAiAuditRoute,
   AppComponentsRoute: AppComponentsRoute,
   AppIncidentsRoute: AppIncidentsRoute,
   AppMaintenanceRoute: AppMaintenanceRoute,
