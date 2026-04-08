@@ -34,6 +34,7 @@ import type {
   TeamAiActionRunStatus,
   TeamAiActionStatus,
   TeamAiActionType,
+  TeamAiGithubInstallation,
   TeamAiGithubRepoMapping,
   TeamAiGithubRepoMappingInput,
 } from "./types.ts";
@@ -696,6 +697,7 @@ function toGithubRepoMapping(
     id: row.id,
     teamId: row.teamId,
     projectId: row.projectId ?? null,
+    installationId: row.installationId ?? null,
     repositoryOwner: row.repositoryOwner,
     repositoryName: row.repositoryName,
     defaultBranch: row.defaultBranch,
@@ -714,6 +716,127 @@ function toGithubRepoMapping(
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function toGithubInstallation(
+  row: typeof schema.teamAiGithubInstallations.$inferSelect
+): TeamAiGithubInstallation {
+  const repositorySelection = row.repositorySelection;
+  return {
+    id: row.id,
+    teamId: row.teamId,
+    installationId: row.installationId,
+    accountLogin: row.accountLogin,
+    accountType: row.accountType,
+    targetType: row.targetType,
+    targetId: row.targetId ?? null,
+    repositorySelection:
+      repositorySelection === "all" || repositorySelection === "selected"
+        ? repositorySelection
+        : "unknown",
+    appSlug: row.appSlug ?? null,
+    connectedByUserId: row.connectedByUserId ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export async function listTeamAiGithubInstallations(
+  db: DB,
+  teamId: string
+): Promise<TeamAiGithubInstallation[]> {
+  const rows = await db
+    .select()
+    .from(schema.teamAiGithubInstallations)
+    .where(eq(schema.teamAiGithubInstallations.teamId, teamId))
+    .orderBy(desc(schema.teamAiGithubInstallations.updatedAt));
+  return rows.map((row) => toGithubInstallation(row));
+}
+
+export async function getTeamAiGithubInstallation(
+  db: DB,
+  teamId: string,
+  installationId: number
+): Promise<TeamAiGithubInstallation | null> {
+  const rows = await db
+    .select()
+    .from(schema.teamAiGithubInstallations)
+    .where(
+      and(
+        eq(schema.teamAiGithubInstallations.teamId, teamId),
+        eq(schema.teamAiGithubInstallations.installationId, installationId)
+      )
+    )
+    .limit(1);
+  return rows[0] ? toGithubInstallation(rows[0]) : null;
+}
+
+export async function upsertTeamAiGithubInstallation(
+  db: DB,
+  input: {
+    teamId: string;
+    installationId: number;
+    accountLogin: string;
+    accountType: string;
+    targetType: string;
+    targetId?: number | null;
+    repositorySelection?: "all" | "selected" | "unknown";
+    appSlug?: string | null;
+    connectedByUserId?: string | null;
+  }
+): Promise<TeamAiGithubInstallation> {
+  const now = nowIso();
+  const existing = await db
+    .select()
+    .from(schema.teamAiGithubInstallations)
+    .where(
+      and(
+        eq(schema.teamAiGithubInstallations.teamId, input.teamId),
+        eq(schema.teamAiGithubInstallations.installationId, input.installationId)
+      )
+    )
+    .limit(1);
+
+  if (!existing.length) {
+    await db.insert(schema.teamAiGithubInstallations).values({
+      id: randomId("taigi"),
+      teamId: input.teamId,
+      installationId: input.installationId,
+      accountLogin: input.accountLogin,
+      accountType: input.accountType,
+      targetType: input.targetType,
+      targetId: input.targetId ?? null,
+      repositorySelection: input.repositorySelection ?? "unknown",
+      appSlug: input.appSlug ?? null,
+      connectedByUserId: input.connectedByUserId ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } else {
+    await db
+      .update(schema.teamAiGithubInstallations)
+      .set({
+        accountLogin: input.accountLogin,
+        accountType: input.accountType,
+        targetType: input.targetType,
+        targetId: input.targetId ?? null,
+        repositorySelection: input.repositorySelection ?? "unknown",
+        appSlug: input.appSlug ?? existing[0].appSlug ?? null,
+        connectedByUserId: input.connectedByUserId ?? existing[0].connectedByUserId ?? null,
+        updatedAt: now,
+      })
+      .where(eq(schema.teamAiGithubInstallations.id, existing[0].id));
+  }
+
+  const saved = await getTeamAiGithubInstallation(
+    db,
+    input.teamId,
+    input.installationId
+  );
+  if (!saved) {
+    throw new Error("Failed to persist GitHub installation");
+  }
+  return saved;
 }
 
 export async function listTeamAiGithubRepoMappings(
@@ -798,6 +921,7 @@ export async function upsertTeamAiGithubRepoMapping(
       id: randomId("taigm"),
       teamId,
       projectId: input.projectId ?? null,
+      installationId: input.installationId,
       repositoryOwner: input.repositoryOwner,
       repositoryName: input.repositoryName,
       defaultBranch: input.defaultBranch?.trim() || "main",
@@ -821,6 +945,7 @@ export async function upsertTeamAiGithubRepoMapping(
     await db
       .update(schema.teamAiGithubRepoMappings)
       .set({
+        installationId: input.installationId,
         defaultBranch: input.defaultBranch?.trim() || existing[0].defaultBranch,
         pathAllowlistJson: input.pathAllowlist ?? existing[0].pathAllowlistJson,
         maxFilesChanged: clampInt(

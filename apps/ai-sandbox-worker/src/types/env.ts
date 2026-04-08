@@ -6,7 +6,8 @@ export interface Env {
   DB: D1Database;
   AI: AiBinding;
   SENTRY_DSN: string;
-  GITHUB_TOKEN?: string;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
 }
 
 export function assertEnv(env: Env): Env {

@@ -345,6 +345,7 @@ export interface TeamAiGithubRepoMapping {
   id: string;
   teamId: string;
   projectId: string | null;
+  installationId: number | null;
   repositoryOwner: string;
   repositoryName: string;
   defaultBranch: string;
@@ -358,6 +359,7 @@ export interface TeamAiGithubRepoMapping {
 
 export interface TeamAiGithubRepoMappingInput {
   projectId?: string | null;
+  installationId: number;
   repositoryOwner: string;
   repositoryName: string;
   defaultBranch?: string;
@@ -365,6 +367,21 @@ export interface TeamAiGithubRepoMappingInput {
   maxFilesChanged?: number;
   maxPatchBytes?: number;
   enabled?: boolean;
+}
+
+export interface TeamAiGithubInstallation {
+  id: string;
+  teamId: string;
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+  targetType: string;
+  targetId: number | null;
+  repositorySelection: "all" | "selected" | "unknown";
+  appSlug: string | null;
+  connectedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TeamAiAssistantContextSnapshot {

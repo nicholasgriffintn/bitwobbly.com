@@ -1,0 +1,1 @@
+ALTER TABLE `team_ai_github_repo_mappings` ADD `installation_id` integer;

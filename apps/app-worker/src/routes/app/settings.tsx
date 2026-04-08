@@ -8,6 +8,7 @@ import { ListContainer, ListRow } from "@/components/list";
 import { Badge, Button } from "@/components/ui";
 import { SettingsModals } from "@/components/modals/settings";
 import { AiAssistantSettingsCard } from "@/components/settings/AiAssistantSettingsCard";
+import { AiGithubMappingsCard } from "@/components/settings/AiGithubMappingsCard";
 import {
   listTeamMembersFn,
   removeTeamMemberFn,
@@ -386,6 +387,7 @@ export default function Settings() {
       </Card>
 
       <AiAssistantSettingsCard initialSettings={aiSettings} />
+      <AiGithubMappingsCard />
 
       <SettingsModals
         isCreateTeamOpen={isCreateTeamModalOpen}

@@ -3,23 +3,33 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 
 import {
+  getGitHubInstallation,
+  listGitHubInstallationRepositories,
   createTeamAiActionEvent,
   deleteTeamAiGithubRepoMapping,
+  getTeamAiGithubInstallation,
   getTeamAiAction,
   getTeamAiActionPolicy,
   getTeamAiActionRun,
+  listTeamAiGithubInstallations,
   listTeamAiActionEvents,
   listTeamAiActionRuns,
   listTeamAiActions,
   listTeamAiGithubRepoMappings,
   parseTeamAiGithubRepoMappingInput,
   parseTeamAiPolicyUpdate,
+  upsertTeamAiGithubInstallation,
   upsertTeamAiActionPolicy,
   upsertTeamAiGithubRepoMapping,
 } from "@bitwobbly/shared";
 import { getDb } from "@bitwobbly/shared";
 
 import { enqueueActionCommand } from "../lib/ai-action-commands";
+import { getGitHubAppConfig } from "../lib/ai-github-app-config";
+import {
+  createGitHubInstallStateToken,
+  verifyGitHubInstallStateToken,
+} from "../lib/ai-github-app-state";
 import {
   toSerializablePlan,
   toSerializableRecord,
@@ -41,6 +51,16 @@ const ActionOperationInputSchema = z.object({
 
 const DeleteGithubMappingInputSchema = z.object({
   id: z.string().min(1).max(120),
+});
+
+const CompleteGithubInstallInputSchema = z.object({
+  installationId: z.number().int().min(1).max(2_147_483_647),
+  state: z.string().min(10).max(4096),
+  setupAction: z.string().min(1).max(50).optional(),
+});
+
+const ListGithubInstallationReposInputSchema = z.object({
+  installationId: z.number().int().min(1).max(2_147_483_647),
 });
 
 type ActionOperation = "approve" | "reject" | "cancel" | "retry" | "rollback";
@@ -97,6 +117,7 @@ async function requestActionOperation(input: {
 
   return { ok: true };
 }
+
 
 export const getAiActionPolicyFn = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -202,11 +223,126 @@ export const listAiGithubMappingsFn = createServerFn({ method: "GET" }).handler(
   }
 );
 
+export const getAiGithubAppInstallUrlFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { teamId, userId } = await requireTeam();
+    const config = getGitHubAppConfig();
+
+    const installUrl = new URL(config.installUrl);
+    const state = await createGitHubInstallStateToken({
+      sessionSecret: env.SESSION_SECRET,
+      teamId,
+      userId: userId ?? null,
+    });
+    installUrl.searchParams.set("state", state);
+
+    return {
+      installUrl: installUrl.toString(),
+      appSlug: config.appSlug,
+    };
+  }
+);
+
+export const completeAiGithubAppInstallFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => CompleteGithubInstallInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { teamId, userId } = await requireTeam();
+    if (data.setupAction && data.setupAction !== "install" && data.setupAction !== "update") {
+      throw new Error("Unsupported GitHub setup action");
+    }
+
+    await verifyGitHubInstallStateToken({
+      sessionSecret: env.SESSION_SECRET,
+      token: data.state,
+      expectedTeamId: teamId,
+      expectedUserId: userId ?? null,
+    });
+
+    const config = getGitHubAppConfig();
+    const installation = await getGitHubInstallation({
+      credentials: config.credentials,
+      installationId: data.installationId,
+    });
+
+    const db = getDb(env.DB);
+    const saved = await upsertTeamAiGithubInstallation(db, {
+      teamId,
+      installationId: installation.installationId,
+      accountLogin: installation.accountLogin,
+      accountType: installation.accountType,
+      targetType: installation.targetType,
+      targetId: installation.targetId,
+      repositorySelection: installation.repositorySelection,
+      appSlug: config.appSlug,
+      connectedByUserId: userId ?? null,
+    });
+
+    return { installation: saved };
+  });
+
+export const listAiGithubInstallationsFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const installations = await listTeamAiGithubInstallations(db, teamId);
+    return { installations };
+  }
+);
+
+export const listAiGithubInstallationReposFn = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    ListGithubInstallationReposInputSchema.parse(data)
+  )
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const db = getDb(env.DB);
+    const installation = await getTeamAiGithubInstallation(
+      db,
+      teamId,
+      data.installationId
+    );
+    if (!installation) {
+      throw new Error("GitHub installation is not connected for this team");
+    }
+
+    const config = getGitHubAppConfig();
+    const repositories = await listGitHubInstallationRepositories({
+      credentials: config.credentials,
+      installationId: data.installationId,
+    });
+    return { repositories };
+  });
+
 export const upsertAiGithubMappingFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => parseTeamAiGithubRepoMappingInput(data))
   .handler(async ({ data }) => {
     const { teamId } = await requireTeam();
     const db = getDb(env.DB);
+
+    const installation = await getTeamAiGithubInstallation(
+      db,
+      teamId,
+      data.installationId
+    );
+    if (!installation) {
+      throw new Error("GitHub installation is not connected for this team");
+    }
+
+    const config = getGitHubAppConfig();
+    const repositories = await listGitHubInstallationRepositories({
+      credentials: config.credentials,
+      installationId: data.installationId,
+    });
+    const expectedFullName = `${data.repositoryOwner}/${data.repositoryName}`.toLowerCase();
+    const hasRepository = repositories.some(
+      (repo) => repo.fullName.toLowerCase() === expectedFullName
+    );
+    if (!hasRepository) {
+      throw new Error(
+        "Repository is not available for the selected GitHub App installation"
+      );
+    }
+
     const mapping = await upsertTeamAiGithubRepoMapping(db, teamId, data);
     return { mapping };
   });

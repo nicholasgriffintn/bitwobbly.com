@@ -649,6 +649,11 @@ button.button-danger {
   gap: 12px;
 }
 
+.form-field {
+  display: grid;
+  gap: 6px;
+}
+
 .form label {
   font-size: 13px;
   color: var(--muted);

@@ -277,6 +277,7 @@ export const teamAiGithubRepoMappings = sqliteTable(
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
     projectId: text("project_id"),
+    installationId: integer("installation_id"),
     repositoryOwner: text("repository_owner").notNull(),
     repositoryName: text("repository_name").notNull(),
     defaultBranch: text("default_branch").notNull().default("main"),
@@ -299,6 +300,35 @@ export const teamAiGithubRepoMappings = sqliteTable(
     teamProjectIdx: index("team_ai_github_repo_mapping_team_project_idx").on(
       table.teamId,
       table.projectId
+    ),
+  })
+);
+
+export const teamAiGithubInstallations = sqliteTable(
+  "team_ai_github_installations",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    installationId: integer("installation_id").notNull(),
+    accountLogin: text("account_login").notNull(),
+    accountType: text("account_type").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: integer("target_id"),
+    repositorySelection: text("repository_selection").notNull().default("selected"),
+    appSlug: text("app_slug"),
+    connectedByUserId: text("connected_by_user_id"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => ({
+    teamInstallationUnique: uniqueIndex(
+      "team_ai_github_installations_team_installation_unique"
+    ).on(table.teamId, table.installationId),
+    teamUpdatedIdx: index("team_ai_github_installations_team_updated_idx").on(
+      table.teamId,
+      table.updatedAt
     ),
   })
 );
@@ -982,6 +1012,10 @@ export type TeamAiGithubRepoMapping =
   typeof teamAiGithubRepoMappings.$inferSelect;
 export type NewTeamAiGithubRepoMapping =
   typeof teamAiGithubRepoMappings.$inferInsert;
+export type TeamAiGithubInstallation =
+  typeof teamAiGithubInstallations.$inferSelect;
+export type NewTeamAiGithubInstallation =
+  typeof teamAiGithubInstallations.$inferInsert;
 export type Monitor = typeof monitors.$inferSelect;
 export type NewMonitor = typeof monitors.$inferInsert;
 export type MonitorGroup = typeof monitorGroups.$inferSelect;

@@ -8,3 +8,4 @@ export * from "./usage.ts";
 export * from "./action-schemas.ts";
 export * from "./action-store.ts";
 export * from "./action-messages.ts";
+export * from "./github-app.ts";

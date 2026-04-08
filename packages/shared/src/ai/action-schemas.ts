@@ -177,6 +177,7 @@ export const TeamAiActionRollbackSchema = z.object({
 
 export const TeamAiGithubRepoMappingInputSchema = z.object({
   projectId: z.string().min(1).max(120).nullable().optional(),
+  installationId: z.number().int().min(1).max(2_147_483_647),
   repositoryOwner: z.string().min(1).max(120),
   repositoryName: z.string().min(1).max(120),
   defaultBranch: z.string().min(1).max(120).optional(),

@@ -3,7 +3,6 @@ import {
   getDb,
   isPathAllowedByPrefixes,
   isRecord,
-  shouldAllowEgress,
   toFiniteNumber,
   toNonEmptyString,
   utf8ToBase64,
@@ -12,6 +11,10 @@ import {
 } from "@bitwobbly/shared";
 
 import type { Env } from "../../types/env";
+import {
+  createGithubInstallationToken,
+  githubRequest,
+} from "./github-app-auth";
 
 type GithubFileChange = {
   path: string;
@@ -23,40 +26,6 @@ type ActionInput = {
   action: TeamAiAction;
   policy: TeamAiActionPolicy;
 };
-
-async function githubRequest(input: {
-  env: Env;
-  policy: TeamAiActionPolicy;
-  url: string;
-  method?: string;
-  body?: Record<string, unknown>;
-}): Promise<unknown> {
-  if (!shouldAllowEgress(input.url, input.policy.egressAllowlist)) {
-    throw new Error(`Egress blocked by allowlist: ${input.url}`);
-  }
-  if (!input.env.GITHUB_TOKEN) {
-    throw new Error("Missing GITHUB_TOKEN configuration");
-  }
-
-  const response = await fetch(input.url, {
-    method: input.method ?? "GET",
-    headers: {
-      accept: "application/vnd.github+json",
-      authorization: `Bearer ${input.env.GITHUB_TOKEN}`,
-      "x-github-api-version": "2022-11-28",
-      "content-type": "application/json",
-    },
-    body: input.body ? JSON.stringify(input.body) : undefined,
-  });
-
-  if (!response.ok) {
-    const bodyText = await response.text();
-    throw new Error(`GitHub API ${response.status}: ${bodyText.slice(0, 300)}`);
-  }
-
-  if (response.status === 204) return null;
-  return response.json();
-}
 
 function parseAutofixFiles(payload: Record<string, unknown>): GithubFileChange[] {
   const filesValue = payload.files;
@@ -82,14 +51,14 @@ function parseAutofixFiles(payload: Record<string, unknown>): GithubFileChange[]
 }
 
 async function resolveBaseBranchSha(input: {
-  env: Env;
   policy: TeamAiActionPolicy;
+  authToken: string;
   repoUrl: string;
   baseBranch: string;
 }): Promise<string> {
   const refHead = await githubRequest({
-    env: input.env,
     policy: input.policy,
+    authToken: input.authToken,
     url: `${input.repoUrl}/git/ref/heads/${input.baseBranch}`,
   });
 
@@ -105,16 +74,16 @@ async function resolveBaseBranchSha(input: {
 }
 
 async function resolveFileSha(input: {
-  env: Env;
   policy: TeamAiActionPolicy;
+  authToken: string;
   repoUrl: string;
   filePath: string;
   branchName: string;
 }): Promise<string | null> {
   try {
     const existing = await githubRequest({
-      env: input.env,
       policy: input.policy,
+      authToken: input.authToken,
       url: `${input.repoUrl}/contents/${encodeURIComponent(input.filePath)}?ref=${encodeURIComponent(input.branchName)}`,
     });
     if (!isRecord(existing)) return null;
@@ -164,17 +133,41 @@ export async function executeGithubAutofixAction(
   const baseBranch = mapping.defaultBranch;
   const repoUrl = `https://api.github.com/repos/${owner}/${repo}`;
   const branchName = `bitwobbly/autofix-${Date.now()}-${input.action.id.slice(-6)}`;
+  const appId = toNonEmptyString(input.env.GITHUB_APP_ID);
+  const appPrivateKeyPem = toNonEmptyString(input.env.GITHUB_APP_PRIVATE_KEY);
+  const installationId = mapping.installationId;
+  if (!appId || !appPrivateKeyPem) {
+    throw new Error(
+      "Missing GitHub App configuration (GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY)"
+    );
+  }
+  if (!installationId || !Number.isInteger(installationId) || installationId < 1) {
+    throw new Error(
+      "GitHub mapping missing installationId; configure a GitHub App installation for this team mapping"
+    );
+  }
+  const installationToken = await createGithubInstallationToken({
+    policy: input.policy,
+    appId,
+    appPrivateKeyPem,
+    installationId,
+  });
+  await githubRequest({
+    policy: input.policy,
+    authToken: installationToken,
+    url: `${repoUrl}`,
+  });
 
   const baseSha = await resolveBaseBranchSha({
-    env: input.env,
     policy: input.policy,
+    authToken: installationToken,
     repoUrl,
     baseBranch,
   });
 
   await githubRequest({
-    env: input.env,
     policy: input.policy,
+    authToken: installationToken,
     url: `${repoUrl}/git/refs`,
     method: "POST",
     body: {
@@ -185,15 +178,15 @@ export async function executeGithubAutofixAction(
 
   for (const file of files) {
     const existingSha = await resolveFileSha({
-      env: input.env,
       policy: input.policy,
+      authToken: installationToken,
       repoUrl,
       filePath: file.path,
       branchName,
     });
     await githubRequest({
-      env: input.env,
       policy: input.policy,
+      authToken: installationToken,
       url: `${repoUrl}/contents/${encodeURIComponent(file.path)}`,
       method: "PUT",
       body: {
@@ -211,8 +204,8 @@ export async function executeGithubAutofixAction(
     toNonEmptyString(payload.prBody) ??
     "Automated AI-generated fix created via BitWobbly AI sandbox.";
   const pr = await githubRequest({
-    env: input.env,
     policy: input.policy,
+    authToken: installationToken,
     url: `${repoUrl}/pulls`,
     method: "POST",
     body: {
