@@ -34,7 +34,7 @@
     "db:migrate:remote": "pnpm -C apps/app-worker db:migrate:remote"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
+    "@eslint/js": "^9.39.4",
     "concurrently": "^9.1.2",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
