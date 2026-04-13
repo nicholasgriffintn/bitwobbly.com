@@ -20,7 +20,7 @@
     "inspector_port": 9234
   },
   "vars": {
-    "SENTRY_DSN": "https://8e54edf55f554f13bf0d11b83d6f3de7@ingest.bitwobbly.com/7"
+    "SENTRY_DSN": "https://cc0b5efad328433686d32a693ea4a0ad@ingest.bitwobbly.com/26"
   },
   "d1_databases": [
     {
