@@ -1,3 +1,5 @@
+export const ENABLED = false;
+
 export const TEAM_AI_ASSISTANT_DEFAULT_MODEL = "@cf/moonshotai/kimi-k2.5";
 
 export const DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES = 1440;

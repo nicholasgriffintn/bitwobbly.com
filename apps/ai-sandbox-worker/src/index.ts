@@ -12,8 +12,16 @@ import { assertEnv } from "./types/env";
 
 const logger = createLogger({ service: "ai-sandbox-worker" });
 
+const ENABLED = false;
+
 const handler = {
   async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+    if (!ENABLED) {
+      logger.info("AI sandbox worker is disabled, skipping batch");
+      return;
+    }
+
+
     assertEnv(env);
 
     for (const message of batch.messages) {

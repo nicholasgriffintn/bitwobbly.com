@@ -20,6 +20,7 @@ import {
   MIN_MANUAL_AUDIT_RATE_LIMIT_PER_HOUR,
   MIN_MAX_CONTEXT_ITEMS,
   TEAM_AI_ASSISTANT_DEFAULT_MODEL,
+  ENABLED,
 } from "./constants.ts";
 import {
   getTeamAiActionPolicy,
@@ -42,7 +43,7 @@ export function buildDefaultTeamAiAssistantSettings(
 ): TeamAiAssistantSettings {
   return {
     teamId,
-    enabled: false,
+    enabled: ENABLED,
     model: TEAM_AI_ASSISTANT_DEFAULT_MODEL,
     autoAuditEnabled: false,
     autoAuditIntervalMinutes: DEFAULT_AUTO_AUDIT_INTERVAL_MINUTES,
