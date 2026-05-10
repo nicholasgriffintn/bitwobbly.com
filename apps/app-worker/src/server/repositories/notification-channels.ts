@@ -45,7 +45,7 @@ export async function createEmailChannel(
   const id = randomId("chan");
   const config_json = JSON.stringify({
     to: input.to,
-    from: input.from || "bitwobbly@notifications.nicholasgriffin.dev",
+    from: input.from || "bitwobbly@notifications.nicholasgriffin.co.uk",
     subject: input.subject || "BitWobbly Alert",
     label: input.label || input.to,
   });

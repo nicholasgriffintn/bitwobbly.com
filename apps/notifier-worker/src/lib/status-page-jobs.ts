@@ -11,6 +11,7 @@ import {
   listUnsentSubscriberEventsByIds,
   markSubscriberEventsSent,
 } from "../repositories/status-page-events";
+import { DEFAULT_EMAIL_FROM } from "./email.ts";
 import { escapeHtml } from "./html-utils.ts";
 
 export type StatusPageJob =
@@ -114,7 +115,7 @@ async function handleConfirmEmail(
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "BitWobbly <bitwobbly@notifications.nicholasgriffin.dev>",
+      from: DEFAULT_EMAIL_FROM,
       to: [endpoint],
       subject: `Confirm your subscription: ${pageName}`,
       html: renderConfirmEmailHtml({ pageName, confirmUrl, unsubscribeUrl }),
@@ -271,7 +272,7 @@ async function handleDeliverEvents(
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "BitWobbly <bitwobbly@notifications.nicholasgriffin.dev>",
+        from: DEFAULT_EMAIL_FROM,
         to: [subscriber.endpoint],
         subject,
         html: renderUpdateEmailHtml({

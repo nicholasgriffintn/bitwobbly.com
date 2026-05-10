@@ -1,3 +1,8 @@
+import { escapeHtml } from "./html-utils.ts";
+
+export const DEFAULT_EMAIL_FROM =
+  "BitWobbly <bitwobbly@notifications.nicholasgriffin.co.uk>";
+
 export interface SendMonitorAlertEmailParams {
   email: string;
   statusText: string;
@@ -6,6 +11,8 @@ export interface SendMonitorAlertEmailParams {
   status: "up" | "down";
   reason?: string;
   incidentId?: string;
+  from?: string;
+  subjectPrefix?: string;
   resendApiKey: string;
 }
 
@@ -29,6 +36,8 @@ export interface SendIssueAlertEmailParams {
   };
   projectName: string;
   environment?: string;
+  from?: string;
+  subjectPrefix?: string;
   resendApiKey: string;
 }
 
@@ -43,6 +52,8 @@ export async function sendIssueAlertEmail({
   issue,
   projectName,
   environment,
+  from,
+  subjectPrefix,
   resendApiKey,
 }: SendIssueAlertEmailParams): Promise<void> {
   const severityColors = {
@@ -64,6 +75,20 @@ export async function sendIssueAlertEmail({
   );
   const firstSeen = new Date(issue.firstSeenAt * 1000).toLocaleString();
   const lastSeen = new Date(issue.lastSeenAt * 1000).toLocaleString();
+  const safeRuleName = escapeHtml(ruleName);
+  const safeIssueTitle = escapeHtml(issue.title);
+  const safeCulprit = issue.culprit ? escapeHtml(issue.culprit) : null;
+  const safeTriggerDescription = escapeHtml(triggerDescription);
+  const safeLevel = escapeHtml(issue.level);
+  const safeProjectName = escapeHtml(projectName);
+  const safeEnvironment = environment ? escapeHtml(environment) : null;
+  const safeAlertId = escapeHtml(alertId);
+  const subject = buildIssueSubject({
+    subjectPrefix,
+    emoji: severityEmojis[severity],
+    projectName,
+    title: issue.title,
+  });
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -72,9 +97,9 @@ export async function sendIssueAlertEmail({
       Authorization: `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      from: "BitWobbly <bitwobbly@notifications.nicholasgriffin.dev>",
+      from: normaliseFromAddress(from),
       to: [email],
-      subject: `${severityEmojis[severity]} [${projectName}] ${issue.title}`,
+      subject,
       html: `
         <!DOCTYPE html>
         <html>
@@ -86,15 +111,15 @@ export async function sendIssueAlertEmail({
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: ${severityColors[severity]}; padding: 20px; border-radius: 8px; margin-bottom: 20px; color: white;">
               <h1 style="margin: 0;">${severityEmojis[severity]} ${severity.toUpperCase()}</h1>
-              <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Rule: ${ruleName}</p>
+              <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Rule: ${safeRuleName}</p>
             </div>
 
             <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px;">
-              <h2 style="margin-top: 0; color: #495057;">${issue.title}</h2>
-              ${issue.culprit ? `<p style="color: #6c757d; margin: 5px 0;">${issue.culprit}</p>` : ""}
-              <p><strong>Trigger:</strong> ${triggerDescription}</p>
-              <p><strong>Level:</strong> ${issue.level}</p>
-              <p><strong>Project:</strong> ${projectName}${environment ? ` (${environment})` : ""}</p>
+              <h2 style="margin-top: 0; color: #495057;">${safeIssueTitle}</h2>
+              ${safeCulprit ? `<p style="color: #6c757d; margin: 5px 0;">${safeCulprit}</p>` : ""}
+              <p><strong>Trigger:</strong> ${safeTriggerDescription}</p>
+              <p><strong>Level:</strong> ${safeLevel}</p>
+              <p><strong>Project:</strong> ${safeProjectName}${safeEnvironment ? ` (${safeEnvironment})` : ""}</p>
             </div>
 
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -103,7 +128,7 @@ export async function sendIssueAlertEmail({
               <p><strong>Users affected:</strong> ${issue.userCount.toLocaleString()}</p>
               <p><strong>First seen:</strong> ${firstSeen}</p>
               <p><strong>Last seen:</strong> ${lastSeen}</p>
-              <p style="font-size: 12px; color: #6c757d;">Alert ID: ${alertId}</p>
+              <p style="font-size: 12px; color: #6c757d;">Alert ID: ${safeAlertId}</p>
             </div>
 
             <div style="margin-top: 20px; padding: 20px; background: #e9ecef; border-radius: 8px;">
@@ -158,8 +183,17 @@ export async function sendAlertEmail({
   status,
   reason,
   incidentId,
+  from,
+  subjectPrefix,
   resendApiKey,
 }: SendMonitorAlertEmailParams): Promise<void> {
+  const safeStatusText = escapeHtml(statusText);
+  const safeAlertId = escapeHtml(alertId);
+  const safeMonitorId = escapeHtml(monitorId);
+  const safeReason = reason ? escapeHtml(reason) : null;
+  const safeIncidentId = incidentId ? escapeHtml(incidentId) : null;
+  const subject = `${subjectPrefix?.trim() || "BitWobbly Alert"} - ${statusText}`;
+
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -167,9 +201,9 @@ export async function sendAlertEmail({
       Authorization: `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      from: "BitWobbly <bitwobbly@notifications.nicholasgriffin.dev>",
+      from: normaliseFromAddress(from),
       to: [email],
-      subject: `BitWobbly Alert - ${statusText}`,
+      subject,
       html: `
         <!DOCTYPE html>
         <html>
@@ -180,16 +214,16 @@ export async function sendAlertEmail({
           </head>
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-              <h1 style="margin: 0; color: #495057;">${statusText}</h1>
-              <p style="margin: 10px 0 0 0; font-size: 14px; color: #6c757d;">Alert ID: ${alertId}</p>
+              <h1 style="margin: 0; color: #495057;">${safeStatusText}</h1>
+              <p style="margin: 10px 0 0 0; font-size: 14px; color: #6c757d;">Alert ID: ${safeAlertId}</p>
             </div>
             
             <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
               <h2 style="margin-top: 0; color: #495057;">Service Details</h2>
-              <p><strong>Monitor ID:</strong> ${monitorId}</p>
+              <p><strong>Monitor ID:</strong> ${safeMonitorId}</p>
               <p><strong>Status:</strong> ${status.toUpperCase()}</p>
-              ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
-              ${incidentId ? `<p><strong>Incident ID:</strong> ${incidentId}</p>` : ""}
+              ${safeReason ? `<p><strong>Reason:</strong> ${safeReason}</p>` : ""}
+              ${safeIncidentId ? `<p><strong>Incident ID:</strong> ${safeIncidentId}</p>` : ""}
               <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
             </div>
             
@@ -208,4 +242,22 @@ export async function sendAlertEmail({
     const error = await response.text();
     throw new Error(`Failed to send email: ${error}`);
   }
+}
+
+function normaliseFromAddress(from?: string): string {
+  const trimmed = from?.trim();
+  if (!trimmed) return DEFAULT_EMAIL_FROM;
+  if (trimmed.includes("<")) return trimmed;
+  return `BitWobbly <${trimmed}>`;
+}
+
+function buildIssueSubject(input: {
+  subjectPrefix?: string;
+  emoji: string;
+  projectName: string;
+  title: string;
+}): string {
+  const alertSubject = `${input.emoji} [${input.projectName}] ${input.title}`;
+  const prefix = input.subjectPrefix?.trim();
+  return prefix ? `${prefix} - ${alertSubject}` : alertSubject;
 }

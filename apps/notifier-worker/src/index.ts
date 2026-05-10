@@ -23,7 +23,10 @@ import {
   getProjectById,
   getAlertRulesForMonitor,
 } from "./repositories/alert-rules";
-import { acquireQueueDedupe } from "./repositories/queue-dedupe";
+import {
+  hasCompletedQueueJob,
+  recordCompletedQueueJob,
+} from "./repositories/queue-dedupe";
 
 const logger = createLogger({ service: "notifier-worker" });
 
@@ -37,8 +40,8 @@ const handler = {
         const job = msg.body;
 
         if (isAlertJob(job)) {
-          const ok = await acquireQueueDedupe(db, `alert:${job.alert_id}`);
-          if (!ok) {
+          const dedupeKey = `alert:${job.alert_id}`;
+          if (await hasCompletedQueueJob(db, dedupeKey)) {
             msg.ack();
             continue;
           }
@@ -48,18 +51,20 @@ const handler = {
           } else {
             await handleMonitorAlert(job, env, db);
           }
+          await recordCompletedQueueJob(db, dedupeKey);
           msg.ack();
           continue;
         }
 
         if (isStatusPageJob(job)) {
-          const ok = await acquireQueueDedupe(db, `status_page:${job.job_id}`);
-          if (!ok) {
+          const dedupeKey = `status_page:${job.job_id}`;
+          if (await hasCompletedQueueJob(db, dedupeKey)) {
             msg.ack();
             continue;
           }
 
           await handleStatusPageJob(job, env, db, sendWebhook);
+          await recordCompletedQueueJob(db, dedupeKey);
           msg.ack();
           continue;
         }
@@ -124,7 +129,11 @@ async function handleMonitorAlert(
         })
       );
     } else if (channel.type === "email") {
-      const emailConfig = cfg as { to?: string };
+      const emailConfig = cfg as {
+        to?: string;
+        from?: string;
+        subject?: string;
+      };
       const to = emailConfig.to;
       if (!to) continue;
 
@@ -140,13 +149,15 @@ async function handleMonitorAlert(
           status: job.status,
           reason: job.reason,
           incidentId: job.incident_id,
+          from: emailConfig.from,
+          subjectPrefix: emailConfig.subject,
           resendApiKey: env.RESEND_API_KEY,
         })
       );
     }
   }
 
-  await Promise.allSettled(sendPromises);
+  await Promise.all(sendPromises);
 }
 
 async function handleIssueAlert(
@@ -214,7 +225,7 @@ async function handleIssueAlert(
       ts: new Date().toISOString(),
     });
   } else if (channel.type === "email") {
-    const emailConfig = cfg as { to?: string };
+    const emailConfig = cfg as { to?: string; from?: string; subject?: string };
     const to = emailConfig.to;
     if (!to) return;
 
@@ -238,6 +249,8 @@ async function handleIssueAlert(
       },
       projectName,
       environment: job.environment,
+      from: emailConfig.from,
+      subjectPrefix: emailConfig.subject,
       resendApiKey: env.RESEND_API_KEY,
     });
   }
