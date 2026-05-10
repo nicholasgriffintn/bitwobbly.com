@@ -3,7 +3,7 @@ import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
-import { ErrorCard } from "@/components/feedback";
+import { ErrorCard, SuccessBox } from "@/components/feedback";
 import { TabNav } from "@/components/navigation";
 import { ListContainer, ListRow } from "@/components/list";
 import { NotificationsModals } from "@/components/modals/notifications";
@@ -25,6 +25,7 @@ import {
   deleteAlertRuleFn,
   toggleAlertRuleFn,
   listNotificationDeliveryAttemptsFn,
+  sendTestAlertRuleFn,
 } from "@/server/functions/alert-rules";
 
 type Monitor = {
@@ -148,6 +149,8 @@ export default function Notifications() {
   const [isRuleContextLoaded, setIsRuleContextLoaded] = useState(false);
   const [rules, setRules] = useState<AlertRule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
 
   const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
@@ -157,6 +160,7 @@ export default function Notifications() {
 
   const deleteRule = useServerFn(deleteAlertRuleFn);
   const toggleRule = useServerFn(toggleAlertRuleFn);
+  const sendTestAlert = useServerFn(sendTestAlertRuleFn);
   const listRules = useServerFn(listAlertRulesFn);
 
   const refreshChannels = async () => {
@@ -216,6 +220,22 @@ export default function Notifications() {
     }
   };
 
+  const onSendTestAlert = async (id: string) => {
+    setError(null);
+    setSuccess(null);
+    setTestingRuleId(id);
+    try {
+      const res = await sendTestAlert({ data: { id } });
+      setSuccess(
+        `Queued test alert ${res.alertId}. Check the channel and the audit log for delivery status.`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTestingRuleId(null);
+    }
+  };
+
   const getChannelDisplay = (channel: Channel) => {
     const config = JSON.parse(channel.configJson);
     if (channel.type === "email") {
@@ -271,6 +291,11 @@ export default function Notifications() {
       </PageHeader>
 
       {error && <ErrorCard message={error} />}
+      {success && (
+        <SuccessBox title="Test alert queued">
+          <p className="muted mb-0">{success}</p>
+        </SuccessBox>
+      )}
 
       <TabNav
         tabs={[
@@ -293,7 +318,7 @@ export default function Notifications() {
               const display = getChannelDisplay(channel);
               return (
                 <ListRow
-                   isOdd={index > 0}
+                  isOdd={index > 0}
                   key={channel.id}
                   titleClassName="flex flex-wrap items-center gap-2"
                   title={
@@ -340,7 +365,7 @@ export default function Notifications() {
                   config.label || config.url || config.to || "Channel";
                 return (
                   <ListRow
-                     isOdd={index > 0}
+                    isOdd={index > 0}
                     key={rule.id}
                     title={
                       <>
@@ -393,6 +418,15 @@ export default function Notifications() {
                         <Button
                           type="button"
                           variant="outline"
+                          color="info"
+                          disabled={testingRuleId === rule.id}
+                          onClick={() => onSendTestAlert(rule.id)}
+                        >
+                          {testingRuleId === rule.id ? "Sending…" : "Send test"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
                           color={rule.enabled ? "warning" : "success"}
                           onClick={() => onToggleRule(rule.id, !rule.enabled)}
                         >
@@ -431,7 +465,7 @@ export default function Notifications() {
                         return (
                           <ListRow
                             key={rule.id}
-                             isOdd={index > 0}
+                            isOdd={index > 0}
                             title={
                               <>
                                 <span

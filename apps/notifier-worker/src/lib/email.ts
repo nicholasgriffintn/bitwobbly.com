@@ -43,9 +43,91 @@ export interface SendIssueAlertEmailParams {
   resendApiKey: string;
 }
 
+export interface SendTestAlertEmailParams {
+  email: string;
+  alertId: string;
+  ruleName: string;
+  triggerType: string;
+  sourceType: string;
+  from?: string;
+  subjectPrefix?: string;
+  resendApiKey: string;
+}
+
 export interface EmailDeliveryResult {
   subject: string;
   providerMessageId: string | null;
+}
+
+export async function sendTestAlertEmail({
+  email,
+  alertId,
+  ruleName,
+  triggerType,
+  sourceType,
+  from,
+  subjectPrefix,
+  resendApiKey,
+}: SendTestAlertEmailParams): Promise<EmailDeliveryResult> {
+  const safeAlertId = escapeHtml(alertId);
+  const safeRuleName = escapeHtml(ruleName);
+  const safeTriggerType = escapeHtml(triggerType);
+  const safeSourceType = escapeHtml(sourceType);
+  const subject = `${subjectPrefix?.trim() || "BitWobbly Alert"} - Test alert`;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${resendApiKey}`,
+    },
+    body: JSON.stringify({
+      from: normaliseFromAddress(from),
+      to: [email],
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>BitWobbly Test Alert</title>
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #0d6efd; padding: 20px; border-radius: 8px; margin-bottom: 20px; color: white;">
+              <h1 style="margin: 0;">BitWobbly Test Alert</h1>
+              <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Your notification rule delivered this test successfully.</p>
+            </div>
+
+            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
+              <h2 style="margin-top: 0; color: #495057;">Rule Details</h2>
+              <p><strong>Rule:</strong> ${safeRuleName}</p>
+              <p><strong>Source:</strong> ${safeSourceType}</p>
+              <p><strong>Trigger:</strong> ${safeTriggerType}</p>
+              <p><strong>Alert ID:</strong> ${safeAlertId}</p>
+              <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+
+            <div style="margin-top: 20px; padding: 20px; background: #e9ecef; border-radius: 8px;">
+              <p style="margin: 0; font-size: 14px; color: #495057;">
+                This test alert was generated from your BitWobbly notification rule.
+              </p>
+            </div>
+          </body>
+        </html>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to send email: ${error}`);
+  }
+
+  return {
+    subject,
+    providerMessageId: await getProviderMessageId(response),
+  };
 }
 
 export async function sendIssueAlertEmail({
@@ -261,7 +343,9 @@ export async function sendAlertEmail({
   };
 }
 
-async function getProviderMessageId(response: Response): Promise<string | null> {
+async function getProviderMessageId(
+  response: Response
+): Promise<string | null> {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) return null;
 
