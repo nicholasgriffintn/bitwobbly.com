@@ -158,6 +158,7 @@ export async function resolveAlertRuleState(
 export async function insertAlertRuleFire(
   db: DB,
   data: {
+    alertId: string;
     ruleId: string;
     issueId: string;
     eventId: string;
@@ -168,6 +169,7 @@ export async function insertAlertRuleFire(
 ) {
   await db.insert(schema.alertRuleFires).values({
     id: randomId("alf"),
+    alertId: data.alertId,
     ruleId: data.ruleId,
     issueId: data.issueId,
     eventId: data.eventId,

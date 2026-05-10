@@ -1,3 +1,5 @@
+import { isRecord } from "@bitwobbly/shared";
+
 import { escapeHtml } from "./html-utils.ts";
 
 export const DEFAULT_EMAIL_FROM =
@@ -41,6 +43,11 @@ export interface SendIssueAlertEmailParams {
   resendApiKey: string;
 }
 
+export interface EmailDeliveryResult {
+  subject: string;
+  providerMessageId: string | null;
+}
+
 export async function sendIssueAlertEmail({
   email,
   alertId,
@@ -55,7 +62,7 @@ export async function sendIssueAlertEmail({
   from,
   subjectPrefix,
   resendApiKey,
-}: SendIssueAlertEmailParams): Promise<void> {
+}: SendIssueAlertEmailParams): Promise<EmailDeliveryResult> {
   const severityColors = {
     critical: "#dc3545",
     warning: "#ffc107",
@@ -146,6 +153,11 @@ export async function sendIssueAlertEmail({
     const error = await response.text();
     throw new Error(`Failed to send email: ${error}`);
   }
+
+  return {
+    subject,
+    providerMessageId: await getProviderMessageId(response),
+  };
 }
 
 function getTriggerDescription(
@@ -186,7 +198,7 @@ export async function sendAlertEmail({
   from,
   subjectPrefix,
   resendApiKey,
-}: SendMonitorAlertEmailParams): Promise<void> {
+}: SendMonitorAlertEmailParams): Promise<EmailDeliveryResult> {
   const safeStatusText = escapeHtml(statusText);
   const safeAlertId = escapeHtml(alertId);
   const safeMonitorId = escapeHtml(monitorId);
@@ -242,6 +254,20 @@ export async function sendAlertEmail({
     const error = await response.text();
     throw new Error(`Failed to send email: ${error}`);
   }
+
+  return {
+    subject,
+    providerMessageId: await getProviderMessageId(response),
+  };
+}
+
+async function getProviderMessageId(response: Response): Promise<string | null> {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) return null;
+
+  const body: unknown = await response.json().catch(() => null);
+  if (!isRecord(body)) return null;
+  return typeof body.id === "string" ? body.id : null;
 }
 
 function normaliseFromAddress(from?: string): string {

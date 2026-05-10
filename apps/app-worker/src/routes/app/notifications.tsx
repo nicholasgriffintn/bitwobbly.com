@@ -7,6 +7,10 @@ import { ErrorCard } from "@/components/feedback";
 import { TabNav } from "@/components/navigation";
 import { ListContainer, ListRow } from "@/components/list";
 import { NotificationsModals } from "@/components/modals/notifications";
+import {
+  NotificationDeliveryAudit,
+  type NotificationDeliveryAttempt,
+} from "@/components/notifications/NotificationDeliveryAudit";
 import { Button } from "@/components/ui";
 import { toTitleCase } from "@/utils/format";
 import { listMonitorsFn } from "@/server/functions/monitors";
@@ -20,6 +24,7 @@ import {
   listAlertRulesFn,
   deleteAlertRuleFn,
   toggleAlertRuleFn,
+  listNotificationDeliveryAttemptsFn,
 } from "@/server/functions/alert-rules";
 
 type Monitor = {
@@ -61,7 +66,7 @@ type AlertRule = {
   monitorName: string | null;
 };
 
-type Tab = "channels" | "rules";
+type Tab = "channels" | "rules" | "audit";
 
 const TRIGGER_TYPES = [
   { value: "new_issue", label: "New Issue" },
@@ -86,12 +91,16 @@ export const Route = createFileRoute("/app/notifications")({
       projects: projectsRes.projects,
     }));
     const rulesPromise = listAlertRulesFn().then((r) => r.rules);
+    const deliveryAuditPromise = listNotificationDeliveryAttemptsFn({
+      data: { limit: 50 },
+    }).then((r) => r.deliveries);
 
     const channelsRes = await channelsPromise;
     return {
       channels: channelsRes.channels,
       ruleContextPromise: defer(ruleContextPromise),
       rulesPromise: defer(rulesPromise),
+      deliveryAuditPromise: defer(deliveryAuditPromise),
     };
   },
 });
@@ -129,6 +138,7 @@ export default function Notifications() {
     channels: initialChannels,
     ruleContextPromise,
     rulesPromise,
+    deliveryAuditPromise,
   } = Route.useLoaderData();
 
   const [activeTab, setActiveTab] = useState<Tab>("channels");
@@ -266,6 +276,7 @@ export default function Notifications() {
         tabs={[
           { id: "channels", label: "Channels", count: channels.length },
           { id: "rules", label: "Rules", count: rules?.length },
+          { id: "audit", label: "Audit" },
         ]}
         activeTab={activeTab}
         onTabChange={(tabId: Tab) => setActiveTab(tabId)}
@@ -467,6 +478,19 @@ export default function Notifications() {
             </Suspense>
           )}
         </Card>
+      )}
+
+      {activeTab === "audit" && (
+        <Suspense fallback={<div className="muted p-4">Loading audit…</div>}>
+          <Await promise={deliveryAuditPromise}>
+            {(deliveries: NotificationDeliveryAttempt[]) => (
+              <NotificationDeliveryAudit
+                deliveries={deliveries}
+                getTriggerLabel={getTriggerLabel}
+              />
+            )}
+          </Await>
+        </Suspense>
       )}
 
       <NotificationsModals

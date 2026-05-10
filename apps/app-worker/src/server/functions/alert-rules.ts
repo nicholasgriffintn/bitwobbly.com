@@ -11,6 +11,7 @@ import {
   deleteAlertRule,
   toggleAlertRule,
   listAlertRuleFires,
+  listNotificationDeliveryAttempts,
 } from "../repositories/alert-rules";
 import { notificationChannelExists } from "../repositories/notification-channels";
 import { getMonitorById } from "../repositories/monitors";
@@ -267,4 +268,20 @@ export const listAlertRuleFiresFn = createServerFn({ method: "GET" })
       data.limit || 50
     );
     return { fires };
+  });
+
+export const listNotificationDeliveryAttemptsFn = createServerFn({
+  method: "GET",
+})
+  .inputValidator((data: { limit?: number }) => data)
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    const deliveries = await listNotificationDeliveryAttempts(
+      db,
+      teamId,
+      data.limit || 50
+    );
+    return { deliveries };
   });

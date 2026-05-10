@@ -703,6 +703,7 @@ export const alertRuleStates = sqliteTable(
 
 export const alertRuleFires = sqliteTable("alert_rule_fires", {
   id: text("id").primaryKey(),
+  alertId: text("alert_id"),
   ruleId: text("rule_id")
     .notNull()
     .references(() => alertRules.id),
@@ -712,6 +713,47 @@ export const alertRuleFires = sqliteTable("alert_rule_fires", {
   triggerReason: text("trigger_reason").notNull(),
   firedAt: integer("fired_at").notNull(),
 });
+
+export const notificationDeliveryAttempts = sqliteTable(
+  "notification_delivery_attempts",
+  {
+    id: text("id").primaryKey(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id),
+    alertId: text("alert_id"),
+    jobId: text("job_id"),
+    ruleId: text("rule_id").references(() => alertRules.id),
+    channelId: text("channel_id").references(() => notificationChannels.id),
+    channelType: text("channel_type").notNull(),
+    recipient: text("recipient"),
+    provider: text("provider").notNull(),
+    status: text("status").notNull(),
+    subject: text("subject"),
+    errorMessage: text("error_message"),
+    providerMessageId: text("provider_message_id"),
+    sourceType: text("source_type").notNull(),
+    triggerType: text("trigger_type"),
+    issueId: text("issue_id"),
+    monitorId: text("monitor_id"),
+    incidentId: text("incident_id"),
+    statusPageId: text("status_page_id"),
+    detailsJson: text("details_json"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    teamCreatedIdx: index("notification_delivery_attempts_team_created_idx").on(
+      table.teamId,
+      table.createdAt
+    ),
+    alertIdx: index("notification_delivery_attempts_alert_idx").on(
+      table.alertId
+    ),
+    ruleIdx: index("notification_delivery_attempts_rule_idx").on(
+      table.ruleId
+    ),
+  })
+);
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -1056,6 +1098,10 @@ export type AlertRuleState = typeof alertRuleStates.$inferSelect;
 export type NewAlertRuleState = typeof alertRuleStates.$inferInsert;
 export type AlertRuleFire = typeof alertRuleFires.$inferSelect;
 export type NewAlertRuleFire = typeof alertRuleFires.$inferInsert;
+export type NotificationDeliveryAttempt =
+  typeof notificationDeliveryAttempts.$inferSelect;
+export type NewNotificationDeliveryAttempt =
+  typeof notificationDeliveryAttempts.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;

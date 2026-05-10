@@ -197,6 +197,45 @@ export async function listAlertRuleFires(
   return await query;
 }
 
+export async function listNotificationDeliveryAttempts(
+  db: DB,
+  teamId: string,
+  limit = 50
+) {
+  return await db
+    .select({
+      id: schema.notificationDeliveryAttempts.id,
+      alertId: schema.notificationDeliveryAttempts.alertId,
+      jobId: schema.notificationDeliveryAttempts.jobId,
+      ruleId: schema.notificationDeliveryAttempts.ruleId,
+      ruleName: schema.alertRules.name,
+      channelId: schema.notificationDeliveryAttempts.channelId,
+      channelType: schema.notificationDeliveryAttempts.channelType,
+      recipient: schema.notificationDeliveryAttempts.recipient,
+      provider: schema.notificationDeliveryAttempts.provider,
+      status: schema.notificationDeliveryAttempts.status,
+      subject: schema.notificationDeliveryAttempts.subject,
+      errorMessage: schema.notificationDeliveryAttempts.errorMessage,
+      providerMessageId: schema.notificationDeliveryAttempts.providerMessageId,
+      sourceType: schema.notificationDeliveryAttempts.sourceType,
+      triggerType: schema.notificationDeliveryAttempts.triggerType,
+      issueId: schema.notificationDeliveryAttempts.issueId,
+      monitorId: schema.notificationDeliveryAttempts.monitorId,
+      incidentId: schema.notificationDeliveryAttempts.incidentId,
+      statusPageId: schema.notificationDeliveryAttempts.statusPageId,
+      detailsJson: schema.notificationDeliveryAttempts.detailsJson,
+      createdAt: schema.notificationDeliveryAttempts.createdAt,
+    })
+    .from(schema.notificationDeliveryAttempts)
+    .leftJoin(
+      schema.alertRules,
+      eq(schema.alertRules.id, schema.notificationDeliveryAttempts.ruleId)
+    )
+    .where(eq(schema.notificationDeliveryAttempts.teamId, teamId))
+    .orderBy(desc(schema.notificationDeliveryAttempts.createdAt))
+    .limit(limit);
+}
+
 export async function toggleAlertRule(
   db: DB,
   teamId: string,

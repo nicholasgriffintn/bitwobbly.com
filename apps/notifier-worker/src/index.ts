@@ -27,6 +27,11 @@ import {
   hasCompletedQueueJob,
   recordCompletedQueueJob,
 } from "./repositories/queue-dedupe";
+import {
+  recordDeliveryFailed,
+  recordDeliverySent,
+  type DeliveryAuditContext,
+} from "./lib/delivery-audit";
 
 const logger = createLogger({ service: "notifier-worker" });
 
@@ -116,6 +121,19 @@ async function handleMonitorAlert(
     }
 
     if (channel.type === "webhook") {
+      const auditContext: DeliveryAuditContext = {
+        teamId: job.team_id,
+        alertId: job.alert_id,
+        ruleId: rule.id,
+        channelId: channel.id,
+        channelType: "webhook",
+        recipient: (cfg as { url?: string }).url ?? null,
+        provider: "webhook",
+        sourceType: "monitor",
+        triggerType,
+        monitorId: job.monitor_id,
+        incidentId: job.incident_id ?? null,
+      };
       sendPromises.push(
         sendWebhook(cfg as { url?: string }, {
           alert_id: job.alert_id,
@@ -127,6 +145,11 @@ async function handleMonitorAlert(
           incident_id: job.incident_id,
           ts: new Date().toISOString(),
         })
+          .then(() => recordDeliverySent(db, auditContext))
+          .catch(async (error: unknown) => {
+            await recordDeliveryFailed(db, auditContext, error);
+            throw error;
+          })
       );
     } else if (channel.type === "email") {
       const emailConfig = cfg as {
@@ -139,6 +162,19 @@ async function handleMonitorAlert(
 
       const statusText =
         job.status === "down" ? "Service Down" : "Service Recovered";
+      const auditContext: DeliveryAuditContext = {
+        teamId: job.team_id,
+        alertId: job.alert_id,
+        ruleId: rule.id,
+        channelId: channel.id,
+        channelType: "email",
+        recipient: to,
+        provider: "resend",
+        sourceType: "monitor",
+        triggerType,
+        monitorId: job.monitor_id,
+        incidentId: job.incident_id ?? null,
+      };
 
       sendPromises.push(
         sendAlertEmail({
@@ -153,6 +189,11 @@ async function handleMonitorAlert(
           subjectPrefix: emailConfig.subject,
           resendApiKey: env.RESEND_API_KEY,
         })
+          .then((result) => recordDeliverySent(db, auditContext, result))
+          .catch(async (error: unknown) => {
+            await recordDeliveryFailed(db, auditContext, error);
+            throw error;
+          })
       );
     }
   }
@@ -200,59 +241,97 @@ async function handleIssueAlert(
   }
 
   if (channel.type === "webhook") {
-    await sendWebhook(cfg as { url?: string }, {
-      alert_id: job.alert_id,
-      type: "issue",
-      severity: job.severity,
-      rule_id: job.rule_id,
-      rule_name: rule.name,
-      trigger: job.trigger_type,
-      trigger_value: job.trigger_value,
-      threshold: job.threshold,
-      issue: {
-        id: issue.id,
-        title: issue.title,
-        level: issue.level,
-        culprit: issue.culprit,
-        event_count: issue.eventCount,
-        user_count: issue.userCount,
-        first_seen: new Date(issue.firstSeenAt * 1000).toISOString(),
-        last_seen: new Date(issue.lastSeenAt * 1000).toISOString(),
-      },
-      project_id: job.project_id,
-      project_name: projectName,
-      environment: job.environment,
-      ts: new Date().toISOString(),
-    });
+    const auditContext: DeliveryAuditContext = {
+      teamId: job.team_id,
+      alertId: job.alert_id,
+      ruleId: job.rule_id,
+      channelId: channel.id,
+      channelType: "webhook",
+      recipient: (cfg as { url?: string }).url ?? null,
+      provider: "webhook",
+      sourceType: "issue",
+      triggerType: job.trigger_type,
+      issueId: job.issue_id,
+      details: { projectId: job.project_id },
+    };
+    try {
+      await sendWebhook(cfg as { url?: string }, {
+        alert_id: job.alert_id,
+        type: "issue",
+        severity: job.severity,
+        rule_id: job.rule_id,
+        rule_name: rule.name,
+        trigger: job.trigger_type,
+        trigger_value: job.trigger_value,
+        threshold: job.threshold,
+        issue: {
+          id: issue.id,
+          title: issue.title,
+          level: issue.level,
+          culprit: issue.culprit,
+          event_count: issue.eventCount,
+          user_count: issue.userCount,
+          first_seen: new Date(issue.firstSeenAt * 1000).toISOString(),
+          last_seen: new Date(issue.lastSeenAt * 1000).toISOString(),
+        },
+        project_id: job.project_id,
+        project_name: projectName,
+        environment: job.environment,
+        ts: new Date().toISOString(),
+      });
+      await recordDeliverySent(db, auditContext);
+    } catch (error: unknown) {
+      await recordDeliveryFailed(db, auditContext, error);
+      throw error;
+    }
   } else if (channel.type === "email") {
     const emailConfig = cfg as { to?: string; from?: string; subject?: string };
     const to = emailConfig.to;
     if (!to) return;
-
-    await sendIssueAlertEmail({
-      email: to,
+    const auditContext: DeliveryAuditContext = {
+      teamId: job.team_id,
       alertId: job.alert_id,
-      ruleName: rule.name,
-      severity: job.severity,
+      ruleId: job.rule_id,
+      channelId: channel.id,
+      channelType: "email",
+      recipient: to,
+      provider: "resend",
+      sourceType: "issue",
       triggerType: job.trigger_type,
-      triggerValue: job.trigger_value,
-      threshold: job.threshold,
-      issue: {
-        id: issue.id,
-        title: issue.title,
-        level: issue.level,
-        culprit: issue.culprit,
-        eventCount: issue.eventCount,
-        userCount: issue.userCount,
-        firstSeenAt: issue.firstSeenAt,
-        lastSeenAt: issue.lastSeenAt,
-      },
-      projectName,
-      environment: job.environment,
-      from: emailConfig.from,
-      subjectPrefix: emailConfig.subject,
-      resendApiKey: env.RESEND_API_KEY,
-    });
+      issueId: job.issue_id,
+      details: { projectId: job.project_id },
+    };
+
+    try {
+      const result = await sendIssueAlertEmail({
+        email: to,
+        alertId: job.alert_id,
+        ruleName: rule.name,
+        severity: job.severity,
+        triggerType: job.trigger_type,
+        triggerValue: job.trigger_value,
+        threshold: job.threshold,
+        issue: {
+          id: issue.id,
+          title: issue.title,
+          level: issue.level,
+          culprit: issue.culprit,
+          eventCount: issue.eventCount,
+          userCount: issue.userCount,
+          firstSeenAt: issue.firstSeenAt,
+          lastSeenAt: issue.lastSeenAt,
+        },
+        projectName,
+        environment: job.environment,
+        from: emailConfig.from,
+        subjectPrefix: emailConfig.subject,
+        resendApiKey: env.RESEND_API_KEY,
+      });
+      await recordDeliverySent(db, auditContext, result);
+    } catch (error: unknown) {
+      await recordDeliveryFailed(db, auditContext, error);
+      throw error;
+    }
   }
 }
 

@@ -12,13 +12,13 @@ type FetchCall = {
   init: RequestInit;
 };
 
-function captureFetch(status = 202, body = "") {
+function captureFetch(status = 202, body = "", headers?: HeadersInit) {
   const calls: FetchCall[] = [];
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = (async (url, init) => {
     calls.push({ url: String(url), init: init ?? {} });
-    return new Response(body, { status });
+    return new Response(body, { headers, status });
   }) as typeof fetch;
 
   return {
@@ -32,7 +32,7 @@ function captureFetch(status = 202, body = "") {
 test("sendIssueAlertEmail uses configured sender and escapes HTML fields", async () => {
   const fetchMock = captureFetch();
   try {
-    await sendIssueAlertEmail({
+    const result = await sendIssueAlertEmail({
       email: "bitwobbly@nicholasgriffin.co.uk",
       alertId: "al_<1>",
       ruleName: "Rule <script>",
@@ -66,15 +66,18 @@ test("sendIssueAlertEmail uses configured sender and escapes HTML fields", async
     assert.match(payload.html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
     assert.match(payload.html, /Project &lt;x&gt; \(prod &lt;blue&gt;\)/);
     assert.doesNotMatch(payload.html, /<script>alert/);
+    assert.equal(result.providerMessageId, null);
   } finally {
     fetchMock.restore();
   }
 });
 
-test("sendAlertEmail defaults to the production notification sender", async () => {
-  const fetchMock = captureFetch();
+test("sendAlertEmail returns the Resend message id", async () => {
+  const fetchMock = captureFetch(202, JSON.stringify({ id: "email_123" }), {
+    "content-type": "application/json",
+  });
   try {
-    await sendAlertEmail({
+    const result = await sendAlertEmail({
       email: "bitwobbly@nicholasgriffin.co.uk",
       statusText: "Service Down",
       alertId: "al_1",
@@ -87,6 +90,7 @@ test("sendAlertEmail defaults to the production notification sender", async () =
     const payload = JSON.parse(String(fetchMock.calls[0].init.body));
     assert.equal(payload.from, DEFAULT_EMAIL_FROM);
     assert.equal(payload.subject, "BitWobbly Alert - Service Down");
+    assert.equal(result.providerMessageId, "email_123");
   } finally {
     fetchMock.restore();
   }

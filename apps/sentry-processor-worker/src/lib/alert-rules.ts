@@ -273,10 +273,12 @@ async function fireAlert(
   threshold?: number
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
+  const alertId = randomId("al");
 
   await upsertAlertRuleState(db, rule.id, context.issueId, severity, now);
 
   await insertAlertRuleFire(db, {
+    alertId,
     ruleId: rule.id,
     issueId: context.issueId,
     eventId: context.eventId,
@@ -293,7 +295,7 @@ async function fireAlert(
 
   const alertJob: IssueAlertJob = {
     type: "issue",
-    alert_id: randomId("al"),
+    alert_id: alertId,
     team_id: context.teamId,
     rule_id: rule.id,
     issue_id: context.issueId,
