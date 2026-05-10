@@ -2,19 +2,20 @@ import type {
   AlertJob,
   MonitorAlertJob,
   IssueAlertJob,
+  TestAlertJob,
 } from "@bitwobbly/shared";
 import { isAlertJob, createLogger, serialiseError } from "@bitwobbly/shared";
 import { withSentry } from "@sentry/cloudflare";
 
 import type { Env } from "./types/env";
 import { assertEnv } from "./types/env";
-import { sendAlertEmail, sendIssueAlertEmail } from "./lib/email";
-import { getDb } from "@bitwobbly/shared";
 import {
-  handleStatusPageJob,
-  isStatusPageJob,
-  type StatusPageJob,
-} from "./lib/status-page-jobs";
+  sendAlertEmail,
+  sendIssueAlertEmail,
+  sendTestAlertEmail,
+} from "./lib/email";
+import { getDb } from "@bitwobbly/shared";
+import { handleStatusPageJob, isStatusPageJob } from "./lib/status-page-jobs";
 import {
   getAlertRuleById,
   getChannelById,
@@ -53,6 +54,8 @@ const handler = {
 
           if (job.type === "issue") {
             await handleIssueAlert(job, env, db);
+          } else if (job.type === "test") {
+            await handleTestAlert(job, env, db);
           } else {
             await handleMonitorAlert(job, env, db);
           }
@@ -90,6 +93,95 @@ export default withSentry<Env, AlertJob>(
   }),
   handler
 );
+
+async function handleTestAlert(
+  job: TestAlertJob,
+  env: Env,
+  db: ReturnType<typeof getDb>
+) {
+  const rule = await getAlertRuleById(db, job.rule_id);
+  if (!rule) {
+    logger.warn("alert rule not found", { ruleId: job.rule_id });
+    return;
+  }
+
+  const channel = await getChannelById(db, rule.channelId);
+  if (!channel) {
+    logger.warn("notification channel not found or disabled", {
+      channelId: rule.channelId,
+    });
+    return;
+  }
+
+  let cfg: unknown = null;
+  try {
+    cfg = JSON.parse(channel.configJson);
+  } catch {
+    logger.warn("invalid channel config", { channelType: channel.type });
+    return;
+  }
+
+  const auditContext: DeliveryAuditContext = {
+    teamId: job.team_id,
+    alertId: job.alert_id,
+    ruleId: job.rule_id,
+    channelId: channel.id,
+    channelType: channel.type,
+    recipient:
+      channel.type === "webhook"
+        ? ((cfg as { url?: string }).url ?? null)
+        : ((cfg as { to?: string }).to ?? null),
+    provider: channel.type === "webhook" ? "webhook" : "resend",
+    sourceType: "test",
+    triggerType: "test_alert",
+    monitorId: rule.monitorId,
+    details: {
+      ruleName: rule.name,
+      ruleSourceType: rule.sourceType,
+      ruleTriggerType: rule.triggerType,
+    },
+  };
+
+  if (channel.type === "webhook") {
+    try {
+      await sendWebhook(cfg as { url?: string }, {
+        alert_id: job.alert_id,
+        type: "test",
+        rule_id: job.rule_id,
+        rule_name: rule.name,
+        rule_source_type: rule.sourceType,
+        rule_trigger_type: rule.triggerType,
+        message: "This is a BitWobbly test alert.",
+        ts: new Date().toISOString(),
+      });
+      await recordDeliverySent(db, auditContext);
+    } catch (error: unknown) {
+      await recordDeliveryFailed(db, auditContext, error);
+      throw error;
+    }
+  } else if (channel.type === "email") {
+    const emailConfig = cfg as { to?: string; from?: string; subject?: string };
+    const to = emailConfig.to;
+    if (!to) return;
+
+    try {
+      const result = await sendTestAlertEmail({
+        email: to,
+        alertId: job.alert_id,
+        ruleName: rule.name,
+        triggerType: rule.triggerType,
+        sourceType: rule.sourceType,
+        from: emailConfig.from,
+        subjectPrefix: emailConfig.subject,
+        resendApiKey: env.RESEND_API_KEY,
+      });
+      await recordDeliverySent(db, auditContext, result);
+    } catch (error: unknown) {
+      await recordDeliveryFailed(db, auditContext, error);
+      throw error;
+    }
+  }
+}
 
 async function handleMonitorAlert(
   job: MonitorAlertJob,

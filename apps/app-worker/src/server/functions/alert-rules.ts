@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { getDb } from "@bitwobbly/shared";
+import { getDb, randomId } from "@bitwobbly/shared";
 
 import {
   listAlertRules,
@@ -253,6 +253,33 @@ export const toggleAlertRuleFn = createServerFn({ method: "POST" })
     const db = getDb(vars.DB);
     await toggleAlertRule(db, teamId, data.id, data.enabled);
     return { ok: true };
+  });
+
+export const sendTestAlertRuleFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    const { teamId } = await requireTeam();
+    const vars = env;
+    const db = getDb(vars.DB);
+    const rule = await getAlertRuleById(db, teamId, data.id);
+    if (!rule) throw new Error("Alert rule not found");
+
+    const channelExists = await notificationChannelExists(
+      db,
+      teamId,
+      rule.channelId
+    );
+    if (!channelExists) throw new Error("Notification channel not found");
+
+    const alertId = randomId("al");
+    await vars.ALERT_JOBS.send({
+      type: "test",
+      alert_id: alertId,
+      team_id: teamId,
+      rule_id: rule.id,
+    });
+
+    return { ok: true, alertId };
   });
 
 export const listAlertRuleFiresFn = createServerFn({ method: "GET" })

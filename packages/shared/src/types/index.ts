@@ -35,6 +35,13 @@ export interface MonitorAlertJob {
   incident_id?: string;
 }
 
+export interface TestAlertJob {
+  type: "test";
+  alert_id: string;
+  team_id: string;
+  rule_id: string;
+}
+
 export interface IssueAlertJob {
   type: "issue";
   alert_id: string;
@@ -50,7 +57,7 @@ export interface IssueAlertJob {
   environment?: string;
 }
 
-export type AlertJob = MonitorAlertJob | IssueAlertJob;
+export type AlertJob = MonitorAlertJob | IssueAlertJob | TestAlertJob;
 
 export type AlertTriggerType =
   | "new_issue"
@@ -123,9 +130,11 @@ export function isAlertJob(value: unknown): value is AlertJob {
   if (typeof job.team_id !== "string") return false;
 
   if (job.type === "monitor") {
-    return (
-      typeof job.rule_id === "string" && typeof job.monitor_id === "string"
-    );
+    return typeof job.monitor_id === "string";
+  }
+
+  if (job.type === "test") {
+    return typeof job.rule_id === "string";
   }
 
   if (job.type === "issue") {
