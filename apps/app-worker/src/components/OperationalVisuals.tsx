@@ -206,16 +206,25 @@ export function MonitorVisualSummary({
 
         <div className="visual-panel">
           <div className="visual-kicker">Live checks</div>
-          <div className="visual-value">{summary.checkingCount}</div>
-          <div className="muted">
-            {formatLatencyMs(summary.averageLatencyMs)} average latest latency
+          <div className="visual-joined-line">
+            <strong>{summary.checkingCount}</strong>
+            <span>
+              live checks · {formatLatencyMs(summary.averageLatencyMs)} average
+              latency
+            </span>
           </div>
-          <div className="visual-type-list">
+          <div className="visual-chip-row">
             {summary.typeCounts.slice(0, 4).map((item) => (
-              <div key={item.type} className="visual-type-row">
+              <span
+                key={item.type}
+                className="visual-chip"
+                title={`${toTitleCase(item.type)}: ${item.count} monitor${
+                  item.count === 1 ? "" : "s"
+                }`}
+              >
                 <span>{toTitleCase(item.type)}</span>
                 <strong>{item.count}</strong>
-              </div>
+              </span>
             ))}
           </div>
         </div>

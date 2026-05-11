@@ -597,6 +597,24 @@ button.button-danger {
   line-height: 1;
 }
 
+.visual-joined-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.visual-joined-line strong {
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1;
+}
+
 .visual-donut {
   position: relative;
   display: grid;
@@ -705,6 +723,29 @@ button.button-danger {
   display: grid;
   gap: 10px;
   margin-top: 14px;
+}
+
+.visual-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.visual-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border: 1px solid rgba(111, 98, 85, 0.22);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: help;
+}
+
+.visual-chip strong {
+  color: var(--ink);
 }
 
 .visual-type-row {
