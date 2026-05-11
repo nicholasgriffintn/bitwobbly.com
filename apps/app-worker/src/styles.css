@@ -521,6 +521,32 @@ button.button-danger {
   grid-template-columns: minmax(220px, 1.1fr) repeat(2, minmax(180px, 1fr));
 }
 
+.monitor-visual-card .card-title {
+  margin-bottom: 12px;
+}
+
+.monitor-visual-card .visual-grid {
+  gap: 12px;
+  align-items: center;
+}
+
+.monitor-visual-card .visual-panel-focus {
+  gap: 12px;
+}
+
+.monitor-visual-card .visual-panel-focus-tight {
+  margin-top: 6px;
+}
+
+.monitor-visual-card .visual-legend {
+  gap: 6px 10px;
+  margin-top: 6px;
+}
+
+.monitor-visual-card .visual-group-legends {
+  gap: 4px;
+}
+
 .visual-overview {
   display: grid;
   gap: 22px;

@@ -286,7 +286,7 @@ export function MonitorVisualSummary({
   if (!monitors.length) return null;
 
   return (
-    <Card>
+    <Card className="monitor-visual-card">
       <CardTitle>Monitor signal</CardTitle>
       <div className="visual-grid visual-grid-three">
         <div className="visual-panel visual-panel-focus">
