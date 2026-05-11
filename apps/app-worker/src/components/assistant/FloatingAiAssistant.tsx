@@ -134,8 +134,40 @@ export function FloatingAiAssistant() {
           </div>
         </div>
       ) : (
-        <Button type="button" onClick={() => setIsOpen(true)}>
-          AI Assistant
+        <Button
+          type="button"
+          variant="outline"
+          className="assistant-fab-button"
+          onClick={() => setIsOpen(true)}
+          aria-label="Open AI operations assistant"
+          title="Open AI operations assistant"
+        >
+          <svg
+            className="assistant-fab-icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 3.75L13.72 8.28L18.25 10L13.72 11.72L12 16.25L10.28 11.72L5.75 10L10.28 8.28L12 3.75Z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M18.25 14.25L19.03 16.22L21 17L19.03 17.78L18.25 19.75L17.47 17.78L15.5 17L17.47 16.22L18.25 14.25Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M5.75 14.75H9.25C10.08 14.75 10.75 15.42 10.75 16.25V18.25C10.75 19.08 10.08 19.75 9.25 19.75H6.75L4.25 21V16.25C4.25 15.42 4.92 14.75 5.75 14.75Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
         </Button>
       )}
     </div>
