@@ -5,6 +5,8 @@ import { listMonitorsFn } from "@/server/functions/monitors";
 import { listStatusPagesFn } from "@/server/functions/status-pages";
 import { listOpenIncidentsFn } from "@/server/functions/incidents";
 import { listChannelsFn } from "@/server/functions/notification-channels";
+import { listComponentsFn } from "@/server/functions/components";
+import { OverviewVisualSummary } from "@/components/OperationalVisuals";
 import { toTitleCase } from "@/utils/format";
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ListContainer, ListRow } from "@/components/list";
@@ -15,6 +17,13 @@ export const Route = createFileRoute("/app/")({
   loader: async () => {
     const pagesPromise = listStatusPagesFn().then((r) => r.status_pages);
     const channelsPromise = listChannelsFn().then((r) => r.channels);
+    const componentsPromise = listComponentsFn().then((r) => r.components);
+    const visualPromise = Promise.all([componentsPromise, pagesPromise]).then(
+      ([components, pages]) => ({
+        components,
+        statusPageCount: pages.length,
+      })
+    );
     const setupPromise = Promise.all([pagesPromise, channelsPromise]).then(
       ([statusPages, channels]) => ({
         statusPages,
@@ -30,13 +39,14 @@ export const Route = createFileRoute("/app/")({
       monitors: monitorsRes.monitors,
       incidents: incidentsRes.incidents,
       pagesPromise: defer(pagesPromise),
+      visualPromise: defer(visualPromise),
       setupPromise: defer(setupPromise),
     };
   },
 });
 
 function Overview() {
-  const { monitors, incidents, pagesPromise, setupPromise } =
+  const { monitors, incidents, pagesPromise, visualPromise, setupPromise } =
     Route.useLoaderData();
 
   const { upCount, downCount } = useMemo(() => {
@@ -97,42 +107,24 @@ function Overview() {
         </div>
       </Card>
 
-      <div className="grid metrics">
-        <div className="card">
-          <div className="metric-label">Monitors up</div>
-          <div className="metric-value text-[color:var(--green)]">
-            {upCount}
-          </div>
-        </div>
-        <div className="card">
-          <div className="metric-label">Monitors down</div>
-          <div
-            className={`metric-value ${
-              downCount > 0 ? "text-[color:var(--red)]" : ""
-            }`}
-          >
-            {downCount}
-          </div>
-        </div>
-        <div className="card">
-          <div className="metric-label">Open incidents</div>
-          <div
-            className={`metric-value ${
-              incidents.length > 0 ? "text-[color:var(--orange)]" : ""
-            }`}
-          >
-            {incidents.length}
-          </div>
-        </div>
-        <div className="card">
-          <div className="metric-label">Status pages</div>
-          <Suspense fallback={<div className="metric-value">…</div>}>
-            <Await promise={pagesPromise}>
-              {(pages) => <div className="metric-value">{pages.length}</div>}
-            </Await>
-          </Suspense>
-        </div>
-      </div>
+      <Suspense
+        fallback={
+          <Card>
+            <div className="skeleton h-32 w-full" />
+          </Card>
+        }
+      >
+        <Await promise={visualPromise}>
+          {({ components, statusPageCount }) => (
+            <OverviewVisualSummary
+              monitors={monitors}
+              incidents={incidents}
+              components={components}
+              statusPageCount={statusPageCount}
+            />
+          )}
+        </Await>
+      </Suspense>
 
       <Suspense fallback={null}>
         <Await promise={setupPromise}>

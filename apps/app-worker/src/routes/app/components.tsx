@@ -8,6 +8,7 @@ import { ListContainer, ListRow } from "@/components/list";
 import { Button, StatusBadge, isStatusType } from "@/components/ui";
 import { CheckboxList } from "@/components/form";
 import { ComponentMetrics } from "@/components/ComponentMetrics";
+import { ComponentVisualSummary } from "@/components/OperationalVisuals";
 import { ComponentsModals } from "@/components/modals/components";
 import { toTitleCase } from "@/utils/format";
 import { listMonitorsFn } from "@/server/functions/monitors";
@@ -150,6 +151,8 @@ export default function Components() {
       </PageHeader>
 
       {error && <ErrorCard message={error} />}
+
+      <ComponentVisualSummary components={components} />
 
       <Card>
         <CardTitle>Components</CardTitle>

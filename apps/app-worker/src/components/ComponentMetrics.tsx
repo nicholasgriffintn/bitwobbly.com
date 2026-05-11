@@ -7,11 +7,10 @@ import {
   getComponentMetricsFn,
 } from "@/server/functions/components";
 
-const UptimeChart = lazy(() =>
-  import("./UptimeChart").then((m) => ({ default: m.UptimeChart }))
-);
-const LatencyChart = lazy(() =>
-  import("./LatencyChart").then((m) => ({ default: m.LatencyChart }))
+const PerformanceComboChart = lazy(() =>
+  import("./PerformanceComboChart").then((m) => ({
+    default: m.PerformanceComboChart,
+  }))
 );
 const UptimeHeatmap = lazy(() =>
   import("./UptimeHeatmap").then((m) => ({ default: m.UptimeHeatmap }))
@@ -188,16 +187,9 @@ export function ComponentMetrics({ componentId }: ComponentMetricsProps) {
             <Suspense fallback={<div>Loading charts...</div>}>
               <div className="card" style={{ marginBottom: "1rem" }}>
                 <div className="card-title" style={{ marginBottom: "1rem" }}>
-                  Uptime Timeline
+                  Combined performance
                 </div>
-                <UptimeChart data={metrics.dataPoints} />
-              </div>
-
-              <div className="card" style={{ marginBottom: "1rem" }}>
-                <div className="card-title" style={{ marginBottom: "1rem" }}>
-                  Latency Trends
-                </div>
-                <LatencyChart data={metrics.dataPoints} />
+                <PerformanceComboChart data={metrics.dataPoints} />
               </div>
 
               <div className="card">

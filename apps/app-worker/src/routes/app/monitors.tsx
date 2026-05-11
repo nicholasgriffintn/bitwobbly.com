@@ -3,6 +3,7 @@ import { Await, createFileRoute, defer } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 
 import { MetricsChart } from "@/components/MetricsChart";
+import { MonitorVisualSummary } from "@/components/OperationalVisuals";
 import { Card, CardTitle, Page, PageHeader } from "@/components/layout";
 import { ErrorCard } from "@/components/feedback";
 import { ListContainer, ListRow } from "@/components/list";
@@ -254,6 +255,8 @@ function Monitors() {
       </PageHeader>
 
       {error ? <ErrorCard message={error} /> : null}
+
+      <MonitorVisualSummary monitors={monitors} groups={groups} />
 
       <Card>
         <CardTitle className="flex flex-wrap items-center gap-4">

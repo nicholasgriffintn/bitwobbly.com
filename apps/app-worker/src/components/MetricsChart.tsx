@@ -3,11 +3,15 @@ import { getMonitorMetricsFn } from "@/server/functions/monitors";
 import { useStableServerFn } from "@/hooks/useStableServerFn";
 import type { MetricDataPoint } from "@bitwobbly/shared";
 
-const UptimeChart = lazy(() =>
-  import("@/components/UptimeChart").then((m) => ({ default: m.UptimeChart }))
+const PerformanceComboChart = lazy(() =>
+  import("@/components/PerformanceComboChart").then((m) => ({
+    default: m.PerformanceComboChart,
+  }))
 );
-const LatencyChart = lazy(() =>
-  import("@/components/LatencyChart").then((m) => ({ default: m.LatencyChart }))
+const UptimeHeatmap = lazy(() =>
+  import("@/components/UptimeHeatmap").then((m) => ({
+    default: m.UptimeHeatmap,
+  }))
 );
 
 type MetricsData = {
@@ -164,14 +168,14 @@ function MetricsContent({ data }: { data: MetricsResponse }) {
 
       {dataPoints.length > 0 && (
         <Suspense fallback={<div>Loading charts...</div>}>
-          <div style={{ marginTop: "1rem" }}>
-            <h4 style={{ marginBottom: "0.5rem" }}>Uptime Trend</h4>
-            <UptimeChart data={dataPoints} />
+          <div className="visual-chart-block">
+            <h4>Combined performance</h4>
+            <PerformanceComboChart data={dataPoints} />
           </div>
 
-          <div style={{ marginTop: "2rem" }}>
-            <h4 style={{ marginBottom: "0.5rem" }}>Response Time Trend</h4>
-            <LatencyChart data={dataPoints} />
+          <div className="visual-chart-block">
+            <h4>Availability rhythm</h4>
+            <UptimeHeatmap data={dataPoints} />
           </div>
         </Suspense>
       )}
