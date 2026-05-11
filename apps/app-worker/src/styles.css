@@ -566,6 +566,11 @@ button.button-danger {
   gap: 18px;
 }
 
+.visual-panel-focus-tight {
+  margin-top: 12px;
+  gap: 14px;
+}
+
 .visual-kicker {
   color: var(--muted);
   font-size: 14px;
@@ -716,6 +721,11 @@ button.button-danger {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+.visual-group-legends {
+  display: grid;
+  gap: 8px;
 }
 
 .visual-type-list,

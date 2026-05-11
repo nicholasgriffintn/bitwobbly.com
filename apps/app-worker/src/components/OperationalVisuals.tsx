@@ -4,6 +4,7 @@ import { Card, CardTitle } from "@/components/layout";
 import { Badge } from "@/components/ui";
 import { toTitleCase } from "@/utils/format";
 import {
+  buildStatusCounts,
   buildComponentStatusCounts,
   buildMonitorStatusCounts,
   buildPieSegments,
@@ -40,14 +41,29 @@ const STATUS_COLORS: Record<string, string> = {
   paused: "#9a8c7f",
 };
 
-function getSectionLabel(status: string, count: number, percent: number) {
-  return formatStatusSectionLabel(toTitleCase(status), count, percent);
+const GROUP_COLORS = [
+  "var(--success)",
+  "var(--primary)",
+  "#b85c2c",
+  "#1e40af",
+  "#7a6f64",
+  "#9a8c7f",
+];
+
+function getCountLabel(count: StatusCount<string>) {
+  return formatStatusSectionLabel(
+    count.label || toTitleCase(count.status),
+    count.count,
+    count.percent
+  );
 }
 
 function StatusStack<TStatus extends string>({
   counts,
+  colorMap = STATUS_COLORS,
 }: {
   counts: StatusCount<TStatus>[];
+  colorMap?: Record<string, string>;
 }) {
   return (
     <div className="visual-stack">
@@ -56,15 +72,11 @@ function StatusStack<TStatus extends string>({
         .map((count) => (
           <span
             key={count.status}
-            aria-label={getSectionLabel(
-              count.status,
-              count.count,
-              count.percent
-            )}
-            title={getSectionLabel(count.status, count.count, count.percent)}
+            aria-label={getCountLabel(count)}
+            title={getCountLabel(count)}
             style={{
               width: `${count.percent}%`,
-              background: STATUS_COLORS[count.status] || "var(--muted)",
+              background: colorMap[count.status] || "var(--muted)",
             }}
           />
         ))}
@@ -76,10 +88,12 @@ function DonutChart<TStatus extends string>({
   counts,
   total,
   label,
+  colorMap = STATUS_COLORS,
 }: {
   counts: StatusCount<TStatus>[];
   total: number;
   label: string;
+  colorMap?: Record<string, string>;
 }) {
   const segments = buildPieSegments(counts, {
     center: 60,
@@ -102,15 +116,68 @@ function DonutChart<TStatus extends string>({
           <path
             key={segment.status}
             d={segment.path}
-            fill={STATUS_COLORS[segment.status] || "var(--muted)"}
+            fill={colorMap[segment.status] || "var(--muted)"}
           >
-            <title>
-              {getSectionLabel(
-                segment.status,
-                segment.count,
-                segment.percent
-              )}
-            </title>
+            <title>{getCountLabel(segment)}</title>
+          </path>
+        ))}
+      </svg>
+      <span>{total}</span>
+      <small>{label}</small>
+    </div>
+  );
+}
+
+function DoubleDonutChart<TOuterStatus extends string, TInnerStatus extends string>({
+  outerCounts,
+  innerCounts,
+  outerColorMap,
+  innerColorMap = STATUS_COLORS,
+  total,
+  label,
+}: {
+  outerCounts: StatusCount<TOuterStatus>[];
+  innerCounts: StatusCount<TInnerStatus>[];
+  outerColorMap: Record<string, string>;
+  innerColorMap?: Record<string, string>;
+  total: number;
+  label: string;
+}) {
+  const outerSegments = buildPieSegments(outerCounts, {
+    center: 60,
+    innerRadius: 42,
+    outerRadius: 52,
+  });
+  const innerSegments = buildPieSegments(innerCounts, {
+    center: 60,
+    innerRadius: 28,
+    outerRadius: 38,
+  });
+
+  return (
+    <div className="visual-donut" aria-label={`${total} ${label} by group and status`}>
+      <svg
+        className="visual-donut-chart"
+        viewBox="0 0 120 120"
+        role="img"
+        aria-label={`${label} distribution by group and status`}
+      >
+        {outerSegments.map((segment) => (
+          <path
+            key={`outer-${segment.status}`}
+            d={segment.path}
+            fill={outerColorMap[segment.status] || "var(--muted)"}
+          >
+            <title>{getCountLabel(segment)}</title>
+          </path>
+        ))}
+        {innerSegments.map((segment) => (
+          <path
+            key={`inner-${segment.status}`}
+            d={segment.path}
+            fill={innerColorMap[segment.status] || "var(--muted)"}
+          >
+            <title>{getCountLabel(segment)}</title>
           </path>
         ))}
       </svg>
@@ -122,8 +189,10 @@ function DonutChart<TStatus extends string>({
 
 function StatusLegend<TStatus extends string>({
   counts,
+  colorMap = STATUS_COLORS,
 }: {
   counts: StatusCount<TStatus>[];
+  colorMap?: Record<string, string>;
 }) {
   return (
     <div className="visual-legend">
@@ -132,14 +201,14 @@ function StatusLegend<TStatus extends string>({
         .map((count) => (
           <span
             key={count.status}
-            title={getSectionLabel(count.status, count.count, count.percent)}
+            title={getCountLabel(count)}
           >
             <i
               style={{
-                background: STATUS_COLORS[count.status] || "var(--muted)",
+                background: colorMap[count.status] || "var(--muted)",
               }}
             />
-            {toTitleCase(count.status)} {count.count}
+            {count.label || toTitleCase(count.status)} {count.count}
           </span>
         ))}
     </div>
@@ -173,17 +242,42 @@ export function MonitorVisualSummary({
     const groupRows = Array.from(grouped.entries())
       .map(([id, items]) => ({
         id,
-        name: id === "__ungrouped__" ? "Ungrouped" : groupNameById.get(id) || "Group",
+        name:
+          id === "__ungrouped__" ? "Ungrouped" : groupNameById.get(id) || "Group",
         counts: buildMonitorStatusCounts(items),
         total: items.length,
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 4);
+    const groupCounts = buildStatusCounts(
+      groupRows.map((group) => ({
+        status: group.id,
+        label: group.name,
+        count: group.total,
+      }))
+    );
+    const groupStatusCounts = buildStatusCounts(
+      groupRows.flatMap((group) =>
+        group.counts.map((count) => ({
+          status: count.status,
+          count: count.count,
+        }))
+      )
+    );
+    const groupColorMap = Object.fromEntries(
+      groupRows.map((group, index) => [
+        group.id,
+        GROUP_COLORS[index % GROUP_COLORS.length],
+      ])
+    );
 
     return {
       averageLatencyMs,
       checkingCount,
+      groupColorMap,
+      groupCounts,
       groupRows,
+      groupStatusCounts,
       statusCounts,
       typeCounts,
     };
@@ -202,6 +296,26 @@ export function MonitorVisualSummary({
             label="monitors"
           />
           <StatusLegend counts={summary.statusCounts} />
+        </div>
+
+        <div className="visual-panel">
+          <div className="visual-kicker">Groups</div>
+          <div className="visual-panel-focus visual-panel-focus-tight">
+            <DoubleDonutChart
+              outerCounts={summary.groupCounts}
+              innerCounts={summary.groupStatusCounts}
+              outerColorMap={summary.groupColorMap}
+              total={summary.groupRows.length}
+              label="groups"
+            />
+            <div className="visual-group-legends">
+              <StatusLegend
+                counts={summary.groupCounts}
+                colorMap={summary.groupColorMap}
+              />
+              <StatusLegend counts={summary.groupStatusCounts} />
+            </div>
+          </div>
         </div>
 
         <div className="visual-panel">
@@ -225,21 +339,6 @@ export function MonitorVisualSummary({
                 <span>{toTitleCase(item.type)}</span>
                 <strong>{item.count}</strong>
               </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="visual-panel">
-          <div className="visual-kicker">Groups</div>
-          <div className="visual-bar-list">
-            {summary.groupRows.map((group) => (
-              <div key={group.id} className="visual-bar-row">
-                <div>
-                  <span>{group.name}</span>
-                  <small>{group.total} monitors</small>
-                </div>
-                <StatusStack counts={group.counts} />
-              </div>
             ))}
           </div>
         </div>

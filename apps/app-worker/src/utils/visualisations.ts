@@ -29,6 +29,7 @@ export type ComponentVisualStatus =
 
 export type StatusCount<TStatus extends string> = {
   status: TStatus;
+  label?: string;
   count: number;
   percent: number;
 };
@@ -148,6 +149,31 @@ export function formatStatusSectionLabel(
   percentValue: number
 ): string {
   return `${label}: ${count} (${formatPercent(percentValue)})`;
+}
+
+export function buildStatusCounts<TStatus extends string>(
+  items: Array<{ status: TStatus; label?: string; count: number }>
+): StatusCount<TStatus>[] {
+  const counts = new Map<TStatus, { label?: string; count: number }>();
+  for (const item of items) {
+    const existing = counts.get(item.status);
+    counts.set(item.status, {
+      label: existing?.label || item.label,
+      count: (existing?.count || 0) + item.count,
+    });
+  }
+
+  const total = Array.from(counts.values()).reduce(
+    (sum, item) => sum + item.count,
+    0
+  );
+
+  return Array.from(counts.entries()).map(([status, item]) => ({
+    status,
+    label: item.label,
+    count: item.count,
+    percent: percent(item.count, total),
+  }));
 }
 
 export function normaliseMonitorVisualStatus(

@@ -6,6 +6,7 @@ import {
   buildComponentStatusCounts,
   buildMonitorStatusCounts,
   buildPieSegments,
+  buildStatusCounts,
   buildTypeCounts,
   formatLatencyMs,
   formatPercent,
@@ -108,6 +109,19 @@ test("buildPieSegments creates one path per visible status", () => {
   assert.equal(segments[0].status, "up");
   assert.match(segments[0].path, /^M /);
   assert.equal(segments[1].status, "unknown");
+});
+
+test("buildStatusCounts aggregates duplicate statuses", () => {
+  const counts = buildStatusCounts([
+    { status: "up", label: "Up", count: 2 },
+    { status: "down", label: "Down", count: 1 },
+    { status: "up", count: 1 },
+  ]);
+
+  assert.equal(counts.length, 2);
+  assert.equal(counts.find((item) => item.status === "up")?.count, 3);
+  assert.equal(counts.find((item) => item.status === "up")?.label, "Up");
+  assert.equal(counts.find((item) => item.status === "down")?.percent, 25);
 });
 
 test("formatStatusSectionLabel includes count and rounded percentage", () => {
