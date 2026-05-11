@@ -1431,6 +1431,31 @@ textarea {
   right: 16px;
   bottom: 16px;
   z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.assistant-fab-button {
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0 !important;
+  border: 1.5px solid var(--primary) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: var(--shadow);
+  display: inline-grid;
+  place-items: center;
+}
+
+.assistant-fab-button:hover:not(:disabled) {
+  background: #fff7ef !important;
+  color: var(--primary) !important;
+}
+
+.assistant-fab-icon {
+  width: 1.65rem;
+  height: 1.65rem;
 }
 
 .assistant-panel {
@@ -1879,13 +1904,13 @@ textarea {
 
 @media (max-width: 640px) {
   .assistant-fab-wrapper {
-    left: 8px;
+    left: auto;
     right: 8px;
     bottom: 8px;
   }
 
   .assistant-panel {
-    width: 100%;
+    width: min(calc(100vw - 16px), 32rem);
     height: calc(100dvh - 16px);
     max-height: calc(100dvh - 16px);
   }
