@@ -203,7 +203,11 @@ export function parseAiActionCommandEvent(value: unknown): AiActionCommandEvent 
 }
 
 export function parseAiActionWorkerMessage(value: unknown): AiActionWorkerMessage {
-  return AiActionWorkerMessageSchema.parse(value);
+  const parsedValue =
+    typeof value === "string"
+      ? JSON.parse(value.trim())
+      : value;
+  return AiActionWorkerMessageSchema.parse(parsedValue);
 }
 
 function extractLikelyJsonText(input: string): string {
