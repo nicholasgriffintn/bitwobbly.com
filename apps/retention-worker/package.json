@@ -1,0 +1,24 @@
+{
+  "name": "@bitwobbly/retention-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --persist-to ../../.data --test-scheduled",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "pnpm run deploy",
+    "cf-typegen": "wrangler types",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --experimental-strip-types --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@bitwobbly/shared": "workspace:*",
+    "@sentry/cloudflare": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

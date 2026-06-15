@@ -1,0 +1,59 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bitwobbly-retention",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.01,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 0.01,
+      "invocation_logs": false
+    }
+  },
+  "dev": {
+    "port": 8793,
+    "inspector_port": 9236
+  },
+  "vars": {
+    "SENTRY_DSN": "https://de99db0dd12b43e1a88bce9ab9940a24@ingest.bitwobbly.com/29",
+    "ISSUE_RETENTION_DAYS": "90",
+    "EVENT_DELETE_BATCH_SIZE": "500",
+    "R2_DELETE_BATCH_SIZE": "100",
+    "CATALOG_LIST_LIMIT": "1000"
+  },
+  "triggers": {
+    "crons": [
+      "0 1 * * *",
+      "0 3 * * *",
+      "0 5 * * *",
+      "0 20 * * *",
+      "0 22 * * *",
+      "0 24 * * *"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bitwobbly_db",
+      "database_id": "f2424789-6b8b-4b06-aadd-0de982901cab",
+      "migrations_dir": "../../packages/shared/drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "SENTRY_RAW",
+      "bucket_name": "bitwobbly-issues-raw"
+    },
+    {
+      "binding": "SENTRY_CATALOG",
+      "bucket_name": "bitwobbly-issues-catalog"
+    }
+  ]
+}

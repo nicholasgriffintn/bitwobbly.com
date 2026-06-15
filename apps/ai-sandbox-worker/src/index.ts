@@ -47,7 +47,15 @@ export default withSentry<Env, unknown>(
   (env) => ({
     dsn: env.SENTRY_DSN,
     environment: "production",
-    tracesSampleRate: 0.2,
+    sampleRate: 1,
+    enableLogs: false,
+    tracesSampleRate: 0,
+    beforeSend(event) {
+      return event.exception?.values?.length ? event : null;
+    },
+    beforeSendTransaction() {
+      return null;
+    },
   }),
   handler
 );

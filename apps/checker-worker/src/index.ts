@@ -122,7 +122,15 @@ export default withSentry<Env, CheckJob>(
   (env) => ({
     dsn: env.SENTRY_DSN,
     environment: "production",
-    tracesSampleRate: 1.0,
+    sampleRate: 1,
+    enableLogs: false,
+    tracesSampleRate: 0,
+    beforeSend(event) {
+      return event.exception?.values?.length ? event : null;
+    },
+    beforeSendTransaction() {
+      return null;
+    },
   }),
   handler
 );
@@ -135,7 +143,15 @@ export const IncidentCoordinator = instrumentDurableObjectWithSentry<
   (env) => ({
     dsn: env.SENTRY_DSN,
     environment: "production",
-    tracesSampleRate: 0.2,
+    sampleRate: 1,
+    enableLogs: false,
+    tracesSampleRate: 0,
+    beforeSend(event) {
+      return event.exception?.values?.length ? event : null;
+    },
+    beforeSendTransaction() {
+      return null;
+    },
   }),
   IncidentCoordinatorBase
 );

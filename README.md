@@ -40,6 +40,7 @@ Alongside the workers, we have some infrastructure that is not part of the core 
 | `apps/notifier-worker`         | Queue consumer. Delivers alerts via webhooks and email (Resend API).                                                                     |
 | `apps/sentry-ingest-worker`    | Sentry SDK-compatible ingestion endpoint. Parses envelopes, stores raw payloads in R2, publishes to Pipelines and queue.                 |
 | `apps/sentry-processor-worker` | Queue consumer. Extracts events from R2, computes fingerprints, groups into issues, writes to D1.                                        |
+| `apps/retention-worker`        | Daily cron-triggered retention worker. Removes old issue rows from D1 and old issue objects from R2.                                     |
 
 ### Packages
 
@@ -84,6 +85,7 @@ pnpm dev:checker          # HTTP checks (port 8787)
 pnpm dev:notifier         # Email/webhook alerts
 pnpm dev:sentry-ingest    # Sentry SDK ingestion
 pnpm dev:sentry-processor # Event grouping
+pnpm dev:retention        # Issue data retention
 ```
 
 ### Local State

@@ -125,3 +125,17 @@ You can do this by running:
 ```bash
 wrangler pipelines sink create bitwobbly-issues-sink --pipeline bitwobbly_issues_manifests --type r2-data-catalog --bucket bitwobbly-issues-catalog --table sentry_manifests
 ```
+
+### Deploy the retention worker
+
+The retention worker runs daily and removes issue data older than the configured retention window. By default it keeps 90 days of issue data:
+
+- D1 rows in `sentry_events`, `sentry_sessions`, `sentry_client_reports`, and issue records with no remaining events.
+- R2 raw objects referenced by deleted D1 events.
+- R2 data-catalog objects whose upload timestamp is older than the retention cutoff.
+
+Deploy it with the rest of the Workers, or directly:
+
+```bash
+pnpm -C apps/retention-worker deploy
+```

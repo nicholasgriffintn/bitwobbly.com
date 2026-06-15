@@ -28,8 +28,15 @@ export const getRouter = () => {
         environment: import.meta.env.MODE,
         release: import.meta.env.VITE_BUILD_ID,
         integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
-        enableLogs: true,
-        tracesSampleRate: 0.2,
+        sampleRate: 1,
+        enableLogs: false,
+        tracesSampleRate: 0,
+        beforeSend(event) {
+          return event.exception?.values?.length ? event : null;
+        },
+        beforeSendTransaction() {
+          return null;
+        },
       });
     });
   }

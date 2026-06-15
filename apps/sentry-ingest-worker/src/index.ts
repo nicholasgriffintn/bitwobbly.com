@@ -221,7 +221,12 @@ export default withSentry<Env>(
   (env) => ({
     dsn: env.SENTRY_DSN,
     environment: "production",
-    tracesSampleRate: 0.2,
+    sampleRate: 1,
+    enableLogs: false,
+    tracesSampleRate: 0,
+    beforeSendTransaction() {
+      return null;
+    },
     beforeSend(event) {
       // Drop all error events to prevent infinite recursion.
       // This worker ingests Sentry events, so sending its own errors

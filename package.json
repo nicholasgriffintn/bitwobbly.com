@@ -16,6 +16,7 @@
     "dev:ai-sandbox": "pnpm -C apps/ai-sandbox-worker dev",
     "dev:sentry-ingest": "pnpm -C apps/sentry-ingest-worker dev",
     "dev:sentry-processor": "pnpm -C apps/sentry-processor-worker dev",
+    "dev:retention": "pnpm -C apps/retention-worker dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:monorepo": "sherif",
@@ -43,6 +44,7 @@
     "prettier": "^3.8.1",
     "sherif": "^1.10.0",
     "turbo": "^2.8.3",
-    "typescript-eslint": "^8.54.0"
+    "typescript-eslint": "^8.54.0",
+    "wrangler": "catalog:"
   }
 }
