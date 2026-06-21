@@ -7,6 +7,7 @@ export interface Env {
   EVENT_DELETE_BATCH_SIZE?: string;
   R2_DELETE_BATCH_SIZE?: string;
   CATALOG_LIST_LIMIT?: string;
+  RETENTION_RUN_MAX_MS?: string;
 }
 
 export function assertEnv(env: Partial<Env>): Env {
@@ -33,6 +34,7 @@ export function assertEnv(env: Partial<Env>): Env {
     EVENT_DELETE_BATCH_SIZE: env.EVENT_DELETE_BATCH_SIZE,
     R2_DELETE_BATCH_SIZE: env.R2_DELETE_BATCH_SIZE,
     CATALOG_LIST_LIMIT: env.CATALOG_LIST_LIMIT,
+    RETENTION_RUN_MAX_MS: env.RETENTION_RUN_MAX_MS,
   };
 }
 

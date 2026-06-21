@@ -3,9 +3,7 @@
   "name": "bitwobbly-retention",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-15",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
   "observability": {
@@ -26,7 +24,8 @@
     "ISSUE_RETENTION_DAYS": "90",
     "EVENT_DELETE_BATCH_SIZE": "500",
     "R2_DELETE_BATCH_SIZE": "100",
-    "CATALOG_LIST_LIMIT": "1000"
+    "CATALOG_LIST_LIMIT": "1000",
+    "RETENTION_RUN_MAX_MS": "25000"
   },
   "triggers": {
     "crons": [

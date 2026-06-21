@@ -35,14 +35,23 @@ class FakeStatement {
 class FakeD1Database {
   readonly prepared: CapturedStatement[] = [];
   readonly batched: CapturedStatement[] = [];
-  private readonly rows: unknown[];
+  private readonly rows: unknown[][];
+  private readonly changes: number[];
+  private rowIndex = 0;
+  private changeIndex = 0;
 
-  constructor(rows: unknown[] = []) {
+  constructor(rows: unknown[][] = [], changes: number[] = []) {
     this.rows = rows;
+    this.changes = changes;
   }
 
   prepare(query: string): FakeStatement {
-    const statement = new FakeStatement(query, this.rows);
+    const isR2KeySelect = /SELECT r2_key AS r2Key/.test(query);
+    const rows = isR2KeySelect ? (this.rows[this.rowIndex] ?? []) : [];
+    if (isR2KeySelect) {
+      this.rowIndex += 1;
+    }
+    const statement = new FakeStatement(query, rows);
     this.prepared.push(statement);
     return statement;
   }
@@ -57,7 +66,11 @@ class FakeD1Database {
       }))
     );
 
-    return statements.map((_, index) => ({ meta: { changes: index + 1 } }));
+    return statements.map(() => {
+      const changes = this.changes[this.changeIndex] ?? 0;
+      this.changeIndex += 1;
+      return { meta: { changes } };
+    });
   }
 }
 
@@ -109,11 +122,20 @@ class FakeR2Bucket {
 }
 
 test("runD1IssueRetention collects old R2 keys and runs bounded delete statements", async () => {
-  const db = new FakeD1Database([
-    { r2Key: "raw/1/old-a.envelope" },
-    { r2_key: "raw/1/old-b.envelope" },
-    { r2Key: "" },
-  ]);
+  const db = new FakeD1Database(
+    [
+      [
+        { r2Key: "raw/1/old-a.envelope" },
+        { r2_key: "raw/1/old-b.envelope" },
+        { r2Key: "" },
+      ],
+      [],
+      [],
+      [],
+      [],
+    ],
+    [1, 0, 2, 0, 3, 0, 4, 0]
+  );
 
   const result = await runD1IssueRetention(db as unknown as D1Database, {
     cutoffSeconds: 1000,
@@ -128,10 +150,59 @@ test("runD1IssueRetention collects old R2 keys and runs bounded delete statement
   assert.equal(result.deletedSessions, 2);
   assert.equal(result.deletedClientReports, 3);
   assert.equal(result.deletedIssues, 4);
-  assert.equal(db.batched.length, 4);
+  assert.equal(db.batched.length, 8);
   assert.match(db.batched[0]?.query ?? "", /DELETE FROM sentry_events/);
-  assert.match(db.batched[3]?.query ?? "", /NOT EXISTS/);
+  assert.match(db.batched[6]?.query ?? "", /NOT EXISTS/);
   assert.deepEqual(db.batched[0]?.values, [1000, 2]);
+});
+
+test("runD1IssueRetention repeats event batches until no more old rows are deleted", async () => {
+  const db = new FakeD1Database(
+    [
+      [{ r2Key: "raw/1/old-a.envelope" }],
+      [{ r2Key: "raw/1/old-b.envelope" }],
+      [],
+      [],
+      [],
+      [],
+    ],
+    [2, 1, 0, 0, 0, 0]
+  );
+
+  const result = await runD1IssueRetention(db as unknown as D1Database, {
+    cutoffSeconds: 1000,
+    eventDeleteBatchSize: 2,
+  });
+
+  assert.deepEqual(result.r2Keys, [
+    "raw/1/old-a.envelope",
+    "raw/1/old-b.envelope",
+  ]);
+  assert.equal(result.deletedEvents, 3);
+  assert.equal(
+    db.batched.filter((statement) =>
+      /DELETE FROM sentry_events/.test(statement.query)
+    ).length,
+    3
+  );
+});
+
+test("runD1IssueRetention stops between batches when the runtime budget is reached", async () => {
+  const db = new FakeD1Database(
+    [[{ r2Key: "raw/1/old-a.envelope" }], [{ r2Key: "raw/1/old-b.envelope" }]],
+    [2, 2]
+  );
+  let remainingBatches = 1;
+
+  const result = await runD1IssueRetention(db as unknown as D1Database, {
+    cutoffSeconds: 1000,
+    eventDeleteBatchSize: 2,
+    shouldContinue: () => remainingBatches-- > 0,
+  });
+
+  assert.deepEqual(result.r2Keys, ["raw/1/old-a.envelope"]);
+  assert.equal(result.deletedEvents, 2);
+  assert.equal(db.batched.length, 1);
 });
 
 test("deleteR2Keys deduplicates keys and deletes in batches", async () => {

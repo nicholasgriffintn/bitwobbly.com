@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   DEFAULT_ISSUE_RETENTION_DAYS,
+  DEFAULT_RETENTION_RUN_MAX_MS,
   getIssueRetentionConfig,
   getRetentionCutoffSeconds,
 } from "./retention-config.ts";
@@ -20,6 +21,7 @@ test("getIssueRetentionConfig uses a 90 day default", () => {
   const config = getIssueRetentionConfig({});
 
   assert.equal(config.retentionDays, DEFAULT_ISSUE_RETENTION_DAYS);
+  assert.equal(config.retentionRunMaxMs, DEFAULT_RETENTION_RUN_MAX_MS);
 });
 
 test("getIssueRetentionConfig accepts positive integer overrides", () => {
@@ -28,6 +30,7 @@ test("getIssueRetentionConfig accepts positive integer overrides", () => {
     EVENT_DELETE_BATCH_SIZE: "250",
     R2_DELETE_BATCH_SIZE: "50",
     CATALOG_LIST_LIMIT: "75",
+    RETENTION_RUN_MAX_MS: "120000",
   });
 
   assert.deepEqual(config, {
@@ -35,6 +38,7 @@ test("getIssueRetentionConfig accepts positive integer overrides", () => {
     eventDeleteBatchSize: 250,
     r2DeleteBatchSize: 50,
     catalogListLimit: 75,
+    retentionRunMaxMs: 120000,
   });
 });
 

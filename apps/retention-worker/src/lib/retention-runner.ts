@@ -9,6 +9,7 @@ const logger = createLogger({ service: "retention-worker" });
 export interface D1IssueRetentionInput {
   cutoffSeconds: number;
   eventDeleteBatchSize: number;
+  shouldContinue?: () => boolean;
 }
 
 export interface D1IssueRetentionResult {
@@ -44,9 +45,11 @@ export async function runIssueRetention(
   now: Date
 ): Promise<IssueRetentionSummary> {
   const cutoffSeconds = getRetentionCutoffSeconds(now, config.retentionDays);
+  const deadlineMs = Date.now() + config.retentionRunMaxMs;
   const d1Result = await runD1IssueRetention(env.DB, {
     cutoffSeconds,
     eventDeleteBatchSize: config.eventDeleteBatchSize,
+    shouldContinue: () => Date.now() < deadlineMs,
   });
   const deletedRawObjects = await deleteR2Keys(
     env.SENTRY_RAW,
@@ -76,91 +79,149 @@ export async function runD1IssueRetention(
   db: D1Database,
   input: D1IssueRetentionInput
 ): Promise<D1IssueRetentionResult> {
-  const oldEventRows = await db
-    .prepare(
-      `
-        SELECT r2_key AS r2Key
-        FROM sentry_events
-        WHERE received_at < ?
-        ORDER BY received_at ASC
-        LIMIT ?
-      `
-    )
-    .bind(input.cutoffSeconds, input.eventDeleteBatchSize)
-    .all();
-
-  const r2Keys = oldEventRows.results.flatMap(readR2Key);
-  const results = await db.batch([
-    db
-      .prepare(
-        `
-          DELETE FROM sentry_events
-          WHERE id IN (
-            SELECT id
-            FROM sentry_events
-            WHERE received_at < ?
-            ORDER BY received_at ASC
-            LIMIT ?
-          )
-        `
-      )
-      .bind(input.cutoffSeconds, input.eventDeleteBatchSize),
-    db
-      .prepare(
-        `
-          DELETE FROM sentry_sessions
-          WHERE id IN (
-            SELECT id
-            FROM sentry_sessions
-            WHERE received_at < ?
-            ORDER BY received_at ASC
-            LIMIT ?
-          )
-        `
-      )
-      .bind(input.cutoffSeconds, input.eventDeleteBatchSize),
-    db
-      .prepare(
-        `
-          DELETE FROM sentry_client_reports
-          WHERE id IN (
-            SELECT id
-            FROM sentry_client_reports
-            WHERE received_at < ?
-            ORDER BY received_at ASC
-            LIMIT ?
-          )
-        `
-      )
-      .bind(input.cutoffSeconds, input.eventDeleteBatchSize),
-    db
-      .prepare(
-        `
-          DELETE FROM sentry_issues
-          WHERE id IN (
-            SELECT issue.id
-            FROM sentry_issues issue
-            WHERE issue.last_seen_at < ?
-              AND NOT EXISTS (
-                SELECT 1
-                FROM sentry_events event
-                WHERE event.issue_id = issue.id
-              )
-            ORDER BY issue.last_seen_at ASC
-            LIMIT ?
-          )
-        `
-      )
-      .bind(input.cutoffSeconds, input.eventDeleteBatchSize),
-  ]);
+  const shouldContinue = input.shouldContinue ?? (() => true);
+  const eventResult = await deleteOldEventBatches(db, input, shouldContinue);
 
   return {
-    r2Keys,
-    deletedEvents: readChanges(results[0]),
-    deletedSessions: readChanges(results[1]),
-    deletedClientReports: readChanges(results[2]),
-    deletedIssues: readChanges(results[3]),
+    r2Keys: eventResult.r2Keys,
+    deletedEvents: eventResult.deleted,
+    deletedSessions: await deleteOldRowsInBatches(
+      db,
+      "sentry_sessions",
+      "received_at",
+      input,
+      shouldContinue
+    ),
+    deletedClientReports: await deleteOldRowsInBatches(
+      db,
+      "sentry_client_reports",
+      "received_at",
+      input,
+      shouldContinue
+    ),
+    deletedIssues: await deleteOldIssuesInBatches(db, input, shouldContinue),
   };
+}
+
+async function deleteOldEventBatches(
+  db: D1Database,
+  input: D1IssueRetentionInput,
+  shouldContinue: () => boolean
+): Promise<{ deleted: number; r2Keys: string[] }> {
+  let deleted = 0;
+  const r2Keys: string[] = [];
+
+  while (shouldContinue()) {
+    const oldEventRows = await db
+      .prepare(
+        `
+          SELECT r2_key AS r2Key
+          FROM sentry_events
+          WHERE received_at < ?
+          ORDER BY received_at ASC
+          LIMIT ?
+        `
+      )
+      .bind(input.cutoffSeconds, input.eventDeleteBatchSize)
+      .all();
+
+    const results = await db.batch([
+      db
+        .prepare(
+          `
+            DELETE FROM sentry_events
+            WHERE id IN (
+              SELECT id
+              FROM sentry_events
+              WHERE received_at < ?
+              ORDER BY received_at ASC
+              LIMIT ?
+            )
+          `
+        )
+        .bind(input.cutoffSeconds, input.eventDeleteBatchSize),
+    ]);
+    const changes = readChanges(results[0]);
+    deleted += changes;
+    r2Keys.push(...oldEventRows.results.flatMap(readR2Key));
+
+    if (changes === 0) break;
+  }
+
+  return { deleted, r2Keys };
+}
+
+async function deleteOldRowsInBatches(
+  db: D1Database,
+  tableName: "sentry_sessions" | "sentry_client_reports",
+  cutoffColumn: "received_at",
+  input: D1IssueRetentionInput,
+  shouldContinue: () => boolean
+): Promise<number> {
+  let deleted = 0;
+
+  while (shouldContinue()) {
+    const results = await db.batch([
+      db
+        .prepare(
+          `
+            DELETE FROM ${tableName}
+            WHERE id IN (
+              SELECT id
+              FROM ${tableName}
+              WHERE ${cutoffColumn} < ?
+              ORDER BY ${cutoffColumn} ASC
+              LIMIT ?
+            )
+          `
+        )
+        .bind(input.cutoffSeconds, input.eventDeleteBatchSize),
+    ]);
+    const changes = readChanges(results[0]);
+    deleted += changes;
+
+    if (changes === 0) break;
+  }
+
+  return deleted;
+}
+
+async function deleteOldIssuesInBatches(
+  db: D1Database,
+  input: D1IssueRetentionInput,
+  shouldContinue: () => boolean
+): Promise<number> {
+  let deleted = 0;
+
+  while (shouldContinue()) {
+    const results = await db.batch([
+      db
+        .prepare(
+          `
+            DELETE FROM sentry_issues
+            WHERE id IN (
+              SELECT issue.id
+              FROM sentry_issues issue
+              WHERE issue.last_seen_at < ?
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM sentry_events event
+                  WHERE event.issue_id = issue.id
+                )
+              ORDER BY issue.last_seen_at ASC
+              LIMIT ?
+            )
+          `
+        )
+        .bind(input.cutoffSeconds, input.eventDeleteBatchSize),
+    ]);
+    const changes = readChanges(results[0]);
+    deleted += changes;
+
+    if (changes === 0) break;
+  }
+
+  return deleted;
 }
 
 export async function deleteR2Keys(

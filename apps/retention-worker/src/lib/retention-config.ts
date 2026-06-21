@@ -2,12 +2,14 @@ export const DEFAULT_ISSUE_RETENTION_DAYS = 90;
 export const DEFAULT_EVENT_DELETE_BATCH_SIZE = 500;
 export const DEFAULT_R2_DELETE_BATCH_SIZE = 100;
 export const DEFAULT_CATALOG_LIST_LIMIT = 1000;
+export const DEFAULT_RETENTION_RUN_MAX_MS = 25_000;
 
 export interface IssueRetentionConfig {
   retentionDays: number;
   eventDeleteBatchSize: number;
   r2DeleteBatchSize: number;
   catalogListLimit: number;
+  retentionRunMaxMs: number;
 }
 
 export interface IssueRetentionConfigEnv {
@@ -15,6 +17,7 @@ export interface IssueRetentionConfigEnv {
   EVENT_DELETE_BATCH_SIZE?: string;
   R2_DELETE_BATCH_SIZE?: string;
   CATALOG_LIST_LIMIT?: string;
+  RETENTION_RUN_MAX_MS?: string;
 }
 
 export function getRetentionCutoffSeconds(
@@ -47,6 +50,11 @@ export function getIssueRetentionConfig(
       env.CATALOG_LIST_LIMIT,
       "CATALOG_LIST_LIMIT",
       DEFAULT_CATALOG_LIST_LIMIT
+    ),
+    retentionRunMaxMs: readPositiveInteger(
+      env.RETENTION_RUN_MAX_MS,
+      "RETENTION_RUN_MAX_MS",
+      DEFAULT_RETENTION_RUN_MAX_MS
     ),
   };
 }
