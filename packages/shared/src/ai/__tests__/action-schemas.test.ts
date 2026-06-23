@@ -5,6 +5,7 @@ import {
   classifyTeamAiActionGate,
   parseAiActionTriggerEvent,
   parseStrictTeamAiActionPlan,
+  parseAiActionWorkerMessage,
   shouldAllowEgress,
 } from "../action-schemas.ts";
 
@@ -30,6 +31,29 @@ test("parseStrictTeamAiActionPlan extracts JSON from fenced model output", () =>
 
   assert.equal(plan.summary, "Plan looks good");
   assert.equal(plan.actions[0].actionType, "monitor_tuning");
+});
+
+test("parseAiActionWorkerMessage parses structured queue payload", () => {
+  const payload = `{\"kind\":\"trigger\",\"trigger\":{\"id\":\"evt_1\",\"source\":\"monitor_transition\",\"type\":\"monitor_down\",\"teamId\":\"team_1\",\"occurredAt\":\"2026-01-01T00:00:00.000Z\",\"idempotencyKey\":\"monitor_down_1\"}}`;
+  const parsed = parseAiActionWorkerMessage(payload);
+  assert.equal(parsed.kind, "trigger");
+});
+
+test("parseAiActionWorkerMessage parses queued command payload", () => {
+  const payload = {
+    kind: "command",
+    command: {
+      id: "acmd_1",
+      teamId: "team_1",
+      actionId: "action_1",
+      operation: "approve",
+      requestedByUserId: "user_1",
+      occurredAt: "2026-01-01T00:00:00.000Z",
+    },
+  };
+  const parsed = parseAiActionWorkerMessage(payload);
+  assert.equal(parsed.kind, "command");
+  assert.equal(parsed.command.operation, "approve");
 });
 
 test("classifyTeamAiActionGate blocks by explicit policy blocklist", () => {
